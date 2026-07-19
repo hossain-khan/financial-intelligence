@@ -3,10 +3,8 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   resolve: {
     alias: {
-      "virtual:pwa-register": new URL(
-        "./apps/web/src/testing/pwa-register.ts",
-        import.meta.url,
-      ).pathname,
+      "virtual:pwa-register": new URL("./apps/web/src/testing/pwa-register.ts", import.meta.url)
+        .pathname,
     },
   },
   test: {

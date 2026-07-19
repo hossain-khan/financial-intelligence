@@ -82,6 +82,8 @@
   button:focus-visible,
   a:focus-visible,
   input:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 3px;
     box-shadow:
       0 0 0 3px var(--paper),
       0 0 0 6px var(--focus);
@@ -507,7 +509,31 @@
   }
 }
 
+@media (max-width: 400px) {
+  .app-header {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .app-header nav {
+    width: 100%;
+  }
+
+  .app-header nav a {
+    flex: 1;
+    text-align: center;
+  }
+}
+
 @media (forced-colors: active) {
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 3px;
+    box-shadow: none;
+  }
+
   .brand-mark,
   .privacy-icon,
   .workspace-monogram {

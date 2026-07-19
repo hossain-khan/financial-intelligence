@@ -51,6 +51,7 @@ Start with:
 - [Security and privacy](docs/12-SECURITY-AND-PRIVACY.md)
 - [Roadmap](docs/15-ROADMAP.md)
 - [Technology stack](docs/16-TECHNOLOGY-STACK.md)
+- [Quality baseline and browser support](docs/17-QUALITY-BASELINE.md)
 
 ## Project status
 
@@ -75,7 +76,12 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm security:headers:check -- apps/web/dist/_headers
+pnpm browser:test:chromium
 ```
+
+See the [quality baseline](docs/17-QUALITY-BASELINE.md) for supported browsers, Playwright setup,
+manual accessibility checks, and dependency-review expectations.
 
 Workspace packages follow the dependency direction documented in the [technology stack](docs/16-TECHNOLOGY-STACK.md). New functionality should begin as a thin vertical slice through domain, application, adapter, and UI boundaries.
 
