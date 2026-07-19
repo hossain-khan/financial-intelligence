@@ -41,7 +41,7 @@
     },
     {
       "if": { "properties": { "kind": { "const": "none" } }, "required": ["kind"] },
-      "then": { "properties": { "tasks": { "maxItems": 0 } } }
+      "then": { "properties": { "tasks": { "type": "array", "maxItems": 0 } } }
     }
   ],
   "$defs": {

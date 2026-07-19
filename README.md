@@ -50,10 +50,34 @@ Start with:
 - [System architecture](docs/07-SYSTEM-ARCHITECTURE.md)
 - [Security and privacy](docs/12-SECURITY-AND-PRIVACY.md)
 - [Roadmap](docs/15-ROADMAP.md)
+- [Technology stack](docs/16-TECHNOLOGY-STACK.md)
 
 ## Project status
 
-**Specification / pre-implementation.** The documents and schemas in this repository define the product contract for the first implementation. Open questions are recorded in the relevant document; architecture-changing decisions belong in `docs/adr/`.
+**Initial implementation.** The repository contains the product specification and the first executable vertical slice: a React/Vite PWA that creates and reloads a private workspace through application ports backed by IndexedDB. Statement import and financial analysis follow the phased roadmap.
+
+## Local development
+
+Requirements: Node.js 24 and pnpm 10.
+
+```bash
+pnpm install
+pnpm dev
+```
+
+The development server prints the local URL. The initial screen can create a named workspace stored only in the current browser origin.
+
+Run the complete local quality gate:
+
+```bash
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+Workspace packages follow the dependency direction documented in the [technology stack](docs/16-TECHNOLOGY-STACK.md). New functionality should begin as a thin vertical slice through domain, application, adapter, and UI boundaries.
 
 ## Development principles
 

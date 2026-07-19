@@ -1,0 +1,17 @@
+{
+  "name": "@financial-intelligence/storage-indexeddb",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@financial-intelligence/application": "workspace:*",
+    "@financial-intelligence/domain": "workspace:*",
+    "dexie": "4.4.4"
+  }
+}

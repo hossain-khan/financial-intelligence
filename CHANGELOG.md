@@ -6,6 +6,8 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Added
 
+- Technology stack plan, engineering guidelines, and ADR-004.
+- Initial pnpm workspace and offline React application foundation.
 - Initial product, architecture, AI, learning, import, privacy, UX, plugin, and roadmap specifications.
 - Versioned JSON Schemas for transactions, merchants, categories, imports, dashboards, AI providers, and the Financial Brain.
 - Synthetic examples for statement import, configuration, dashboard layout, and learned knowledge.
