@@ -87,6 +87,28 @@ IndexedDB is the source of truth for the local workspace. React state is limited
 
 Dexie is isolated in `storage-indexeddb`. Repository methods return domain/application DTOs, not Dexie collections. Atomic imports and migrations use explicit transactions. Derived projections carry a source revision and remain rebuildable.
 
+### IndexedDB migration authoring
+
+`packages/storage-indexeddb/src/migrations.ts` is the single ordered database-version registry. Version
+numbers start at 1, are contiguous integers, and are never renumbered or removed after release. Each
+entry includes a description and the complete store/index schema for that version. Version 1 is the
+original workspace-only database; version 2 adds the operational migration journal.
+
+Use a native Dexie version-change transaction for bounded schema changes and canonical record
+transforms. Throwing aborts that transaction, leaving the preceding committed database version
+readable. Never reset the database, clear a canonical store, or use a derived projection as the only
+copy of a user decision.
+
+Work that cannot safely finish inside one version-change transaction must use
+`JournaledMigrationRunner`. Such work must be idempotent, checkpoint after durable units, operate on
+derived/rebuildable state until its final atomic commit, and resume from the recorded checkpoint.
+Failures retain the journal with a normalized error code; a completed journal is not rerun.
+
+Opening a database should use `openFinancialDatabase` so incompatible versions, migration failures,
+quota errors, and blocked upgrades become actionable `StorageError` codes. A coordinated stale tab
+closes its connection on `versionchange`; a genuinely blocked upgrade asks the user to close other
+tabs and retry. Downgrades are rejected rather than destructively rewritten.
+
 Use Cache Storage only for immutable application assets and explicitly downloaded model assets. Source-document retention is opt-in. Provider keys are memory-only by default and never enter ordinary IndexedDB tables, exports, logs, service-worker caches, or URLs.
 
 ## Workers and long-running operations

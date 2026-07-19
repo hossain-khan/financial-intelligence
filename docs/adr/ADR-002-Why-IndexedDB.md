@@ -36,6 +36,11 @@ Use Cache Storage or other appropriate browser storage for immutable application
 - Maintain revisioned, rebuildable projections for common analytics.
 - Surface quota/persistence status and backups.
 - Test migrations, interruption, multi-tab coordination, and low-quota behavior.
+- Keep the contiguous database-version registry in `packages/storage-indexeddb/src/migrations.ts`.
+- Use native version-change transactions for bounded canonical migrations and explicit journals for
+  resumable multi-transaction work; a database reset is never a migration strategy.
+- Close coordinated stale connections on `versionchange` and surface blocked or incompatible opens
+  as actionable application errors.
 - Benchmark before adding a WASM query engine; it would remain derived, not authoritative, unless a superseding ADR says otherwise.
 
 ## Alternatives considered
