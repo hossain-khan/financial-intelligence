@@ -1,4 +1,9 @@
-export { FinancialDatabase, IndexedDbWorkspaceRepository, openFinancialDatabase } from "./database";
+export {
+  FinancialDatabase,
+  IndexedDbAccountRepository,
+  IndexedDbWorkspaceRepository,
+  openFinancialDatabase,
+} from "./database";
 export type { OpenDatabaseOptions } from "./database";
 export { normalizeStorageError, StorageError } from "./errors";
 export type { StorageErrorCode } from "./errors";

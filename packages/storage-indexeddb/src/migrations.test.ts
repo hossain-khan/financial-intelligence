@@ -26,8 +26,8 @@ afterEach(async () => {
 
 describe("database migrations", () => {
   it("keeps a contiguous registry with one source of truth", () => {
-    expect(DATABASE_MIGRATIONS.map(({ version }) => version)).toEqual([1, 2]);
-    expect(CURRENT_DATABASE_VERSION).toBe(2);
+    expect(DATABASE_MIGRATIONS.map(({ version }) => version)).toEqual([1, 2, 3]);
+    expect(CURRENT_DATABASE_VERSION).toBe(3);
   });
 
   it("rejects a migration registry with a missing prior version", () => {
@@ -45,6 +45,7 @@ describe("database migrations", () => {
     expect(await upgraded.workspaces.toArray()).toEqual([workspace]);
     expect(upgraded.verno).toBe(CURRENT_DATABASE_VERSION);
     expect(upgraded.tables.map(({ name: tableName }) => tableName).sort()).toEqual([
+      "accounts",
       "migrationJournal",
       "workspaces",
     ]);
