@@ -21,12 +21,12 @@ describe("CreateWorkspace", () => {
     const useCase = new CreateWorkspace(
       repository,
       { now: () => new Date("2026-07-19T16:00:00.000Z") },
-      { generate: () => "workspace-1" },
+      { generate: () => "018f6b80-0d62-7d2c-9a5c-7f5f59cda2f1" },
     );
 
     const result = await useCase.execute("My household");
 
-    expect(result.id).toBe("workspace-1");
+    expect(result.id).toBe("018f6b80-0d62-7d2c-9a5c-7f5f59cda2f1");
     expect(repository.workspaces).toEqual([result]);
   });
 });

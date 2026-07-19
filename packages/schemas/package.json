@@ -7,10 +7,15 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "schema:check": "node scripts/generate-types.mjs --check",
+    "schema:generate": "node scripts/generate-types.mjs",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1"
+  },
+  "devDependencies": {
+    "json-schema-to-typescript": "15.0.4"
   }
 }

@@ -14,8 +14,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint apps packages",
-    "format": "prettier --write \"apps/**/*.{ts,tsx,css,html,json}\" \"packages/**/*.{ts,tsx,json}\" \"*.{json,mjs,yaml,yml}\"",
-    "format:check": "prettier --check \"apps/**/*.{ts,tsx,css,html,json}\" \"packages/**/*.{ts,tsx,json}\" \"*.{json,mjs,yaml,yml}\""
+    "format": "prettier --write \"apps/**/*.{ts,tsx,css,html,json}\" \"packages/**/*.{ts,tsx,json,mjs}\" \"*.{json,mjs,yaml,yml}\"",
+    "format:check": "prettier --check \"apps/**/*.{ts,tsx,css,html,json}\" \"packages/**/*.{ts,tsx,json,mjs}\" \"*.{json,mjs,yaml,yml}\"",
+    "schema:check": "pnpm --filter @financial-intelligence/schemas schema:check",
+    "schema:generate": "pnpm --filter @financial-intelligence/schemas schema:generate"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

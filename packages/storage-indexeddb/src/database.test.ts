@@ -1,6 +1,10 @@
 import "fake-indexeddb/auto";
 
-import { createWorkspace } from "@financial-intelligence/domain";
+import {
+  createWorkspace,
+  parseUtcTimestamp,
+  parseWorkspaceId,
+} from "@financial-intelligence/domain";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { FinancialDatabase, IndexedDbWorkspaceRepository } from "./database";
@@ -22,9 +26,9 @@ describe("IndexedDbWorkspaceRepository", () => {
     databases.push(database);
     const repository = new IndexedDbWorkspaceRepository(database);
     const workspace = createWorkspace({
-      id: "workspace-1",
+      id: parseWorkspaceId("018f6b80-0d62-7d2c-9a5c-7f5f59cda2f1"),
       name: "Household",
-      now: "2026-07-19T16:00:00.000Z",
+      now: parseUtcTimestamp("2026-07-19T16:00:00.000Z"),
     });
 
     await repository.save(workspace);

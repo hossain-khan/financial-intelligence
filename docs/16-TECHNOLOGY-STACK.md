@@ -22,6 +22,7 @@ The application has no required backend. Optional remote AI providers are adapte
 | PWA | vite-plugin-pwa with Workbox `injectManifest` | Cache only versioned application assets and explicit model downloads |
 | Persistence | Dexie over IndexedDB | Use behind repository ports; never call it from domain code |
 | Portable validation | Ajv 2020 plus ajv-formats | The files in `/schemas` are the external contract source of truth |
+| Portable TypeScript types | json-schema-to-typescript | Generate from all root schemas; CI rejects stale artifacts |
 | Accessible UI | React Aria Components | Use unstyled accessible behavior with project-owned design tokens |
 | Styling | CSS Modules/custom properties or colocated plain CSS | No runtime CSS-in-JS; support forced colors, reduced motion, and content-driven breakpoints |
 | Data grid | TanStack Table plus TanStack Virtual | Semantic markup, controlled state, bounded DOM rendering |
@@ -112,6 +113,11 @@ Worker protocols are versioned discriminated unions with operation ID, progress,
 - Never aggregate different currencies without a named exchange-rate source and date.
 - Model imported facts, inferences, and user-confirmed decisions separately.
 - Keep normalizers, rules, classifiers, schemas, and migrations explicitly versioned.
+- Parse generated UUIDs with the entity-specific domain parser before constructing domain objects.
+- Use branded `DateOnly` and `UtcTimestamp` strings for domain boundaries. Date-only values never
+  pass through `Date`; UTC timestamps must use canonical uppercase `Z` notation.
+- Treat `/schemas` as the only hand-maintained portable contract. Run `pnpm schema:generate` after a
+  schema change and `pnpm schema:check` in local verification and CI.
 
 ## UI and accessibility
 
