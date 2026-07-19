@@ -27,7 +27,8 @@
   }
 
   button,
-  input {
+  input,
+  select {
     font: inherit;
   }
 }
@@ -75,13 +76,15 @@
 
   button,
   a,
-  input {
+  input,
+  select {
     outline: none;
   }
 
   button:focus-visible,
   a:focus-visible,
-  input:focus-visible {
+  input:focus-visible,
+  select:focus-visible {
     outline: 3px solid var(--focus);
     outline-offset: 3px;
     box-shadow:
@@ -257,6 +260,191 @@
     border: 1px solid rgb(82 100 95 / 16%);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow);
+  }
+
+  .account-panel {
+    padding: clamp(1.35rem, 4vw, 2.5rem);
+    background: var(--paper);
+    border: 1px solid rgb(82 100 95 / 16%);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+  }
+
+  .privacy-notice {
+    display: grid;
+    gap: 0.3rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    color: var(--forest);
+    background: var(--forest-soft);
+    border-radius: 14px;
+  }
+
+  .privacy-notice span {
+    color: var(--ink-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .account-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .account-form [role="group"],
+  .account-form .form-field {
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .account-form label,
+  .rename-form label,
+  .form-field label {
+    font-size: 0.86rem;
+    font-weight: 750;
+  }
+
+  .account-form input,
+  .account-form select,
+  .rename-form input {
+    width: 100%;
+    min-width: 0;
+    padding: 0.8rem 0.9rem;
+    color: var(--ink);
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+
+  .account-form > button,
+  .rename-form button,
+  .delete-confirmation button {
+    min-height: 2.75rem;
+    padding: 0.7rem 1rem;
+    color: white;
+    font-weight: 750;
+    background: var(--forest);
+    border: 0;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+
+  .account-form > button {
+    align-self: end;
+  }
+
+  .account-form > button[data-disabled] {
+    cursor: wait;
+    opacity: 0.65;
+  }
+
+  .field-help,
+  .field-error {
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+
+  .field-help {
+    color: var(--ink-muted);
+  }
+
+  .field-error {
+    color: var(--danger);
+  }
+
+  .account-state {
+    margin: 1.5rem 0 0;
+    padding-top: 1.25rem;
+    color: var(--ink-muted);
+    border-top: 1px solid var(--line);
+  }
+
+  .account-groups {
+    display: grid;
+    gap: 1.5rem;
+    margin-top: 2rem;
+  }
+
+  .account-group h3 {
+    margin: 0 0 0.75rem;
+    font-size: 1rem;
+  }
+
+  .account-group > p {
+    color: var(--ink-muted);
+  }
+
+  .account-list {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .account-list > li {
+    padding: 1rem;
+    background: #f4f6f1;
+    border: 1px solid transparent;
+    border-radius: 14px;
+  }
+
+  .account-summary {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .account-summary strong,
+  .account-summary div span {
+    display: block;
+  }
+
+  .account-summary div span {
+    margin-top: 0.2rem;
+    color: var(--ink-muted);
+    font-size: 0.8rem;
+  }
+
+  .archived-status {
+    padding: 0.45rem 0.7rem;
+    color: var(--ink-muted);
+    font-size: 0.73rem;
+    font-weight: 750;
+    background: #e3e5e2;
+    border-radius: 999px;
+  }
+
+  .rename-form {
+    display: grid;
+    grid-template-columns: minmax(12rem, 1fr) auto auto auto;
+    gap: 0.55rem;
+    align-items: end;
+    margin-top: 0.9rem;
+  }
+
+  .danger-button {
+    background: var(--danger) !important;
+  }
+
+  .delete-confirmation {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    align-items: center;
+    margin-top: 0.8rem;
+    padding: 0.8rem;
+    background: #fff1ef;
+    border: 1px solid #e7b5ae;
+    border-radius: 10px;
+  }
+
+  .delete-confirmation p {
+    flex: 1 1 100%;
+    margin: 0;
   }
 
   .section-heading {
@@ -492,12 +680,19 @@
   }
 
   .input-row,
-  .foundation-grid {
+  .foundation-grid,
+  .account-form,
+  .rename-form {
     grid-template-columns: 1fr;
   }
 
   .input-row button {
     min-height: 3rem;
+  }
+
+  .rename-form button,
+  .account-form > button {
+    width: 100%;
   }
 
   .foundation-card {
@@ -528,7 +723,8 @@
 @media (forced-colors: active) {
   button:focus-visible,
   a:focus-visible,
-  input:focus-visible {
+  input:focus-visible,
+  select:focus-visible {
     outline: 3px solid Highlight;
     outline-offset: 3px;
     box-shadow: none;

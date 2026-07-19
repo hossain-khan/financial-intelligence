@@ -1,3 +1,13 @@
+export {
+  ACCOUNT_TYPES,
+  AccountCurrencyLockedError,
+  AccountValidationError,
+  changeAccountCurrency,
+  createAccount,
+  renameAccount,
+  setAccountArchived,
+} from "./account";
+export type { Account, AccountField, AccountType, CreateAccountInput } from "./account";
 export { CurrencyMismatchError, Money } from "./money";
 export {
   parseAccountId,

@@ -17,9 +17,13 @@ test("creates and reloads a workspace without unexpected network access", async 
 
   await page.getByRole("textbox", { name: "Workspace name" }).fill("Browser test household");
   await page.getByRole("button", { name: "Create workspace" }).click();
-  await expect(page.getByText("Browser test household")).toBeVisible();
+  await expect(
+    page.getByRole("list", { name: "Local workspaces" }).getByText("Browser test household"),
+  ).toBeVisible();
   await page.reload();
-  await expect(page.getByText("Browser test household")).toBeVisible();
+  await expect(
+    page.getByRole("list", { name: "Local workspaces" }).getByText("Browser test household"),
+  ).toBeVisible();
 
   network.assertClean();
 });
@@ -33,12 +37,16 @@ test("reloads the installed application while offline", async ({ browserName, co
   await page.goto("/");
   await page.getByRole("textbox", { name: "Workspace name" }).fill("Offline household");
   await page.getByRole("button", { name: "Create workspace" }).click();
-  await expect(page.getByText("Offline household")).toBeVisible();
+  await expect(
+    page.getByRole("list", { name: "Local workspaces" }).getByText("Offline household"),
+  ).toBeVisible();
   await page.evaluate(async () => navigator.serviceWorker.ready);
 
   await context.setOffline(true);
   await page.reload({ waitUntil: "domcontentloaded" });
-  await expect(page.getByText("Offline household")).toBeVisible();
+  await expect(
+    page.getByRole("list", { name: "Local workspaces" }).getByText("Offline household"),
+  ).toBeVisible();
   await context.setOffline(false);
 
   network.assertClean();

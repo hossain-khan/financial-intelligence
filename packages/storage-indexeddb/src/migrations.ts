@@ -12,6 +12,8 @@ export interface DatabaseMigration {
 
 const WORKSPACE_SCHEMA = "&id, createdAt, updatedAt";
 const MIGRATION_JOURNAL_SCHEMA = "&id, migrationId, status, updatedAt";
+const ACCOUNT_SCHEMA =
+  "&id, workspaceId, [workspaceId+createdAt], [workspaceId+archived], createdAt, updatedAt";
 
 export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
   {
@@ -25,6 +27,15 @@ export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
     stores: {
       workspaces: WORKSPACE_SCHEMA,
       migrationJournal: MIGRATION_JOURNAL_SCHEMA,
+    },
+  },
+  {
+    version: 3,
+    description: "Add canonical accounts scoped to workspaces",
+    stores: {
+      workspaces: WORKSPACE_SCHEMA,
+      migrationJournal: MIGRATION_JOURNAL_SCHEMA,
+      accounts: ACCOUNT_SCHEMA,
     },
   },
 ];
