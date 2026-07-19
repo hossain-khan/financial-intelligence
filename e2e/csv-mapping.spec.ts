@@ -15,21 +15,27 @@ test("atomically commits and reloads a bank-shaped CSV import without network ac
   await page.getByRole("button", { name: "Create workspace" }).click();
   await page.getByRole("textbox", { name: "Account name" }).fill("Everyday account");
   await page.getByRole("button", { name: "Add account" }).click();
+  await expect(page.getByText("Everyday account", { exact: true })).toBeVisible();
 
-  await page.getByRole("link", { name: "Import" }).click();
+  await page.goto("/import");
+  await expect(
+    page.getByRole("heading", { name: "Map every transaction before it enters your ledger." }),
+  ).toBeVisible();
   await page.getByLabel("Select one or more bounded CSV files").setInputFiles({
     name: "synthetic-bank-details.csv",
     mimeType: "text/csv",
     buffer: Buffer.from(
       [
         "Transfer date,Description,Amount,Balance",
-        "2026-07-18,COFFEE SHOP,-$4.25,$1000.00",
-        "2026-07-19,PAYROLL DEPOSIT,$100.00,$1100.00",
+        "2026-01-15,RENT PAYMENT,-$1000.00,$4000.00",
+        "2026-02-18,GROCERY MARKET,-$54.25,$3945.75",
+        "2026-03-20,UTILITY COMPANY,-$80.00,$3865.75",
+        "2026-04-30,PAYROLL DEPOSIT,$3000.00,$6865.75",
       ].join("\n"),
     ),
   });
 
-  await expect(page.getByText("Parsed 1 source file containing 2 rows.")).toBeVisible();
+  await expect(page.getByText("Parsed 1 source file containing 4 rows.")).toBeVisible();
   await page
     .getByRole("combobox", { name: "Target account" })
     .selectOption({ label: "Everyday account · CAD" });
@@ -41,15 +47,62 @@ test("atomically commits and reloads a bank-shaped CSV import without network ac
     .selectOption("inflow");
 
   await expect(page.getByRole("button", { name: "Commit accepted transactions" })).toBeEnabled();
-  await expect(page.getByText("CAD 4.25", { exact: true })).toBeVisible();
+  await expect(page.getByText("CAD -54.25", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Commit accepted transactions" }).focus();
   await page.keyboard.press("Enter");
   await expect(
-    page.getByText(/Committed 2 transactions atomically at local revision 2/),
+    page.getByText(/Committed 4 transactions atomically at local revision 2/),
   ).toBeVisible();
-  await expect(page.getByText("2 transactions", { exact: true })).toBeVisible();
+  await expect(page.getByText("4 transactions", { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByText("synthetic-bank-details.csv", { exact: true })).toBeVisible();
+
+  await page.getByRole("link", { name: "Transactions" }).click();
+  await expect(page.getByRole("heading", { name: "Ledger" })).toBeVisible();
+  await expect(page.getByText("GROCERY MARKET", { exact: true })).toBeVisible();
+  await page
+    .getByRole("combobox", { name: "Category for GROCERY MARKET" })
+    .selectOption({ label: "Groceries" });
+  await expect(page.getByRole("status")).toContainText("Updated 1 transaction");
+  await expect(page.getByText("Source details").first()).toBeVisible();
+
+  await page.goto("/import");
+  await expect(
+    page.getByRole("heading", { name: "Map every transaction before it enters your ledger." }),
+  ).toBeVisible();
+  await page.getByLabel("Select one or more bounded CSV files").setInputFiles({
+    name: "synthetic-overlap.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(
+      [
+        "Transfer date,Description,Amount,Balance",
+        "2026-02-18,GROCERY MARKET,-$54.25,$3945.75",
+        "2026-03-20,UTILITY COMPANY,-$80.00,$3865.75",
+        "2026-04-30,PAYROLL DEPOSIT,$3000.00,$6865.75",
+        "2026-05-05,COFFEE SHOP,-$4.25,$6861.50",
+      ].join("\n"),
+    ),
+  });
+  await page
+    .getByRole("combobox", { name: "Target account" })
+    .selectOption({ label: "Everyday account · CAD" });
+  await expect(page.getByRole("button", { name: "Commit accepted transactions" })).toBeEnabled();
+  await page.getByRole("button", { name: "Commit accepted transactions" }).click();
+  await expect(
+    page.getByText(/Committed 4 transactions atomically at local revision 3/),
+  ).toBeVisible();
+
+  await page.getByRole("link", { name: "Transactions" }).click();
+  await expect(page.getByRole("heading", { name: "Duplicate review" })).toBeVisible();
+  await expect(page.getByText("Same canonical transaction fingerprint")).toHaveCount(3);
+  for (let duplicate = 0; duplicate < 3; duplicate += 1) {
+    await page.getByRole("button", { name: "Keep existing" }).first().click();
+    await expect(page.getByText("Decision: keep-existing")).toHaveCount(duplicate + 1);
+  }
+  await expect(page.getByText("void", { exact: true })).toHaveCount(3);
+  await expect(page.getByText("posted", { exact: true })).toHaveCount(5);
+  await page.reload();
+  await expect(page.getByText("Decision: keep-existing")).toHaveCount(3);
 
   const axe = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])

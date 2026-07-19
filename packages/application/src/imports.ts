@@ -2,6 +2,7 @@ import {
   Money,
   createCommittedImport,
   createTransaction,
+  detectDuplicateCandidates,
   incrementWorkspaceRevision,
   parseAccountId,
   parseDateOnly,
@@ -19,6 +20,7 @@ import {
 } from "@financial-intelligence/domain";
 
 import { AccountNotFoundError, type AccountRepository } from "./accounts";
+import type { DuplicateCandidateRepository } from "./duplicate-review";
 import type { ApplicationClock, IdGenerator, WorkspaceRepository } from "./workspaces";
 
 export interface AcceptedImportSource {
@@ -128,6 +130,7 @@ export class CommitAcceptedImport {
     private readonly clock: ApplicationClock,
     private readonly ids: IdGenerator,
     private readonly digest: Sha256Digest,
+    private readonly duplicateCandidates?: DuplicateCandidateRepository,
   ) {}
 
   public async execute(command: CommitAcceptedImportCommand): Promise<CommitImportResult> {
@@ -229,17 +232,61 @@ export class CommitAcceptedImport {
       fingerprints.push(await fingerprint(transaction, this.digest));
     }
     throwIfCancelled(command.signal);
+    let reviewedTransactions = transactions;
+    let reviewedImports = imports;
+    if (this.duplicateCandidates !== undefined) {
+      const [existing, existingFingerprints] = await Promise.all([
+        this.duplicateCandidates.listTransactionsByAccount(account.id),
+        this.duplicateCandidates.listFingerprintsByAccount(account.id),
+      ]);
+      const duplicates = detectDuplicateCandidates({
+        existing,
+        incoming: transactions,
+        fingerprints: [
+          ...existingFingerprints,
+          ...fingerprints.map(({ transactionId, fingerprint: value }) => ({
+            transactionId,
+            value,
+          })),
+        ],
+      });
+      const duplicateIds = new Set(duplicates.map((candidate) => candidate.incomingTransactionId));
+      reviewedTransactions = transactions.map((transaction) =>
+        duplicateIds.has(transaction.id)
+          ? { ...transaction, reviewState: "needsReview" }
+          : transaction,
+      );
+      reviewedImports = imports.map((statementImport) => {
+        const importedIds = new Set(
+          transactions
+            .filter((transaction) => transaction.importId === statementImport.id)
+            .map((transaction) => transaction.id),
+        );
+        const exactDuplicates = duplicates.filter(
+          (candidate) =>
+            importedIds.has(candidate.incomingTransactionId) && candidate.kind === "exact",
+        ).length;
+        const likelyDuplicates = duplicates.filter(
+          (candidate) =>
+            importedIds.has(candidate.incomingTransactionId) && candidate.kind === "likely",
+        ).length;
+        return {
+          ...statementImport,
+          counts: { ...statementImport.counts, exactDuplicates, likelyDuplicates },
+        };
+      });
+    }
     const plan: AtomicImportCommitPlan = {
       expectedWorkspaceRevision: workspace.revision,
       workspace: nextWorkspace,
-      imports,
-      transactions,
+      imports: reviewedImports,
+      transactions: reviewedTransactions,
       fingerprints,
     };
     await this.repository.commit(plan, command.signal);
     return {
-      imports,
-      transactionCount: transactions.length,
+      imports: reviewedImports,
+      transactionCount: reviewedTransactions.length,
       committedRevision: nextWorkspace.revision,
     };
   }

@@ -18,8 +18,13 @@ const IMPORT_SCHEMA =
   "&id, accountId, [accountId+createdAt], source.sha256, status, committedRevision, createdAt";
 const TRANSACTION_SCHEMA =
   "&id, accountId, importId, [accountId+postedDate], &[accountId+sourceTransactionId], createdAt";
+const REVIEWABLE_TRANSACTION_SCHEMA =
+  "&id, accountId, importId, [accountId+postedDate], [accountId+sourceTransactionId], [accountId+currency+amount+postedDate], [accountId+reviewState+postedDate], [accountId+categoryId+postedDate], createdAt";
 const TRANSACTION_FINGERPRINT_SCHEMA =
   "&transactionId, accountId, importId, fingerprint, [accountId+fingerprint]";
+const CATEGORY_SCHEMA = "&id, kind, order, archived, name, updatedAt";
+const TRANSACTION_OPERATION_SCHEMA = "&id, kind, createdAt, undoneAt";
+const DUPLICATE_RESOLUTION_SCHEMA = "&id, type, candidateId, occurredAt";
 
 export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
   {
@@ -54,6 +59,21 @@ export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
       imports: IMPORT_SCHEMA,
       transactions: TRANSACTION_SCHEMA,
       transactionFingerprints: TRANSACTION_FINGERPRINT_SCHEMA,
+    },
+  },
+  {
+    version: 5,
+    description: "Add reviewable ledger, categories, undo history, and duplicate decisions",
+    stores: {
+      workspaces: WORKSPACE_SCHEMA,
+      migrationJournal: MIGRATION_JOURNAL_SCHEMA,
+      accounts: ACCOUNT_SCHEMA,
+      imports: IMPORT_SCHEMA,
+      transactions: REVIEWABLE_TRANSACTION_SCHEMA,
+      transactionFingerprints: TRANSACTION_FINGERPRINT_SCHEMA,
+      categories: CATEGORY_SCHEMA,
+      transactionOperations: TRANSACTION_OPERATION_SCHEMA,
+      duplicateResolutionEvents: DUPLICATE_RESOLUTION_SCHEMA,
     },
   },
 ];

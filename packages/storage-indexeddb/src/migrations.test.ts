@@ -1,10 +1,17 @@
 import "fake-indexeddb/auto";
 
 import {
+  Money,
+  createTransaction,
   createWorkspace,
+  parseAccountId,
+  parseDateOnly,
+  parseImportId,
+  parseTransactionId,
   parseUtcTimestamp,
   parseWorkspaceId,
   type Workspace,
+  transactionToCanonical,
 } from "@financial-intelligence/domain";
 import Dexie from "dexie";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -26,8 +33,8 @@ afterEach(async () => {
 
 describe("database migrations", () => {
   it("keeps a contiguous registry with one source of truth", () => {
-    expect(DATABASE_MIGRATIONS.map(({ version }) => version)).toEqual([1, 2, 3, 4]);
-    expect(CURRENT_DATABASE_VERSION).toBe(4);
+    expect(DATABASE_MIGRATIONS.map(({ version }) => version)).toEqual([1, 2, 3, 4, 5]);
+    expect(CURRENT_DATABASE_VERSION).toBe(5);
   });
 
   it("rejects a migration registry with a missing prior version", () => {
@@ -46,9 +53,12 @@ describe("database migrations", () => {
     expect(upgraded.verno).toBe(CURRENT_DATABASE_VERSION);
     expect(upgraded.tables.map(({ name: tableName }) => tableName).sort()).toEqual([
       "accounts",
+      "categories",
+      "duplicateResolutionEvents",
       "imports",
       "migrationJournal",
       "transactionFingerprints",
+      "transactionOperations",
       "transactions",
       "workspaces",
     ]);
@@ -57,6 +67,42 @@ describe("database migrations", () => {
     const reopened = await openFinancialDatabase(new FinancialDatabase(name));
     expect(await reopened.workspaces.toArray()).toEqual([workspace]);
     reopened.close();
+  });
+
+  it("upgrades v4 transactions without loss and makes source IDs reviewable", async () => {
+    const name = databaseName();
+    const versionFour = await openFinancialDatabase(
+      new FinancialDatabase(name, DATABASE_MIGRATIONS.slice(0, 4)),
+    );
+    const transaction = createTransaction({
+      id: parseTransactionId("018f6b80-0d62-7d2c-9a5c-7f5f59cda2f4"),
+      accountId: parseAccountId("018f6b80-0d62-7d2c-9a5c-7f5f59cda2f2"),
+      importId: parseImportId("018f6b80-0d62-7d2c-9a5c-7f5f59cda2f3"),
+      postedDate: parseDateOnly("2026-07-19"),
+      money: Money.from("-4.25", "CAD"),
+      description: "Coffee",
+      sourceTransactionId: "bank-1",
+      provenance: {
+        parserId: "csv",
+        parserVersion: "1",
+        sourceLocation: "line:2",
+        original: {},
+        transformations: [],
+      },
+      now: parseUtcTimestamp("2026-07-19T16:00:00.000Z"),
+    });
+    await versionFour.transactions.put(transactionToCanonical(transaction));
+    versionFour.close();
+
+    const upgraded = await openFinancialDatabase(new FinancialDatabase(name));
+    expect(await upgraded.transactions.toArray()).toEqual([transactionToCanonical(transaction)]);
+    expect(
+      upgraded.transactions.schema.indexes.find(
+        (index) => index.name === "[accountId+sourceTransactionId]",
+      )?.unique,
+    ).toBe(false);
+    expect(await upgraded.categories.count()).toBe(0);
+    upgraded.close();
   });
 
   it("aborts a failed native upgrade and preserves the v1 canonical state", async () => {

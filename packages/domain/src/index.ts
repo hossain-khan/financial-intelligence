@@ -34,12 +34,51 @@ export type { CreateWorkspaceInput, Workspace } from "./workspace";
 export { createTransaction, transactionFromCanonical, transactionToCanonical } from "./transaction";
 export type {
   CanonicalTransactionDocument,
+  ClassificationMethod,
   CreateTransactionInput,
   Transaction,
+  TransactionClassification,
   TransactionProvenance,
   TransactionReviewState,
   TransactionStatus,
 } from "./transaction";
+export {
+  STARTER_CATEGORY_DEFINITIONS,
+  createCategory,
+  createStarterCategories,
+  renameCategory,
+  validateCategoryHierarchy,
+} from "./category";
+export type {
+  Category,
+  CategoryKind,
+  CreateCategoryInput,
+  StarterCategoryDefinition,
+} from "./category";
+export { applyAutomaticCategoryEdit, applyManualTransactionEdit } from "./transaction-editing";
+export type { AutomaticCategoryEdit, ManualTransactionEdit } from "./transaction-editing";
+export {
+  DuplicateResolutionConflictError,
+  activeDuplicateDecisions,
+  applicableDuplicateDecisions,
+  detectDuplicateCandidates,
+  duplicateEvidenceSignature,
+  normalizeDuplicateDescription,
+  projectDuplicateResolutionEffects,
+} from "./duplicate-review";
+export type {
+  DetectDuplicateCandidatesInput,
+  DuplicateCandidate,
+  DuplicateDecision,
+  DuplicateDecisionUndo,
+  DuplicateEvidence,
+  DuplicateEvidenceCode,
+  DuplicateFingerprint,
+  DuplicateKind,
+  DuplicateResolutionAction,
+  DuplicateResolutionEffects,
+  DuplicateResolutionEvent,
+} from "./duplicate-review";
 export { createCommittedImport, importFromCanonical, importToCanonical } from "./statement-import";
 export type {
   CreateCommittedImportInput,

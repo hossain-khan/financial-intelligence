@@ -49,6 +49,7 @@ for (const schema of [
 }
 
 export const validateAiProvider = createValidator(aiProviderSchema.$id);
+export const validateCategory = createValidator(categorySchema.$id);
 export const validateDashboard = createValidator(dashboardSchema.$id);
 export const validateFinancialBrain = createValidator(financialBrainSchema.$id);
 export const validateImport = createValidator(importSchema.$id);
