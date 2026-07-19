@@ -1,4 +1,4 @@
-import type { Account, Workspace } from "@financial-intelligence/domain";
+import type { Account, StatementImport, Workspace } from "@financial-intelligence/domain";
 import {
   createCsvErrorReport,
   createFormatSignature,
@@ -72,6 +72,10 @@ export function ImportPage({
   const [status, setStatus] = useState<"loading" | "ready" | "parsing" | "error">("loading");
   const [message, setMessage] = useState<string>();
   const [presetMessage, setPresetMessage] = useState<string>();
+  const [history, setHistory] = useState<readonly StatementImport[]>([]);
+  const [commitStatus, setCommitStatus] = useState<"idle" | "committing" | "committed" | "error">(
+    "idle",
+  );
   const [dragActive, setDragActive] = useState(false);
 
   useEffect(() => {
@@ -102,6 +106,7 @@ export function ImportPage({
     return firstRow === undefined ? [] : Object.keys(firstRow.fields);
   }, [sources]);
   const selectedAccount = accounts.find((account) => account.id === draft.accountId);
+  const historyAccount = selectedAccount ?? accounts[0];
   const mapping = useMemo(
     () => createMapping(draft, selectedAccount, headers),
     [draft, selectedAccount, headers],
@@ -110,6 +115,26 @@ export function ImportPage({
     () => (mapping === undefined ? undefined : mapCsvSources(sources, mapping)),
     [mapping, sources],
   );
+
+  useEffect(() => {
+    if (historyAccount === undefined) {
+      return;
+    }
+    let current = true;
+    void services.listImportHistory
+      .execute(historyAccount.id)
+      .then((imports) => {
+        if (current) setHistory(imports);
+      })
+      .catch(() => {
+        if (current) {
+          setMessage("Import history could not be loaded. Existing data was not changed.");
+        }
+      });
+    return () => {
+      current = false;
+    };
+  }, [historyAccount, services]);
 
   const acceptFiles = async (files: readonly File[]) => {
     setStatus("parsing");
@@ -160,18 +185,77 @@ export function ImportPage({
     void acceptFiles([...event.dataTransfer.files]);
   };
 
-  const confirmMapping = () => {
+  const confirmMapping = async () => {
     const first = sources[0];
-    if (mapping === undefined || mapped?.canContinue !== true || first === undefined) return;
-    const signature = createFormatSignature(headers, first.parserId, first.parserVersion);
-    saveMappingPreset(presetStorage, {
-      formatSignature: signature,
-      parserId: first.parserId,
-      parserVersion: first.parserVersion,
-      mapping,
-      now: now(),
-    });
-    setPresetMessage("Mapping confirmed and saved locally. No transactions were written.");
+    const workspace = workspaces[0];
+    if (
+      mapping === undefined ||
+      mapped?.canContinue !== true ||
+      first === undefined ||
+      workspace === undefined
+    )
+      return;
+    setCommitStatus("committing");
+    setMessage(undefined);
+    try {
+      const result = await services.commitAcceptedImport.execute({
+        workspaceId: workspace.id,
+        accountId: mapping.accountId,
+        sources: sources.map((source) => ({
+          fileName: source.metadata.fileName,
+          mediaType: source.metadata.mediaType,
+          byteSize: source.metadata.byteSize,
+          sha256: source.metadata.sha256,
+          parserId: source.parserId,
+          parserVersion: source.parserVersion,
+          sourceRows: source.rows.length,
+          issues: source.issues,
+        })),
+        candidates: mapped.candidates.map((candidate) => ({
+          accountId: candidate.accountId,
+          postedDate: candidate.postedDate,
+          ...(candidate.transactionDate === undefined
+            ? {}
+            : { transactionDate: candidate.transactionDate }),
+          description: candidate.description,
+          amount: candidate.amount,
+          currency: candidate.currency,
+          ...(candidate.sourceTransactionId === undefined
+            ? {}
+            : { sourceTransactionId: candidate.sourceTransactionId }),
+          ...(candidate.status === undefined ? {} : { status: candidate.status }),
+          provenance: {
+            sourceFileSha256: candidate.provenance.sourceFileSha256,
+            sourceLocation: candidate.provenance.sourceLocation,
+            parserId: candidate.provenance.parserId,
+            parserVersion: candidate.provenance.parserVersion,
+            mappingVersion: candidate.provenance.mappingVersion,
+            original: { ...candidate.provenance.original },
+          },
+        })),
+        mapping: mappingSummary(mapping),
+      });
+      const signature = createFormatSignature(headers, first.parserId, first.parserVersion);
+      saveMappingPreset(presetStorage, {
+        formatSignature: signature,
+        parserId: first.parserId,
+        parserVersion: first.parserVersion,
+        mapping,
+        now: now(),
+      });
+      setHistory(await services.listImportHistory.execute(mapping.accountId));
+      setCommitStatus("committed");
+      setPresetMessage(
+        `Committed ${result.transactionCount} transaction${result.transactionCount === 1 ? "" : "s"} atomically at local revision ${result.committedRevision}.`,
+      );
+    } catch (error) {
+      setCommitStatus("error");
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "The import could not be committed. No partial transactions were saved.",
+      );
+    }
   };
 
   return (
@@ -238,7 +322,12 @@ export function ImportPage({
       )}
 
       {sources.length > 0 && (
-        <Preview result={mapped} mappingReady={mapping !== undefined} onConfirm={confirmMapping} />
+        <Preview
+          result={mapped}
+          mappingReady={mapping !== undefined}
+          isCommitting={commitStatus === "committing"}
+          onConfirm={() => void confirmMapping()}
+        />
       )}
 
       {presetMessage !== undefined && (
@@ -246,6 +335,7 @@ export function ImportPage({
           {presetMessage}
         </p>
       )}
+      {historyAccount !== undefined && <ImportHistory imports={history} account={historyAccount} />}
     </div>
   );
 }
@@ -483,10 +573,12 @@ function SelectField({
 function Preview({
   result,
   mappingReady,
+  isCommitting,
   onConfirm,
 }: {
   readonly result: CsvMappingResult | undefined;
   readonly mappingReady: boolean;
+  readonly isCommitting: boolean;
   readonly onConfirm: () => void;
 }) {
   if (!mappingReady || result === undefined) {
@@ -591,15 +683,59 @@ function Preview({
         </div>
       )}
       <div className="preview-actions">
-        <button type="button" onClick={onConfirm} disabled={!result.canContinue}>
-          Confirm mapping
+        <button type="button" onClick={onConfirm} disabled={!result.canContinue || isCommitting}>
+          {isCommitting ? "Committing atomically…" : "Commit accepted transactions"}
         </button>
         <span>
           {result.canContinue
-            ? "This saves only the non-sensitive mapping preset."
-            : "Resolve all error-level rows before confirming."}
+            ? "Transactions, provenance, import history, and revision commit together."
+            : "Resolve all error-level rows before committing."}
         </span>
       </div>
+    </section>
+  );
+}
+
+function ImportHistory({
+  imports,
+  account,
+}: {
+  readonly imports: readonly StatementImport[];
+  readonly account: Account;
+}) {
+  return (
+    <section className="import-panel" aria-labelledby="import-history-title">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Local history</p>
+          <h2 id="import-history-title">Committed imports</h2>
+        </div>
+        <span className="storage-chip">{account.name}</span>
+      </div>
+      {imports.length === 0 ? (
+        <p>No committed imports exist for this account yet.</p>
+      ) : (
+        <ul className="import-history-list">
+          {[...imports].reverse().map((statementImport) => (
+            <li key={statementImport.id}>
+              <div>
+                <strong>{statementImport.source.fileName}</strong>
+                <span>
+                  {statementImport.parser.id} · {statementImport.parser.version}
+                </span>
+              </div>
+              <div>
+                <strong>{statementImport.counts.committed} transactions</strong>
+                <span>
+                  Revision {statementImport.committedRevision} ·{" "}
+                  {statementImport.committedAt.slice(0, 10)}
+                </span>
+              </div>
+              <span className="ready-status">Committed</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
@@ -706,6 +842,28 @@ function draftFromPreset(
     currencyColumn: mapping.currencyColumn ?? "",
     sourceTransactionIdColumn: mapping.sourceTransactionIdColumn ?? "",
     statusColumn: mapping.statusColumn ?? "",
+    dateFormat: mapping.dateFormat,
+    decimalSeparator: mapping.numberFormat.decimalSeparator,
+    groupSeparator: mapping.numberFormat.groupSeparator,
+  };
+}
+
+function mappingSummary(
+  mapping: CsvMapping,
+): Readonly<Record<string, string | number | boolean | null>> {
+  return {
+    postedDateColumn: mapping.postedDateColumn,
+    transactionDateColumn: mapping.transactionDateColumn ?? null,
+    descriptionColumn: mapping.descriptionColumn,
+    amountKind: mapping.amount.kind,
+    amountColumn: mapping.amount.kind === "signed" ? mapping.amount.column : null,
+    positiveDirection: mapping.amount.kind === "signed" ? mapping.amount.positiveDirection : null,
+    debitColumn: mapping.amount.kind === "debit-credit" ? mapping.amount.debitColumn : null,
+    creditColumn: mapping.amount.kind === "debit-credit" ? mapping.amount.creditColumn : null,
+    debitDirection: mapping.amount.kind === "debit-credit" ? mapping.amount.debitDirection : null,
+    currencyColumn: mapping.currencyColumn ?? null,
+    sourceTransactionIdColumn: mapping.sourceTransactionIdColumn ?? null,
+    statusColumn: mapping.statusColumn ?? null,
     dateFormat: mapping.dateFormat,
     decimalSeparator: mapping.numberFormat.decimalSeparator,
     groupSeparator: mapping.numberFormat.groupSeparator,

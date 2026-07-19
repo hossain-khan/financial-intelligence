@@ -16,6 +16,7 @@
     "ajv-formats": "3.0.1"
   },
   "devDependencies": {
+    "@financial-intelligence/domain": "workspace:*",
     "json-schema-to-typescript": "15.0.4"
   }
 }

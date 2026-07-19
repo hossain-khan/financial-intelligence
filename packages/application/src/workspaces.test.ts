@@ -1,4 +1,4 @@
-import type { Workspace } from "@financial-intelligence/domain";
+import type { Workspace, WorkspaceId } from "@financial-intelligence/domain";
 import { describe, expect, it } from "vitest";
 
 import { CreateWorkspace, type WorkspaceRepository } from "./workspaces";
@@ -8,6 +8,10 @@ class MemoryWorkspaceRepository implements WorkspaceRepository {
 
   public async list(): Promise<readonly Workspace[]> {
     return this.workspaces;
+  }
+
+  public async findById(id: WorkspaceId): Promise<Workspace | undefined> {
+    return this.workspaces.find((workspace) => workspace.id === id);
   }
 
   public async save(workspace: Workspace): Promise<void> {

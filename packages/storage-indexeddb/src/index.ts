@@ -1,10 +1,12 @@
 export {
   FinancialDatabase,
   IndexedDbAccountRepository,
+  IndexedDbImportCommitRepository,
   IndexedDbWorkspaceRepository,
   openFinancialDatabase,
 } from "./database";
 export type { OpenDatabaseOptions } from "./database";
+export type { ImportCommitStage, IndexedDbImportCommitHooks } from "./database";
 export { normalizeStorageError, StorageError } from "./errors";
 export type { StorageErrorCode } from "./errors";
 export { JournaledMigrationRunner } from "./migration-journal";
