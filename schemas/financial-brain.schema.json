@@ -81,7 +81,12 @@
       "required": ["type", "value"],
       "properties": {
         "type": { "enum": ["setMerchant", "setCategory", "addTag", "removeTag", "markReviewed", "markIgnored"] },
-        "value": { "type": ["string", "boolean"], "minLength": 1, "maxLength": 240 }
+        "value": {
+          "oneOf": [
+            { "type": "string", "minLength": 1, "maxLength": 240 },
+            { "type": "boolean" }
+          ]
+        }
       }
     },
     "rule": {

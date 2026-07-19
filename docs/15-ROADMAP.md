@@ -100,7 +100,7 @@ Candidates are not commitments. Tax optimization, automated advice, live bank sy
 
 | Decision | Needed by |
 | --- | --- |
-| UI/build/test stack | Phase 0 |
+| UI/build/test stack | Decided in ADR-004 |
 | Browser support matrix | Phase 0/1 |
 | Backup KDF/container | Phase 1 completion |
 | First PDF layouts | Phase 3 |
