@@ -1,0 +1,21 @@
+{
+  "name": "@financial-intelligence/import-csv",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./worker": "./src/worker.ts"
+  },
+  "scripts": {
+    "build": "vite build && node scripts/check-worker-bundle.mjs",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@financial-intelligence/import-core": "workspace:*",
+    "csv-parse": "7.0.1"
+  },
+  "devDependencies": {
+    "vite": "8.1.5"
+  }
+}

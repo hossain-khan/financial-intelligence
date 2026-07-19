@@ -1,0 +1,4 @@
+Date,Description,Amount
+2026-04-01,Valid,-1.00
+2026-04-02,bad"quote,-2.00
+2026-04-03,Still valid,-3.00

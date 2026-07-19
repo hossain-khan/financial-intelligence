@@ -29,3 +29,4 @@ Status is one of `Proposed`, `Accepted`, `Deprecated`, or `Superseded by ADR-NNN
 - [ADR-002: IndexedDB as primary browser persistence](ADR-002-Why-IndexedDB.md)
 - [ADR-003: WebGPU as optional local AI acceleration](ADR-003-Why-WebGPU.md)
 - [ADR-004: TypeScript React PWA technology stack](ADR-004-Technology-Stack.md)
+- [ADR-005: CSV Parse for bounded delimited-text intake](ADR-005-CSV-Parser.md)
