@@ -84,3 +84,24 @@ export type ImportWorkerResponse =
       readonly errorCode: string;
       readonly message: string;
     };
+
+export {
+  MAPPING_VERSION,
+  createCsvErrorReport,
+  createFormatSignature,
+  mapCsvSources,
+  mappingPresetKey,
+  sanitizeSpreadsheetCell,
+} from "./mapping";
+export type {
+  AmountMapping,
+  CanonicalTransactionCandidate,
+  CsvMapping,
+  CsvMappingIssue,
+  CsvMappingResult,
+  CsvMappingSource,
+  DateFormat,
+  MappingPreset,
+  MappingPreviewRow,
+  NumberFormat,
+} from "./mapping";

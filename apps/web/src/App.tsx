@@ -3,12 +3,25 @@ import {
   type Account,
   type Workspace,
 } from "@financial-intelligence/domain";
-import { useCallback, useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
+import {
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  type FormEvent,
+} from "react";
 import { Button, FieldError, Form, Input, Label, TextField } from "react-aria-components";
 import { BrowserRouter, NavLink, Route, Routes } from "react-router-dom";
 
 import type { ApplicationServices } from "./infrastructure";
 import { getPendingApplicationUpdate, subscribeToApplicationUpdate } from "./pwa";
+
+const ImportPage = lazy(async () => {
+  const module = await import("./ImportPage");
+  return { default: module.ImportPage };
+});
 
 export interface AppProperties {
   readonly services: ApplicationServices;
@@ -22,6 +35,14 @@ export function App({ services }: AppProperties) {
         <main id="main-content" className="main-content">
           <Routes>
             <Route path="/" element={<OverviewPage services={services} />} />
+            <Route
+              path="/import"
+              element={
+                <Suspense fallback={<p role="status">Opening the local import workspace…</p>}>
+                  <ImportPage services={services} />
+                </Suspense>
+              }
+            />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </main>
@@ -50,6 +71,7 @@ function AppHeader() {
         <NavLink to="/" end>
           Overview
         </NavLink>
+        <NavLink to="/import">Import</NavLink>
         <NavLink to="/settings">Settings</NavLink>
       </nav>
     </header>
