@@ -4,7 +4,6 @@ export type StorageErrorCode =
   | "MIGRATION_FAILED"
   | "QUOTA_EXCEEDED"
   | "CONCURRENT_MODIFICATION"
-  | "DUPLICATE_SOURCE_ID"
   | "STORAGE_FAILURE";
 
 const ERROR_MESSAGES: Readonly<Record<StorageErrorCode, string>> = {
@@ -18,8 +17,6 @@ const ERROR_MESSAGES: Readonly<Record<StorageErrorCode, string>> = {
     "Browser storage is full or unavailable. Free storage or export data before retrying.",
   CONCURRENT_MODIFICATION:
     "Local data changed before this import could commit. Review the latest data and retry.",
-  DUPLICATE_SOURCE_ID:
-    "A transaction with the same source identifier already exists in this account.",
   STORAGE_FAILURE: "Financial Intelligence could not access local browser storage.",
 };
 

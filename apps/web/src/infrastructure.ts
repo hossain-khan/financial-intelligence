@@ -1,19 +1,34 @@
 import {
+  ApplyBulkTransactionEdit,
   CreateAccount,
   CreateWorkspace,
   CommitAcceptedImport,
+  FindDuplicateCandidates,
   ListAccounts,
+  ListCategories,
+  ListDuplicateResolutions,
   ListImportHistory,
+  ListTransactionEditHistory,
   ListTransactions,
   ListWorkspaces,
+  PreviewBulkTransactionEdit,
+  QueryTransactionLedger,
   RenameAccount,
+  RenameCategory,
+  ResolveDuplicate,
   RequestAccountDeletion,
   SetAccountArchived,
+  SetCategoryArchived,
+  UndoBulkTransactionEdit,
+  UndoDuplicateResolution,
 } from "@financial-intelligence/application";
 import {
   FinancialDatabase,
   IndexedDbAccountRepository,
+  IndexedDbCategoryRepository,
+  IndexedDbDuplicateResolutionRepository,
   IndexedDbImportCommitRepository,
+  IndexedDbTransactionLedgerRepository,
   IndexedDbWorkspaceRepository,
 } from "@financial-intelligence/storage-indexeddb";
 
@@ -28,12 +43,27 @@ export interface ApplicationServices {
   readonly commitAcceptedImport: CommitAcceptedImport;
   readonly listImportHistory: ListImportHistory;
   readonly listTransactions: ListTransactions;
+  readonly listCategories: ListCategories;
+  readonly renameCategory: RenameCategory;
+  readonly setCategoryArchived: SetCategoryArchived;
+  readonly queryTransactionLedger: QueryTransactionLedger;
+  readonly listTransactionEditHistory: ListTransactionEditHistory;
+  readonly previewBulkTransactionEdit: PreviewBulkTransactionEdit;
+  readonly applyBulkTransactionEdit: ApplyBulkTransactionEdit;
+  readonly undoBulkTransactionEdit: UndoBulkTransactionEdit;
+  readonly findDuplicateCandidates: FindDuplicateCandidates;
+  readonly resolveDuplicate: ResolveDuplicate;
+  readonly undoDuplicateResolution: UndoDuplicateResolution;
+  readonly listDuplicateResolutions: ListDuplicateResolutions;
 }
 
 const database = new FinancialDatabase();
 const workspaceRepository = new IndexedDbWorkspaceRepository(database);
 const accountRepository = new IndexedDbAccountRepository(database);
 const importRepository = new IndexedDbImportCommitRepository(database);
+const categoryRepository = new IndexedDbCategoryRepository(database);
+const ledgerRepository = new IndexedDbTransactionLedgerRepository(database);
+const duplicateResolutionRepository = new IndexedDbDuplicateResolutionRepository(database);
 const clock = { now: () => new Date() };
 const ids = { generate: () => crypto.randomUUID() };
 const digest = {
@@ -58,7 +88,20 @@ export const applicationServices: ApplicationServices = {
     clock,
     ids,
     digest,
+    ledgerRepository,
   ),
   listImportHistory: new ListImportHistory(importRepository),
   listTransactions: new ListTransactions(importRepository),
+  listCategories: new ListCategories(categoryRepository, clock),
+  renameCategory: new RenameCategory(categoryRepository, clock),
+  setCategoryArchived: new SetCategoryArchived(categoryRepository, clock),
+  queryTransactionLedger: new QueryTransactionLedger(ledgerRepository),
+  listTransactionEditHistory: new ListTransactionEditHistory(ledgerRepository),
+  previewBulkTransactionEdit: new PreviewBulkTransactionEdit(ledgerRepository),
+  applyBulkTransactionEdit: new ApplyBulkTransactionEdit(ledgerRepository, clock, ids),
+  undoBulkTransactionEdit: new UndoBulkTransactionEdit(ledgerRepository, clock),
+  findDuplicateCandidates: new FindDuplicateCandidates(ledgerRepository),
+  resolveDuplicate: new ResolveDuplicate(duplicateResolutionRepository, clock, ids),
+  undoDuplicateResolution: new UndoDuplicateResolution(duplicateResolutionRepository, clock, ids),
+  listDuplicateResolutions: new ListDuplicateResolutions(duplicateResolutionRepository),
 };

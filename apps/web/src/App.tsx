@@ -22,6 +22,10 @@ const ImportPage = lazy(async () => {
   const module = await import("./ImportPage");
   return { default: module.ImportPage };
 });
+const TransactionPage = lazy(async () => {
+  const module = await import("./TransactionPage");
+  return { default: module.TransactionPage };
+});
 
 export interface AppProperties {
   readonly services: ApplicationServices;
@@ -40,6 +44,14 @@ export function App({ services }: AppProperties) {
               element={
                 <Suspense fallback={<p role="status">Opening the local import workspace…</p>}>
                   <ImportPage services={services} />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/transactions"
+              element={
+                <Suspense fallback={<p role="status">Opening the local transaction ledger…</p>}>
+                  <TransactionPage services={services} />
                 </Suspense>
               }
             />
@@ -72,6 +84,7 @@ function AppHeader() {
           Overview
         </NavLink>
         <NavLink to="/import">Import</NavLink>
+        <NavLink to="/transactions">Transactions</NavLink>
         <NavLink to="/settings">Settings</NavLink>
       </nav>
     </header>

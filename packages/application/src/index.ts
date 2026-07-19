@@ -32,3 +32,41 @@ export type {
   Sha256Digest,
   TransactionFingerprint,
 } from "./imports";
+export {
+  FindDuplicateCandidates,
+  ListDuplicateResolutions,
+  ResolveDuplicate,
+  UndoDuplicateResolution,
+} from "./duplicate-review";
+export type {
+  DuplicateCandidateRepository,
+  DuplicateResolutionJournal,
+  DuplicateResolutionRepository,
+  ResolveDuplicateCommand,
+} from "./duplicate-review";
+export {
+  ApplyBulkTransactionEdit,
+  BulkOperationAlreadyUndoneError,
+  BulkOperationNotFoundError,
+  ListTransactionEditHistory,
+  PreviewBulkTransactionEdit,
+  QueryTransactionLedger,
+  UndoBulkTransactionEdit,
+  planBulkTransactionEdit,
+  previewBulkTransactionEdit,
+  queryTransactionLedger,
+} from "./transaction-ledger";
+export { ListCategories, RenameCategory, SetCategoryArchived } from "./categories";
+export type { CategoryRepository } from "./categories";
+export type {
+  BulkEditPreview,
+  BulkTransactionChange,
+  BulkTransactionOperation,
+  SortDirection,
+  TransactionLedgerFilter,
+  TransactionLedgerPage,
+  TransactionLedgerQuery,
+  TransactionLedgerRecord,
+  TransactionLedgerRepository,
+  TransactionLedgerSortField,
+} from "./transaction-ledger";

@@ -1,10 +1,12 @@
 import {
   Money,
   createCommittedImport,
+  createStarterCategories,
   createTransaction,
   importFromCanonical,
   importToCanonical,
   parseAccountId,
+  parseCategoryId,
   parseDateOnly,
   parseImportId,
   parseTransactionId,
@@ -14,9 +16,15 @@ import {
 } from "@financial-intelligence/domain";
 import { describe, expect, it } from "vitest";
 
-import { validateImport, validateTransaction } from "./index";
+import { validateCategory, validateImport, validateTransaction } from "./index";
 
 describe("domain canonical schema round trips", () => {
+  it("validates stable starter categories against the portable category schema", () => {
+    for (const category of createStarterCategories(parseUtcTimestamp("2026-07-19T20:00:00.000Z"))) {
+      expect(validateCategory(category)).toEqual({ valid: true, errors: [] });
+    }
+  });
+
   it("round-trips a domain transaction through its canonical schema", () => {
     const transaction = createTransaction({
       id: parseTransactionId("018f6b80-0d62-7d2c-9a5c-7f5f59cda2f4"),
@@ -25,6 +33,19 @@ describe("domain canonical schema round trips", () => {
       postedDate: parseDateOnly("2026-07-19"),
       money: Money.from("-4.25", "CAD"),
       description: "Coffee",
+      categoryId: parseCategoryId("3f791740-0a5b-52a6-9ae1-f46258c30b03"),
+      notes: "Confirmed at home",
+      tags: ["household"],
+      classifications: {
+        category: {
+          method: "user",
+          classifierId: "manual-ledger",
+          classifierVersion: "1",
+          evidence: ["user-confirmed"],
+          locked: true,
+          decidedAt: parseUtcTimestamp("2026-07-19T20:00:00.000Z"),
+        },
+      },
       provenance: {
         parserId: "financial-intelligence/csv",
         parserVersion: "1.0.0",

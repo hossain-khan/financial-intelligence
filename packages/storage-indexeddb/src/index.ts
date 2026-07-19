@@ -1,7 +1,10 @@
 export {
   FinancialDatabase,
   IndexedDbAccountRepository,
+  IndexedDbCategoryRepository,
+  IndexedDbDuplicateResolutionRepository,
   IndexedDbImportCommitRepository,
+  IndexedDbTransactionLedgerRepository,
   IndexedDbWorkspaceRepository,
   openFinancialDatabase,
 } from "./database";
