@@ -23,18 +23,31 @@ export interface ParseStatementResult {
   readonly parserVersion: string;
   readonly rows: readonly SourceRow[];
   readonly issues: readonly ImportIssue[];
+  readonly detectedMetadata?: Readonly<Record<string, string | number | boolean>>;
 }
 
 export interface ParseStatementInput {
   readonly metadata: SourceFileMetadata;
   readonly bytes: ArrayBuffer;
+  readonly formatOptions?: unknown;
 }
+
+export interface ParseProgress {
+  readonly completed: number;
+  readonly total?: number;
+}
+
+export type ParseProgressReporter = (progress: ParseProgress) => void;
 
 export interface StatementParser {
   readonly id: string;
   readonly version: string;
   supports(metadata: SourceFileMetadata): boolean;
-  parse(input: ParseStatementInput, signal: AbortSignal): Promise<ParseStatementResult>;
+  parse(
+    input: ParseStatementInput,
+    signal: AbortSignal,
+    reportProgress?: ParseProgressReporter,
+  ): Promise<ParseStatementResult>;
 }
 
 export type ImportWorkerRequest =

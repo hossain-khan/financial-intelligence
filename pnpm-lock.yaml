@@ -116,6 +116,19 @@ importers:
 
   packages/import-core: {}
 
+  packages/import-csv:
+    dependencies:
+      "@financial-intelligence/import-core":
+        specifier: workspace:*
+        version: link:../import-core
+      csv-parse:
+        specifier: 7.0.1
+        version: 7.0.1
+    devDependencies:
+      vite:
+        specifier: 8.1.5
+        version: 8.1.5(@types/node@26.1.1)(terser@5.49.0)
+
   packages/schemas:
     dependencies:
       ajv:
@@ -2292,6 +2305,12 @@ packages:
     resolution:
       {
         integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==,
+      }
+
+  csv-parse@7.0.1:
+    resolution:
+      {
+        integrity: sha512-+2z7Ar0APQ7Uu6fX4cn+pitRmxjZ1WPBcGmZFKmA74FCyi7Et/XZx8cjNQ5CjbZ4HCOxXCOpRBYvYH08Qa003A==,
       }
 
   data-urls@7.0.0:
@@ -6089,6 +6108,8 @@ snapshots:
   css.escape@1.5.1: {}
 
   csstype@3.2.3: {}
+
+  csv-parse@7.0.1: {}
 
   data-urls@7.0.0:
     dependencies:
