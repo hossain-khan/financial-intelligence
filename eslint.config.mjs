@@ -10,7 +10,13 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ["apps/**/*.{ts,tsx,mjs}", "e2e/**/*.ts", "packages/**/*.{ts,tsx,mjs}", "*.config.ts"],
+    files: [
+      "apps/**/*.{ts,tsx,mjs}",
+      "e2e/**/*.ts",
+      "packages/**/*.{ts,tsx,mjs}",
+      "scripts/**/*.{js,mjs,ts}",
+      "*.config.ts",
+    ],
     languageOptions: {
       globals: {
         ...globals.browser,
