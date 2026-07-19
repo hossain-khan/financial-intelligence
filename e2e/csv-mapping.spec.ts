@@ -97,8 +97,8 @@ test("atomically commits and reloads a bank-shaped CSV import without network ac
   await expect(page.getByText("Same canonical transaction fingerprint")).toHaveCount(3);
   for (let duplicate = 0; duplicate < 3; duplicate += 1) {
     await page.getByRole("button", { name: "Keep existing" }).first().click();
+    await expect(page.getByText("Decision: keep-existing")).toHaveCount(duplicate + 1);
   }
-  await expect(page.getByText("Decision: keep-existing")).toHaveCount(3);
   await expect(page.getByText("void", { exact: true })).toHaveCount(3);
   await expect(page.getByText("posted", { exact: true })).toHaveCount(5);
   await page.reload();
