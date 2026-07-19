@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 
 import type { ParseStatementInput } from "@financial-intelligence/import-core";
+import { mapCsvSources } from "@financial-intelligence/import-core";
 import { describe, expect, it } from "vitest";
 
 import { computeSourceFileMetadata } from "./metadata";
@@ -9,6 +10,41 @@ import { CsvStatementParser } from "./parser";
 const encoder = new TextEncoder();
 
 describe("CsvStatementParser", () => {
+  it("feeds the sanitized Canadian bank export shape into canonical mapping", async () => {
+    const result = await parseFixture("canadian-bank-details.csv");
+    const mapped = mapCsvSources(
+      [
+        {
+          metadata: input("").metadata,
+          parserId: result.parserId,
+          parserVersion: result.parserVersion,
+          rows: result.rows,
+          issues: result.issues,
+        },
+      ],
+      {
+        accountId: "account-1",
+        accountCurrency: "CAD",
+        postedDateColumn: "Transfer date",
+        descriptionColumn: "Description",
+        amount: { kind: "signed", column: "Amount", positiveDirection: "inflow" },
+        ignoredColumns: ["Balance"],
+        dateFormat: "YYYY-MM-DD",
+        numberFormat: { decimalSeparator: ".", groupSeparator: "," },
+      },
+    );
+
+    expect(mapped.canContinue).toBe(true);
+    expect(mapped.candidates).toHaveLength(4);
+    expect(mapped.totals).toEqual({
+      currency: "CAD",
+      inflow: "2450.00",
+      outflow: "212.50",
+      validRows: 4,
+      invalidRows: 0,
+    });
+  });
+
   it("parses quoted delimiters, escaped quotes, and embedded newlines with source locations", async () => {
     const result = await parseFixture("valid-comma.csv");
 

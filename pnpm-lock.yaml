@@ -70,6 +70,12 @@ importers:
       "@financial-intelligence/domain":
         specifier: workspace:*
         version: link:../../packages/domain
+      "@financial-intelligence/import-core":
+        specifier: workspace:*
+        version: link:../../packages/import-core
+      "@financial-intelligence/import-csv":
+        specifier: workspace:*
+        version: link:../../packages/import-csv
       "@financial-intelligence/storage-indexeddb":
         specifier: workspace:*
         version: link:../../packages/storage-indexeddb
