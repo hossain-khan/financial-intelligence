@@ -27,7 +27,7 @@ data eviction remain supported failure states rather than durable-storage guaran
 | --- | --- | --- |
 | Node.js | 22.12 or later; active LTS preferred | Node.js 24 |
 | pnpm | pnpm 10, using the repository `packageManager` declaration | 10.33.0 |
-| TypeScript | Repository lockfile version | 6.0.3 |
+| TypeScript compiler | TypeScript 7 native CLI; TypeScript 6 compatibility package for legacy tooling | 7.0.2 CLI; `@typescript/typescript6` 6.0.2 |
 
 Use Corepack or an equivalent version-aware installation. Changes to the CI Node major, pnpm major,
 or browser floor require a compatibility note and documentation update.

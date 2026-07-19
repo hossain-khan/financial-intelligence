@@ -14,7 +14,7 @@ The application has no required backend. Optional remote AI providers are adapte
 
 | Concern | Selection | Guidance |
 | --- | --- | --- |
-| Language | TypeScript in strict mode | Avoid untyped boundary data; validate before narrowing |
+| Language | TypeScript 7 native compiler in strict mode | Avoid untyped boundary data; validate before narrowing; retain the TypeScript 6 compatibility API only for legacy tooling per ADR-006 |
 | Workspace | pnpm workspaces | Keep packages independently testable; do not add a task orchestrator until build times justify it |
 | UI | React stable | Client-rendered application; no React Server Components |
 | Build | Vite | Static build, module workers, code splitting, development server |
@@ -35,6 +35,11 @@ The application has no required backend. Optional remote AI providers are adapte
 | Hosting | Static HTTPS host with configurable security headers | No functions required; deployment must support CSP, Permissions-Policy, and immutable assets |
 
 Versions are pinned through the lockfile. Upgrades use the latest stable release compatible with the published browser and Node support matrices; experimental/canary packages require an ADR or isolated evaluation.
+
+TypeScript 7 supplies the repository's `tsc` executable. Until API-dependent tools support the new
+TypeScript API, the `typescript` module name resolves to Microsoft's TypeScript 6 compatibility
+package. Application and build code must not import either compiler API. See ADR-006 for the
+temporary package aliases, validation contract, and removal condition.
 
 ## Repository layout
 
@@ -219,3 +224,4 @@ Tests use only synthetic or irreversibly sanitized fixtures. No real statement, 
 - [AI architecture](08-AI-ARCHITECTURE.md)
 - [Non-functional requirements](06-NON-FUNCTIONAL-REQUIREMENTS.md)
 - [ADR-004](adr/ADR-004-Technology-Stack.md)
+- [ADR-006](adr/ADR-006-TypeScript-7-Toolchain.md)
