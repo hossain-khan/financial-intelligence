@@ -5,7 +5,7 @@ import { installLocalNetworkGuard } from "./network-guard";
 
 const LOCAL_ORIGIN = "http://127.0.0.1:4173";
 
-test("parses and confirms a bank-shaped CSV mapping without a network or ledger write", async ({
+test("atomically commits and reloads a bank-shaped CSV import without network access", async ({
   context,
   page,
 }) => {
@@ -40,11 +40,16 @@ test("parses and confirms a bank-shaped CSV mapping without a network or ledger 
     .getByRole("combobox", { name: "What does a positive amount mean?" })
     .selectOption("inflow");
 
-  await expect(page.getByRole("button", { name: "Confirm mapping" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Commit accepted transactions" })).toBeEnabled();
   await expect(page.getByText("CAD 4.25", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Confirm mapping" }).focus();
+  await page.getByRole("button", { name: "Commit accepted transactions" }).focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByText(/No transactions were written/)).toBeVisible();
+  await expect(
+    page.getByText(/Committed 2 transactions atomically at local revision 2/),
+  ).toBeVisible();
+  await expect(page.getByText("2 transactions", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("synthetic-bank-details.csv", { exact: true })).toBeVisible();
 
   const axe = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])

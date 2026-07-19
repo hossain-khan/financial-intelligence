@@ -32,3 +32,13 @@ export function createWorkspace(input: CreateWorkspaceInput): Workspace {
     updatedAt: input.now,
   };
 }
+
+export function incrementWorkspaceRevision(workspace: Workspace, now: UtcTimestamp): Workspace {
+  if (!Number.isSafeInteger(workspace.revision) || workspace.revision < 1) {
+    throw new RangeError("Workspace revision must be a positive safe integer");
+  }
+  if (workspace.revision === Number.MAX_SAFE_INTEGER) {
+    throw new RangeError("Workspace revision cannot be incremented safely");
+  }
+  return { ...workspace, revision: workspace.revision + 1, updatedAt: now };
+}

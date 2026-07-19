@@ -7,6 +7,7 @@ import {
 
 export interface WorkspaceRepository {
   list(): Promise<readonly Workspace[]>;
+  findById(id: ReturnType<typeof parseWorkspaceId>): Promise<Workspace | undefined>;
   save(workspace: Workspace): Promise<void>;
 }
 

@@ -14,6 +14,12 @@ const WORKSPACE_SCHEMA = "&id, createdAt, updatedAt";
 const MIGRATION_JOURNAL_SCHEMA = "&id, migrationId, status, updatedAt";
 const ACCOUNT_SCHEMA =
   "&id, workspaceId, [workspaceId+createdAt], [workspaceId+archived], createdAt, updatedAt";
+const IMPORT_SCHEMA =
+  "&id, accountId, [accountId+createdAt], source.sha256, status, committedRevision, createdAt";
+const TRANSACTION_SCHEMA =
+  "&id, accountId, importId, [accountId+postedDate], &[accountId+sourceTransactionId], createdAt";
+const TRANSACTION_FINGERPRINT_SCHEMA =
+  "&transactionId, accountId, importId, fingerprint, [accountId+fingerprint]";
 
 export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
   {
@@ -36,6 +42,18 @@ export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
       workspaces: WORKSPACE_SCHEMA,
       migrationJournal: MIGRATION_JOURNAL_SCHEMA,
       accounts: ACCOUNT_SCHEMA,
+    },
+  },
+  {
+    version: 4,
+    description: "Add canonical imports, transactions, and rebuildable fingerprints",
+    stores: {
+      workspaces: WORKSPACE_SCHEMA,
+      migrationJournal: MIGRATION_JOURNAL_SCHEMA,
+      accounts: ACCOUNT_SCHEMA,
+      imports: IMPORT_SCHEMA,
+      transactions: TRANSACTION_SCHEMA,
+      transactionFingerprints: TRANSACTION_FINGERPRINT_SCHEMA,
     },
   },
 ];

@@ -2,8 +2,10 @@
 
 import {
   createAccount,
+  createCommittedImport,
   createWorkspace,
   parseAccountId,
+  parseImportId,
   parseUtcTimestamp,
   parseWorkspaceId,
 } from "@financial-intelligence/domain";
@@ -18,9 +20,9 @@ import { ImportPage } from "./ImportPage";
 afterEach(cleanup);
 
 describe("ImportPage", () => {
-  it("requires explicit date and amount-direction confirmation before enabling mapping confirmation", async () => {
+  it("requires explicit confirmation then commits atomically and shows import history", async () => {
     const parseFiles = vi.fn(async () => [validSource()]);
-    renderPage(parseFiles);
+    const { commitExecute } = renderPage(parseFiles);
 
     const picker = await screen.findByLabelText("Select one or more bounded CSV files");
     expect(picker).toHaveAttribute("multiple");
@@ -46,7 +48,7 @@ describe("ImportPage", () => {
       target: { value: "inflow" },
     });
 
-    const confirm = await screen.findByRole("button", { name: "Confirm mapping" });
+    const confirm = await screen.findByRole("button", { name: "Commit accepted transactions" });
     expect(confirm).toBeEnabled();
     expect(screen.getAllByText("CAD 100.00").length).toBeGreaterThan(0);
     expect(screen.getByText("CAD 4.25")).toBeInTheDocument();
@@ -56,7 +58,20 @@ describe("ImportPage", () => {
     );
 
     fireEvent.click(confirm);
-    expect(await screen.findByText(/No transactions were written/)).toBeInTheDocument();
+    expect(await screen.findByText(/Committed 2 transactions atomically/)).toBeInTheDocument();
+    expect(screen.getByText("2 transactions")).toBeInTheDocument();
+    expect(commitExecute).toHaveBeenCalledOnce();
+    expect(JSON.stringify(commitExecute.mock.calls[0]?.[0])).not.toContain("bytes");
+  });
+
+  it("does not start a canonical commit when the parser worker fails", async () => {
+    const { commitExecute } = renderPage(async () => {
+      throw new Error("Synthetic worker failure");
+    });
+    const picker = await screen.findByLabelText("Select one or more bounded CSV files");
+    fireEvent.change(picker, { target: { files: [new File(["safe"], "statement.csv")] } });
+    expect(await screen.findByText("Synthetic worker failure")).toHaveAttribute("role", "alert");
+    expect(commitExecute).not.toHaveBeenCalled();
   });
 
   it("announces row errors with source, field, safe correction, and keeps confirmation disabled", async () => {
@@ -82,7 +97,7 @@ describe("ImportPage", () => {
 
     expect(await screen.findByText(/line:2 · postedDate/)).toBeInTheDocument();
     expect(screen.getAllByText(/Correction:/).length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: "Confirm mapping" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Commit accepted transactions" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Download sanitized error report" })).toBeEnabled();
     expect(document.body.textContent).not.toContain("not money");
   });
@@ -110,9 +125,24 @@ function renderPage(parseFiles: (files: readonly File[]) => Promise<readonly Csv
     getItem: (key: string) => entries.get(key) ?? null,
     setItem: (key: string, value: string) => entries.set(key, value),
   };
+  const commitExecute = vi.fn(async (_command: unknown) => ({
+    imports: [historyImport(account)],
+    transactionCount: 2,
+    committedRevision: 2,
+  }));
   const services = {
     listWorkspaces: { execute: vi.fn(async () => [workspace]) },
     listAccounts: { execute: vi.fn(async () => [account]) },
+    commitAcceptedImport: {
+      execute: commitExecute,
+    },
+    listImportHistory: {
+      execute: vi
+        .fn<() => Promise<readonly ReturnType<typeof historyImport>[]>>()
+        .mockResolvedValueOnce([])
+        .mockResolvedValue([historyImport(account)]),
+    },
+    listTransactions: { execute: vi.fn(async () => []) },
   } as unknown as ApplicationServices;
   render(
     <ImportPage
@@ -122,6 +152,34 @@ function renderPage(parseFiles: (files: readonly File[]) => Promise<readonly Csv
       now={() => "2026-07-19T20:00:00.000Z"}
     />,
   );
+  return { commitExecute };
+}
+
+function historyImport(account: ReturnType<typeof createAccount>) {
+  return createCommittedImport({
+    id: parseImportId("018f6b80-0d62-7d2c-9a5c-7f5f59cda2f3"),
+    accountId: account.id,
+    source: {
+      fileName: "statement.csv",
+      mediaType: "text/csv",
+      byteSize: 100,
+      sha256: "a".repeat(64),
+    },
+    parser: { id: "financial-intelligence/csv", version: "1.0.0" },
+    mapping: { dateFormat: "YYYY-MM-DD" },
+    counts: {
+      sourceRows: 2,
+      valid: 2,
+      errors: 0,
+      warnings: 0,
+      exactDuplicates: 0,
+      likelyDuplicates: 0,
+      committed: 2,
+    },
+    issues: [],
+    committedRevision: 2,
+    now: parseUtcTimestamp("2026-07-19T20:00:00.000Z"),
+  });
 }
 
 function validSource(firstRow?: Record<string, string>): CsvMappingSource {

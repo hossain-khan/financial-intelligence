@@ -152,6 +152,35 @@
     border-radius: 12px;
   }
 
+  .import-history-list {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .import-history-list li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 1rem;
+    align-items: center;
+    padding: 1rem;
+    background: #f4f6f1;
+    border-radius: 12px;
+  }
+
+  .import-history-list strong,
+  .import-history-list div span {
+    display: block;
+  }
+
+  .import-history-list div span {
+    margin-top: 0.2rem;
+    color: var(--ink-muted);
+    font-size: 0.78rem;
+  }
+
   .mapping-form {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -926,6 +955,10 @@
   .preview-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .import-history-list li {
+    grid-template-columns: 1fr;
   }
 }
 
