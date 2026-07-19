@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "1.0.0",
+  "brainId": "58de66a5-e82f-4ed5-914f-d73bd86d0a79",
+  "createdAt": "2026-07-19T14:00:00Z",
+  "updatedAt": "2026-07-19T14:30:00Z",
+  "producer": {
+    "application": "Financial Intelligence",
+    "version": "0.1.0"
+  },
+  "categories": [
+    {
+      "id": "1362fcf5-21d7-474d-a1c6-f616be65553b",
+      "name": "Restaurants",
+      "kind": "expense",
+      "icon": "utensils",
+      "color": "#B45309",
+      "order": 10,
+      "archived": false,
+      "createdAt": "2026-07-19T14:00:00Z",
+      "updatedAt": "2026-07-19T14:00:00Z"
+    },
+    {
+      "id": "fb52d17b-dc82-4ddd-ab0a-cd816d574b8d",
+      "name": "Groceries",
+      "kind": "expense",
+      "icon": "basket",
+      "color": "#047857",
+      "order": 20,
+      "archived": false,
+      "createdAt": "2026-07-19T14:00:00Z",
+      "updatedAt": "2026-07-19T14:00:00Z"
+    }
+  ],
+  "merchants": [
+    {
+      "id": "b1f6221a-c8a2-4f5b-918c-b8706d725a46",
+      "name": "Harbor Coffee",
+      "aliases": [
+        {
+          "id": "68f2edec-180d-4e8e-af52-cf1911b72fd0",
+          "pattern": "harbor coffee",
+          "matchMode": "tokenPrefix",
+          "normalizerVersion": "1.0.0",
+          "createdAt": "2026-07-19T14:10:00Z"
+        }
+      ],
+      "archived": false,
+      "createdAt": "2026-07-19T14:10:00Z",
+      "updatedAt": "2026-07-19T14:10:00Z"
+    }
+  ],
+  "rules": [
+    {
+      "id": "8045a681-72d8-4ab5-af3d-0bdf3196fd70",
+      "name": "Harbor Coffee is a restaurant",
+      "enabled": true,
+      "priority": 100,
+      "conditions": [
+        {
+          "field": "merchantId",
+          "operator": "equals",
+          "value": "b1f6221a-c8a2-4f5b-918c-b8706d725a46"
+        }
+      ],
+      "actions": [
+        {
+          "type": "setCategory",
+          "value": "1362fcf5-21d7-474d-a1c6-f616be65553b"
+        }
+      ],
+      "createdBy": "user",
+      "createdAt": "2026-07-19T14:15:00Z",
+      "updatedAt": "2026-07-19T14:15:00Z"
+    }
+  ],
+  "recurringDecisions": [],
+  "preferences": {
+    "locale": "en-CA",
+    "firstDayOfWeek": "monday",
+    "reviewConfidenceThreshold": 0.9,
+    "categoryDisplayOrder": [
+      "fb52d17b-dc82-4ddd-ab0a-cd816d574b8d",
+      "1362fcf5-21d7-474d-a1c6-f616be65553b"
+    ]
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://financial-intelligence.local/schemas/transaction.schema.json",
+  "title": "Canonical Transaction",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "id", "accountId", "importId", "postedDate", "amount",
+    "currency", "description", "status", "reviewState", "tags", "provenance",
+    "classifications", "createdAt", "updatedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "id": { "$ref": "#/$defs/uuid" },
+    "accountId": { "$ref": "#/$defs/uuid" },
+    "importId": { "$ref": "#/$defs/uuid" },
+    "postedDate": { "$ref": "#/$defs/date" },
+    "transactionDate": { "$ref": "#/$defs/date" },
+    "amount": { "$ref": "#/$defs/decimal" },
+    "currency": { "$ref": "#/$defs/currency" },
+    "description": { "type": "string", "minLength": 1, "maxLength": 1000 },
+    "sourceTransactionId": { "type": "string", "minLength": 1, "maxLength": 240 },
+    "merchantId": { "$ref": "#/$defs/uuid" },
+    "categoryId": { "$ref": "#/$defs/uuid" },
+    "tags": {
+      "type": "array",
+      "maxItems": 50,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 60 }
+    },
+    "notes": { "type": "string", "maxLength": 2000 },
+    "status": { "enum": ["pending", "posted", "void"] },
+    "reviewState": { "enum": ["unreviewed", "needsReview", "reviewed"] },
+    "transferLinkId": { "$ref": "#/$defs/uuid" },
+    "classifications": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "merchant": { "$ref": "#/$defs/classification" },
+        "category": { "$ref": "#/$defs/classification" }
+      }
+    },
+    "provenance": { "$ref": "#/$defs/provenance" },
+    "createdAt": { "$ref": "#/$defs/dateTime" },
+    "updatedAt": { "$ref": "#/$defs/dateTime" }
+  },
+  "$defs": {
+    "uuid": { "type": "string", "format": "uuid" },
+    "date": { "type": "string", "format": "date" },
+    "dateTime": { "type": "string", "format": "date-time" },
+    "decimal": { "type": "string", "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$" },
+    "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+    "classification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "classifierId", "classifierVersion", "evidence", "locked", "decidedAt"],
+      "properties": {
+        "method": { "enum": ["user", "imported", "rule", "merchantMapping", "heuristic", "localAi", "remoteAi"] },
+        "classifierId": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "classifierVersion": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "evidence": {
+          "type": "array",
+          "maxItems": 20,
+          "items": { "type": "string", "minLength": 1, "maxLength": 160 }
+        },
+        "locked": { "type": "boolean" },
+        "decidedAt": { "$ref": "#/$defs/dateTime" }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["parserId", "parserVersion", "sourceLocation", "original"],
+      "properties": {
+        "parserId": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "parserVersion": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "sourceLocation": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "original": {
+          "type": "object",
+          "additionalProperties": { "type": ["string", "number", "boolean", "null"] },
+          "maxProperties": 30
+        },
+        "transformations": {
+          "type": "array",
+          "maxItems": 30,
+          "items": { "type": "string", "minLength": 1, "maxLength": 120 }
+        }
+      }
+    }
+  }
+}

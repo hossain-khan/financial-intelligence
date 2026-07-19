@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "23834223-ef9a-43bd-a7d8-38e16c1b36f9",
+  "name": "Monthly household overview",
+  "filters": {
+    "dateFrom": "2026-01-01",
+    "dateTo": "2026-06-30",
+    "accountIds": ["b9803ed4-6a64-4494-9018-2645cf5b5aad"],
+    "currency": "CAD",
+    "excludeTransfers": true
+  },
+  "widgets": [
+    {
+      "id": "14512334-caf3-44b9-aec6-8b53749f5c2b",
+      "type": "metric",
+      "title": "Net cash flow",
+      "query": {
+        "metric": "netCashFlow"
+      },
+      "layout": {
+        "x": 0,
+        "y": 0,
+        "width": 4,
+        "height": 2
+      },
+      "showTableAlternative": true
+    },
+    {
+      "id": "c59fe697-5414-4654-91ee-d92417f4f356",
+      "type": "timeSeries",
+      "title": "Monthly spending",
+      "query": {
+        "metric": "spending",
+        "dimension": "month",
+        "sort": "dateAsc"
+      },
+      "layout": {
+        "x": 0,
+        "y": 2,
+        "width": 8,
+        "height": 5
+      },
+      "showTableAlternative": true
+    },
+    {
+      "id": "6a439a17-44b9-44fa-81f1-0cc1c23d68db",
+      "type": "categoryBreakdown",
+      "title": "Spending by category",
+      "query": {
+        "metric": "spending",
+        "dimension": "category",
+        "limit": 12,
+        "sort": "valueDesc"
+      },
+      "layout": {
+        "x": 8,
+        "y": 2,
+        "width": 4,
+        "height": 5
+      },
+      "showTableAlternative": true
+    }
+  ],
+  "createdAt": "2026-07-19T14:00:00Z",
+  "updatedAt": "2026-07-19T14:00:00Z"
+}

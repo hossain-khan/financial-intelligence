@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://financial-intelligence.local/schemas/ai-provider.schema.json",
+  "title": "AI Provider Profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "name", "kind", "enabled", "tasks", "createdAt", "updatedAt"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "id": { "$ref": "#/$defs/uuid" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "kind": { "enum": ["none", "browserLocal", "selfHosted", "remote"] },
+    "enabled": { "type": "boolean" },
+    "adapterId": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "adapterVersion": { "type": "string", "minLength": 1, "maxLength": 40 },
+    "endpointOrigin": { "type": "string", "format": "uri", "maxLength": 500 },
+    "model": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "tasks": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["merchant.resolve.v1", "category.classify.v1", "query.plan.v1", "insight.word.v1"] }
+    },
+    "secretRef": { "type": "string", "pattern": "^secret:[A-Za-z0-9._-]{1,120}$" },
+    "consent": { "$ref": "#/$defs/consent" },
+    "localModel": { "$ref": "#/$defs/localModel" },
+    "createdAt": { "$ref": "#/$defs/dateTime" },
+    "updatedAt": { "$ref": "#/$defs/dateTime" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "const": "remote" } }, "required": ["kind"] },
+      "then": { "required": ["adapterId", "adapterVersion", "endpointOrigin", "model", "consent"] }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "selfHosted" } }, "required": ["kind"] },
+      "then": { "required": ["adapterId", "adapterVersion", "endpointOrigin", "model", "consent"] }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "browserLocal" } }, "required": ["kind"] },
+      "then": { "required": ["adapterId", "adapterVersion", "localModel"] }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "none" } }, "required": ["kind"] },
+      "then": { "properties": { "tasks": { "maxItems": 0 } } }
+    }
+  ],
+  "$defs": {
+    "uuid": { "type": "string", "format": "uuid" },
+    "dateTime": { "type": "string", "format": "date-time" },
+    "consent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disclosureVersion", "grantedAt", "dataClasses"],
+      "properties": {
+        "disclosureVersion": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "grantedAt": { "$ref": "#/$defs/dateTime" },
+        "dataClasses": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["normalizedDescription", "merchantLabel", "amountDirection", "amountBucket", "categoryVocabulary", "question", "aggregateFacts"] }
+        }
+      }
+    },
+    "localModel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "revision", "sha256", "byteSize", "license"],
+      "properties": {
+        "source": { "type": "string", "format": "uri", "maxLength": 500 },
+        "revision": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "byteSize": { "type": "integer", "minimum": 1 },
+        "license": { "type": "string", "minLength": 1, "maxLength": 120 }
+      }
+    }
+  }
+}

@@ -1,0 +1,30 @@
+# Architecture Decision Records
+
+ADRs capture decisions that materially constrain architecture, privacy, compatibility, or operations.
+
+## Lifecycle
+
+Status is one of `Proposed`, `Accepted`, `Deprecated`, or `Superseded by ADR-NNN`. Accepted ADRs are immutable except for typo/link corrections. A changed decision receives a new ADR that supersedes the old one; history is preserved.
+
+## Template
+
+```markdown
+# ADR-NNN: Decision title
+
+- Status: Proposed
+- Date: YYYY-MM-DD
+- Decision owners: Project maintainers
+
+## Context
+## Decision
+## Consequences
+## Alternatives considered
+## Validation
+## Related decisions
+```
+
+## Index
+
+- [ADR-001: Offline-first core architecture](ADR-001-Offline-First.md)
+- [ADR-002: IndexedDB as primary browser persistence](ADR-002-Why-IndexedDB.md)
+- [ADR-003: WebGPU as optional local AI acceleration](ADR-003-Why-WebGPU.md)

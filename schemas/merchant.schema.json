@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://financial-intelligence.local/schemas/merchant.schema.json",
+  "title": "Merchant",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "aliases", "archived", "createdAt", "updatedAt"],
+  "properties": {
+    "id": { "$ref": "#/$defs/uuid" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "aliases": {
+      "type": "array",
+      "maxItems": 500,
+      "items": { "$ref": "#/$defs/alias" }
+    },
+    "websiteDomain": {
+      "type": "string",
+      "pattern": "^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
+      "maxLength": 253
+    },
+    "redirectToId": { "$ref": "#/$defs/uuid" },
+    "archived": { "type": "boolean" },
+    "createdAt": { "$ref": "#/$defs/dateTime" },
+    "updatedAt": { "$ref": "#/$defs/dateTime" }
+  },
+  "$defs": {
+    "uuid": { "type": "string", "format": "uuid" },
+    "dateTime": { "type": "string", "format": "date-time" },
+    "alias": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "pattern", "matchMode", "normalizerVersion", "createdAt"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "pattern": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "matchMode": { "enum": ["exact", "tokenPrefix", "contains"] },
+        "normalizerVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "createdAt": { "$ref": "#/$defs/dateTime" }
+      }
+    }
+  }
+}

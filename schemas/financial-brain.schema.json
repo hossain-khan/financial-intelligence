@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://financial-intelligence.local/schemas/financial-brain.schema.json",
+  "title": "Financial Brain",
+  "description": "Portable learned knowledge. Must not contain raw transactions, statements, account identifiers, or secrets.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "brainId", "createdAt", "updatedAt", "producer", "categories", "merchants", "rules", "recurringDecisions", "preferences"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "brainId": { "$ref": "#/$defs/uuid" },
+    "createdAt": { "$ref": "#/$defs/dateTime" },
+    "updatedAt": { "$ref": "#/$defs/dateTime" },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["application", "version"],
+      "properties": {
+        "application": { "const": "Financial Intelligence" },
+        "version": { "type": "string", "minLength": 1, "maxLength": 40 }
+      }
+    },
+    "categories": {
+      "type": "array",
+      "maxItems": 2000,
+      "items": { "$ref": "https://financial-intelligence.local/schemas/category.schema.json" }
+    },
+    "merchants": {
+      "type": "array",
+      "maxItems": 50000,
+      "items": { "$ref": "https://financial-intelligence.local/schemas/merchant.schema.json" }
+    },
+    "rules": {
+      "type": "array",
+      "maxItems": 50000,
+      "items": { "$ref": "#/$defs/rule" }
+    },
+    "recurringDecisions": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": { "$ref": "#/$defs/recurringDecision" }
+    },
+    "preferences": { "$ref": "#/$defs/preferences" },
+    "extensions": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z][a-z0-9]*(?:\\.[a-z0-9-]+)+$" },
+      "additionalProperties": true,
+      "maxProperties": 100
+    }
+  },
+  "$defs": {
+    "uuid": { "type": "string", "format": "uuid" },
+    "dateTime": { "type": "string", "format": "date-time" },
+    "decimal": { "type": "string", "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$" },
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "operator", "value"],
+      "properties": {
+        "field": { "enum": ["normalizedDescription", "merchantId", "accountType", "direction", "amount", "categoryId", "tag"] },
+        "operator": { "enum": ["equals", "contains", "startsWith", "inRange"] },
+        "value": {
+          "oneOf": [
+            { "type": "string", "minLength": 1, "maxLength": 240 },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["minimum", "maximum"],
+              "properties": {
+                "minimum": { "$ref": "#/$defs/decimal" },
+                "maximum": { "$ref": "#/$defs/decimal" }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "value"],
+      "properties": {
+        "type": { "enum": ["setMerchant", "setCategory", "addTag", "removeTag", "markReviewed", "markIgnored"] },
+        "value": { "type": ["string", "boolean"], "minLength": 1, "maxLength": 240 }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "enabled", "priority", "conditions", "actions", "createdBy", "createdAt", "updatedAt"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "enabled": { "type": "boolean" },
+        "priority": { "type": "integer", "minimum": -100000, "maximum": 100000 },
+        "conditions": { "type": "array", "minItems": 1, "maxItems": 20, "items": { "$ref": "#/$defs/condition" } },
+        "actions": { "type": "array", "minItems": 1, "maxItems": 20, "items": { "$ref": "#/$defs/action" } },
+        "createdBy": { "enum": ["user", "suggestedHeuristic", "suggestedAi", "importedBrain"] },
+        "createdAt": { "$ref": "#/$defs/dateTime" },
+        "updatedAt": { "$ref": "#/$defs/dateTime" }
+      }
+    },
+    "recurringDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "signature", "status", "updatedAt"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "signature": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "merchantId": { "$ref": "#/$defs/uuid" },
+        "status": { "enum": ["confirmed", "dismissed", "muted"] },
+        "cadence": { "enum": ["weekly", "biweekly", "monthly", "quarterly", "yearly", "irregular"] },
+        "updatedAt": { "$ref": "#/$defs/dateTime" }
+      }
+    },
+    "preferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["locale", "firstDayOfWeek", "reviewConfidenceThreshold"],
+      "properties": {
+        "locale": { "type": "string", "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$" },
+        "firstDayOfWeek": { "enum": ["monday", "sunday", "saturday"] },
+        "reviewConfidenceThreshold": { "type": "number", "minimum": 0, "maximum": 1 },
+        "categoryDisplayOrder": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/uuid" } }
+      }
+    }
+  }
+}

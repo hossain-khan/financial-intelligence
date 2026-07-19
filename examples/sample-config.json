@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "98e072a5-251d-4b17-8f36-99708acfd42d",
+  "name": "Local rules-only mode",
+  "kind": "none",
+  "enabled": true,
+  "tasks": [],
+  "createdAt": "2026-07-19T14:00:00Z",
+  "updatedAt": "2026-07-19T14:00:00Z"
+}
