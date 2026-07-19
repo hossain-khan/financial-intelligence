@@ -6,13 +6,23 @@ Define canonical entities, invariants, identifiers, ownership, portable represen
 
 ## Representation conventions
 
-- IDs are opaque UUID strings generated locally.
-- Timestamps are UTC RFC 3339 strings; date-only financial dates use ISO `YYYY-MM-DD`.
+- IDs are opaque, entity-specific UUID types in domain code and canonical lowercase UUID strings in
+  portable data. Generate IDs at an application or infrastructure boundary, validate them with the
+  matching domain parser, and pass the typed value into domain constructors.
+- Timestamps are strict RFC 3339 UTC strings ending in uppercase `Z`. Date-only financial dates use
+  strict ISO `YYYY-MM-DD` strings and never pass through `Date`. Offset timestamps, impossible dates,
+  leap seconds, lowercase separators, and calendar year `0000` are rejected at the domain boundary.
+- Timestamp fractional-second precision is preserved exactly during parsing and serialization.
 - Monetary values are decimal strings. Canonical transaction amount is signed: positive is inflow to the account, negative is outflow.
 - Currency uses uppercase ISO 4217 codes when one exists; non-standard assets require a namespaced future extension.
 - Display locale never changes stored dates or decimals.
 - Optional means semantically absent; do not use empty-string sentinels.
 - Portable documents declare `schemaVersion` and preserve stable IDs.
+
+The seven root JSON Schemas in `/schemas` are the source of truth for portable TypeScript shapes.
+Generated types live under `packages/schemas/src/generated`; edit the schemas and run
+`pnpm schema:generate` rather than editing generated files. `pnpm schema:check` fails when generated
+artifacts are missing or stale.
 
 ## Entity overview
 

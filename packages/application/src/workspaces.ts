@@ -1,4 +1,9 @@
-import { createWorkspace, type Workspace } from "@financial-intelligence/domain";
+import {
+  createWorkspace,
+  parseUtcTimestamp,
+  parseWorkspaceId,
+  type Workspace,
+} from "@financial-intelligence/domain";
 
 export interface WorkspaceRepository {
   list(): Promise<readonly Workspace[]>;
@@ -22,9 +27,9 @@ export class CreateWorkspace {
 
   public async execute(name: string): Promise<Workspace> {
     const workspace = createWorkspace({
-      id: this.ids.generate(),
+      id: parseWorkspaceId(this.ids.generate()),
       name,
-      now: this.clock.now().toISOString(),
+      now: parseUtcTimestamp(this.clock.now().toISOString()),
     });
 
     await this.repository.save(workspace);

@@ -36,6 +36,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Check generated schema types
+        run: pnpm schema:check
+
       - name: Typecheck
         run: pnpm typecheck
 

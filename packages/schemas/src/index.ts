@@ -9,6 +9,14 @@ import importSchema from "../../../schemas/import.schema.json";
 import merchantSchema from "../../../schemas/merchant.schema.json";
 import transactionSchema from "../../../schemas/transaction.schema.json";
 
+export type { AIProviderProfile } from "./generated/ai-provider";
+export type { Category } from "./generated/category";
+export type { Dashboard } from "./generated/dashboard";
+export type { FinancialBrain } from "./generated/financial-brain";
+export type { StatementImport } from "./generated/import";
+export type { Merchant } from "./generated/merchant";
+export type { CanonicalTransaction } from "./generated/transaction";
+
 export interface ValidationFailure {
   readonly instancePath: string;
   readonly keyword: string;
