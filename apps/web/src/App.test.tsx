@@ -46,7 +46,7 @@ describe("OverviewPage", () => {
     expect(
       await screen.findByText("No bank login or full account number is used."),
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Active accounts" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Active accounts" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Archived accounts" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Restore" })).toBeInTheDocument();
     expect(screen.getByText(/Browser data can be cleared/)).toBeInTheDocument();
