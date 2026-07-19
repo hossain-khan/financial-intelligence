@@ -26,7 +26,8 @@ Thank you for helping build Financial Intelligence. The project handles unusuall
 2. Update the relevant specification before or with implementation.
 3. Add tests covering success, malformed input, duplicates, cancellation, and recovery where applicable.
 4. Run formatting, linting, type checking, tests, schema validation, and production build.
-5. Describe privacy impact, data-model impact, migration behavior, and screenshots for UI changes in the pull request.
+5. Run the Chromium browser gate for UI, storage, PWA, routing, or network-boundary changes.
+6. Describe privacy impact, data-model impact, migration behavior, and screenshots for UI changes in the pull request.
 
 ## Commit and pull-request guidance
 
