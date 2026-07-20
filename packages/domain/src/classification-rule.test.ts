@@ -296,4 +296,34 @@ describe("evaluateClassificationRules — Precedence & Conflict Rules", () => {
 
     expect(run1).toEqual(run2);
   });
+
+  it("evaluates startsWith, contains, setMerchant, and skips disabled rules", () => {
+    const disabledRule = createClassificationRule({
+      id: RULE_ID_1,
+      name: "Disabled Rule",
+      enabled: false,
+      priority: 100,
+      conditions: [
+        { field: "normalizedDescription", operator: "equals", value: "tim hortons oshawa on" },
+      ],
+      actions: [{ type: "setCategory", value: CATEGORY_ID_GROCERIES }],
+      now: NOW,
+    });
+
+    const activeRule = createClassificationRule({
+      id: RULE_ID_2,
+      name: "Active Merchant Rule",
+      priority: 20,
+      conditions: [
+        { field: "normalizedDescription", operator: "startsWith", value: "tim hortons" },
+        { field: "normalizedDescription", operator: "contains", value: "oshawa" },
+      ],
+      actions: [{ type: "setMerchant", value: MERCHANT_ID_TIMS }],
+      now: NOW,
+    });
+
+    const evalResult = evaluateClassificationRules(BASE_CONTEXT, [disabledRule, activeRule]);
+    expect(evalResult.merchantResult.status).toBe("matched");
+    expect(evalResult.merchantResult.value).toBe(MERCHANT_ID_TIMS);
+  });
 });
