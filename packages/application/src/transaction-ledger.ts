@@ -32,6 +32,8 @@ export interface TransactionLedgerFilter {
   readonly uncategorized?: boolean;
   readonly reviewStates?: readonly TransactionReviewState[];
   readonly statuses?: readonly ("pending" | "posted" | "void")[];
+  readonly currencies?: readonly string[];
+  readonly directions?: readonly ("inflow" | "outflow" | "zero")[];
   readonly tags?: readonly string[];
   readonly search?: string;
   readonly amount?: {
@@ -238,6 +240,8 @@ interface NormalizedFilter {
   readonly uncategorized: boolean;
   readonly reviewStates?: ReadonlySet<TransactionReviewState>;
   readonly statuses?: ReadonlySet<"pending" | "posted" | "void">;
+  readonly currencies?: ReadonlySet<string>;
+  readonly directions?: ReadonlySet<"inflow" | "outflow" | "zero">;
   readonly tags?: ReadonlySet<string>;
   readonly search?: string;
   readonly amount?: {
@@ -261,6 +265,10 @@ function normalizeFilter(filter: TransactionLedgerFilter | undefined): Normalize
     uncategorized: filter.uncategorized ?? false,
     ...(filter.reviewStates === undefined ? {} : { reviewStates: new Set(filter.reviewStates) }),
     ...(filter.statuses === undefined ? {} : { statuses: new Set(filter.statuses) }),
+    ...(filter.currencies === undefined
+      ? {}
+      : { currencies: new Set(filter.currencies.map(validateCurrency)) }),
+    ...(filter.directions === undefined ? {} : { directions: new Set(filter.directions) }),
     ...(filter.tags === undefined ? {} : { tags: new Set(filter.tags.map(normalizeSearch)) }),
     ...(filter.search === undefined || normalizeSearch(filter.search).length === 0
       ? {}
@@ -283,6 +291,16 @@ function matches(record: TransactionLedgerRecord, filter: NormalizedFilter): boo
   if (filter.reviewStates !== undefined && !filter.reviewStates.has(transaction.reviewState))
     return false;
   if (filter.statuses !== undefined && !filter.statuses.has(transaction.status)) return false;
+  if (filter.currencies !== undefined && !filter.currencies.has(transaction.money.currency))
+    return false;
+  if (filter.directions !== undefined) {
+    const direction = transaction.money.isInflow()
+      ? "inflow"
+      : transaction.money.isOutflow()
+        ? "outflow"
+        : "zero";
+    if (!filter.directions.has(direction)) return false;
+  }
   if (filter.tags !== undefined) {
     const tags = new Set(transaction.tags.map(normalizeSearch));
     if ([...filter.tags].some((tag) => !tags.has(tag))) return false;
@@ -385,5 +403,10 @@ function positiveInteger(value: number, label: string): number {
   if (!Number.isSafeInteger(value) || value < 1 || value > 1_000) {
     throw new RangeError(`${label} must be between 1 and 1,000`);
   }
+  return value;
+}
+
+function validateCurrency(value: string): string {
+  if (!/^[A-Z]{3}$/u.test(value)) throw new TypeError(`Invalid currency filter: ${value}`);
   return value;
 }

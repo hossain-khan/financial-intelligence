@@ -59,7 +59,31 @@ test("atomically commits and reloads a bank-shaped CSV import without network ac
 
   await page.getByRole("link", { name: "Transactions" }).click();
   await expect(page.getByRole("heading", { name: "Ledger" })).toBeVisible();
-  await expect(page.getByText("GROCERY MARKET", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Cash-flow summary" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "CAD cash flow" })).toBeVisible();
+  await expect(page.getByText("Income exceeds spending by CAD 1865.75.")).toBeVisible();
+  await expect(page.getByRole("region", { name: "CAD monthly cash-flow data" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "CAD account cash-flow data" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "CAD category spending data" })).toBeVisible();
+  const monthlyDrilldown = page
+    .getByRole("region", { name: "CAD monthly cash-flow data" })
+    .locator("summary")
+    .filter({ hasText: "View 1 transaction(s)" })
+    .first();
+  await monthlyDrilldown.focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    monthlyDrilldown
+      .locator("..")
+      .getByText("These are the exact canonical records contributing to the selected fact."),
+  ).toBeVisible();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export filtered CSV" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(
+    /^financial-intelligence-transactions-\d{4}-\d{2}-\d{2}\.csv$/u,
+  );
+  await expect(page.getByRole("cell", { name: "GROCERY MARKET", exact: true })).toBeVisible();
   await page
     .getByRole("combobox", { name: "Category for GROCERY MARKET" })
     .selectOption({ label: "Groceries" });

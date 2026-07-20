@@ -52,6 +52,7 @@ Start with:
 - [Roadmap](docs/15-ROADMAP.md)
 - [Technology stack](docs/16-TECHNOLOGY-STACK.md)
 - [Quality baseline and browser support](docs/17-QUALITY-BASELINE.md)
+- [Cash-flow summaries and filtered CSV export](docs/18-CASH-FLOW-AND-FILTERED-EXPORT.md)
 
 ## Project status
 

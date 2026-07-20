@@ -1,5 +1,5 @@
 {
-  "name": "@financial-intelligence/application",
+  "name": "@financial-intelligence/analysis",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,6 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@financial-intelligence/analysis": "workspace:*",
     "@financial-intelligence/domain": "workspace:*"
   }
 }

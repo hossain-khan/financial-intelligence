@@ -4,6 +4,7 @@ import {
   CreateWorkspace,
   CommitAcceptedImport,
   FindDuplicateCandidates,
+  ExportFilteredTransactions,
   ListAccounts,
   ListCategories,
   ListDuplicateResolutions,
@@ -13,6 +14,7 @@ import {
   ListWorkspaces,
   PreviewBulkTransactionEdit,
   QueryTransactionLedger,
+  QueryCashFlowSummary,
   RenameAccount,
   RenameCategory,
   ResolveDuplicate,
@@ -47,6 +49,8 @@ export interface ApplicationServices {
   readonly renameCategory: RenameCategory;
   readonly setCategoryArchived: SetCategoryArchived;
   readonly queryTransactionLedger: QueryTransactionLedger;
+  readonly queryCashFlowSummary: QueryCashFlowSummary;
+  readonly exportFilteredTransactions: ExportFilteredTransactions;
   readonly listTransactionEditHistory: ListTransactionEditHistory;
   readonly previewBulkTransactionEdit: PreviewBulkTransactionEdit;
   readonly applyBulkTransactionEdit: ApplyBulkTransactionEdit;
@@ -96,6 +100,13 @@ export const applicationServices: ApplicationServices = {
   renameCategory: new RenameCategory(categoryRepository, clock),
   setCategoryArchived: new SetCategoryArchived(categoryRepository, clock),
   queryTransactionLedger: new QueryTransactionLedger(ledgerRepository),
+  queryCashFlowSummary: new QueryCashFlowSummary(ledgerRepository, categoryRepository, clock),
+  exportFilteredTransactions: new ExportFilteredTransactions(
+    ledgerRepository,
+    accountRepository,
+    categoryRepository,
+    clock,
+  ),
   listTransactionEditHistory: new ListTransactionEditHistory(ledgerRepository),
   previewBulkTransactionEdit: new PreviewBulkTransactionEdit(ledgerRepository),
   applyBulkTransactionEdit: new ApplyBulkTransactionEdit(ledgerRepository, clock, ids),

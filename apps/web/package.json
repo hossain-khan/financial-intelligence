@@ -9,6 +9,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@financial-intelligence/analysis": "workspace:*",
     "@financial-intelligence/application": "workspace:*",
     "@financial-intelligence/domain": "workspace:*",
     "@financial-intelligence/import-core": "workspace:*",
