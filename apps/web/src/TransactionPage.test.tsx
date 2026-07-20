@@ -214,5 +214,35 @@ function fixtureServices(
     undoBulkTransactionEdit: { execute: vi.fn() },
     renameCategory: { execute: vi.fn() },
     setCategoryArchived: { execute: vi.fn() },
+    queryReviewQueue: {
+      execute: vi.fn(async () => ({
+        items: [],
+        totalCount: 0,
+        countsByReason: {
+          unclassified: 0,
+          "rule-conflict": 0,
+          "low-confidence": 0,
+          "merchant-collision": 0,
+          "rule-changed": 0,
+        },
+      })),
+    },
+    applyReviewCorrectionUseCase: {
+      execute: vi.fn(async () => ({ operationId: "op-1", updatedCount: 1 })),
+    },
+    listRules: { execute: vi.fn(async () => []) },
+    createRuleUseCase: { execute: vi.fn() },
+    previewRuleImpactUseCase: {
+      execute: vi.fn(async () => ({
+        totalTransactions: 0,
+        matchedTransactions: 0,
+        lockedTransactions: 0,
+        conflictTransactions: 0,
+        sampleEvaluations: [],
+      })),
+    },
+    listMerchants: { execute: vi.fn(async () => []) },
+    createMerchantUseCase: { execute: vi.fn() },
+    addMerchantAliasUseCase: { execute: vi.fn() },
   } as unknown as ApplicationServices;
 }
