@@ -40,6 +40,10 @@ import {
   FindTransferProposalsUseCase,
   MuteRecurringProposalUseCase,
   PreviewFinancialBrainImportUseCase,
+  QueryMerchantRankingUseCase,
+  QueryMoneyFlowUseCase,
+  QueryRecurringSummaryUseCase,
+  QuerySavingsRateUseCase,
   RejectTransferProposalUseCase,
   UndoBulkTransactionEdit,
   UndoDuplicateResolution,
@@ -113,6 +117,12 @@ export interface ApplicationServices {
   readonly confirmRecurringProposalUseCase: ConfirmRecurringProposalUseCase;
   readonly dismissRecurringProposalUseCase: DismissRecurringProposalUseCase;
   readonly muteRecurringProposalUseCase: MuteRecurringProposalUseCase;
+
+  // Dashboard query services
+  readonly queryMerchantRankingUseCase: QueryMerchantRankingUseCase;
+  readonly querySavingsRateUseCase: QuerySavingsRateUseCase;
+  readonly queryRecurringSummaryUseCase: QueryRecurringSummaryUseCase;
+  readonly queryMoneyFlowUseCase: QueryMoneyFlowUseCase;
 }
 
 const database = new FinancialDatabase();
@@ -248,5 +258,28 @@ export const applicationServices: ApplicationServices = {
     recurringDecisionRepository,
     clock,
     ids,
+  ),
+  queryMerchantRankingUseCase: new QueryMerchantRankingUseCase(
+    ledgerRepository,
+    merchantRepository,
+    transferDecisionRepository,
+  ),
+  querySavingsRateUseCase: new QuerySavingsRateUseCase(
+    ledgerRepository,
+    categoryRepository,
+    transferDecisionRepository,
+  ),
+  queryRecurringSummaryUseCase: new QueryRecurringSummaryUseCase(
+    new FindRecurringProposalsUseCase(
+      ledgerRepository,
+      recurringDecisionRepository,
+      transferDecisionRepository,
+    ),
+    recurringDecisionRepository,
+  ),
+  queryMoneyFlowUseCase: new QueryMoneyFlowUseCase(
+    ledgerRepository,
+    categoryRepository,
+    transferDecisionRepository,
   ),
 };

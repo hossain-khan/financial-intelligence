@@ -100,6 +100,12 @@ export {
 } from "./recurring";
 export type { RecurringDecisionRepository } from "./recurring";
 export {
+  QueryMerchantRankingUseCase,
+  QueryMoneyFlowUseCase,
+  QueryRecurringSummaryUseCase,
+  QuerySavingsRateUseCase,
+} from "./dashboard";
+export {
   ConfirmTransferProposalUseCase,
   FindTransferProposalsUseCase,
   RejectTransferProposalUseCase,

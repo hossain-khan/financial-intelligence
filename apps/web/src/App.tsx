@@ -27,6 +27,10 @@ const TransactionPage = lazy(async () => {
   const module = await import("./TransactionPage");
   return { default: module.TransactionPage };
 });
+const DashboardPage = lazy(async () => {
+  const module = await import("./DashboardPage");
+  return { default: module.DashboardPage };
+});
 
 export interface AppProperties {
   readonly services: ApplicationServices;
@@ -40,6 +44,14 @@ export function App({ services }: AppProperties) {
         <main id="main-content" className="main-content">
           <Routes>
             <Route path="/" element={<OverviewPage services={services} />} />
+            <Route
+              path="/dashboard"
+              element={
+                <Suspense fallback={<p role="status">Opening intelligence dashboards…</p>}>
+                  <DashboardPage services={services} />
+                </Suspense>
+              }
+            />
             <Route
               path="/import"
               element={
@@ -84,6 +96,7 @@ function AppHeader() {
         <NavLink to="/" end>
           Overview
         </NavLink>
+        <NavLink to="/dashboard">Dashboard</NavLink>
         <NavLink to="/import">Import</NavLink>
         <NavLink to="/transactions">Transactions</NavLink>
         <NavLink to="/settings">Settings</NavLink>
