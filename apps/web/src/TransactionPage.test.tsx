@@ -244,5 +244,38 @@ function fixtureServices(
     listMerchants: { execute: vi.fn(async () => []) },
     createMerchantUseCase: { execute: vi.fn() },
     addMerchantAliasUseCase: { execute: vi.fn() },
+    exportFinancialBrainUseCase: {
+      execute: vi.fn(async () => ({ fileName: "brain.json", content: "{}" })),
+    },
+    previewFinancialBrainImportUseCase: {
+      execute: vi.fn(async () => ({
+        doc: {
+          schemaVersion: "1.0.0",
+          brainId: "018f6b80-0d62-7d2c-9a5c-7f5f59cda999",
+          createdAt: "2026-07-20T10:00:00Z",
+          updatedAt: "2026-07-20T10:00:00Z",
+          producer: { application: "Financial Intelligence", version: "0.1.0" },
+          categories: [],
+          merchants: [],
+          rules: [],
+          recurringDecisions: [],
+          preferences: {
+            locale: "en-US",
+            firstDayOfWeek: "monday",
+            reviewConfidenceThreshold: 0.8,
+          },
+        },
+        plan: {
+          additions: { categories: [], merchants: [], rules: [], recurringDecisions: [] },
+          updates: { categories: [], merchants: [], rules: [], recurringDecisions: [] },
+          unchangedCount: 0,
+          conflicts: [],
+          semanticDuplicates: [],
+        },
+      })),
+    },
+    applyFinancialBrainImportUseCase: {
+      execute: vi.fn(async () => ({ operationId: "op-1", appliedCount: 0 })),
+    },
   } as unknown as ApplicationServices;
 }

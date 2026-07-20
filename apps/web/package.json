@@ -15,6 +15,7 @@
     "@financial-intelligence/domain": "workspace:*",
     "@financial-intelligence/import-core": "workspace:*",
     "@financial-intelligence/import-csv": "workspace:*",
+    "@financial-intelligence/schemas": "workspace:*",
     "@financial-intelligence/storage-indexeddb": "workspace:*",
     "@tanstack/react-table": "^8.21.3",
     "react": "19.2.7",

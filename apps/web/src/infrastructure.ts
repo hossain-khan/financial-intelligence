@@ -31,9 +31,13 @@ import {
   RequestAccountDeletion,
   SetAccountArchived,
   SetCategoryArchived,
+  ApplyFinancialBrainImportUseCase,
+  ExportFinancialBrainUseCase,
+  PreviewFinancialBrainImportUseCase,
   UndoBulkTransactionEdit,
   UndoDuplicateResolution,
 } from "@financial-intelligence/application";
+import { validateFinancialBrain } from "@financial-intelligence/schemas";
 import {
   FinancialDatabase,
   IndexedDbAccountRepository,
@@ -84,6 +88,9 @@ export interface ApplicationServices {
   readonly previewRuleImpactUseCase: PreviewRuleImpactUseCase;
   readonly queryReviewQueue: QueryReviewQueue;
   readonly applyReviewCorrectionUseCase: ApplyReviewCorrectionUseCase;
+  readonly exportFinancialBrainUseCase: ExportFinancialBrainUseCase;
+  readonly previewFinancialBrainImportUseCase: PreviewFinancialBrainImportUseCase;
+  readonly applyFinancialBrainImportUseCase: ApplyFinancialBrainImportUseCase;
 }
 
 const database = new FinancialDatabase();
@@ -161,5 +168,25 @@ export const applicationServices: ApplicationServices = {
     applyBulkTransactionEdit,
     createRuleUseCase,
     addMerchantAliasUseCase,
+  ),
+  exportFinancialBrainUseCase: new ExportFinancialBrainUseCase(
+    categoryRepository,
+    merchantRepository,
+    ruleRepository,
+    clock,
+    ids,
+  ),
+  previewFinancialBrainImportUseCase: new PreviewFinancialBrainImportUseCase(
+    categoryRepository,
+    merchantRepository,
+    ruleRepository,
+    validateFinancialBrain,
+  ),
+  applyFinancialBrainImportUseCase: new ApplyFinancialBrainImportUseCase(
+    categoryRepository,
+    merchantRepository,
+    ruleRepository,
+    ids,
+    validateFinancialBrain,
   ),
 };

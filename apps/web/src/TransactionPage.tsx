@@ -27,6 +27,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import type { ApplicationServices } from "./infrastructure";
+import { BrainManagementView } from "./BrainManagementView";
 
 const EMPTY_PAGE: TransactionLedgerPage = { items: [], total: 0, offset: 0, limit: 50 };
 const EMPTY_SUMMARY: CashFlowReport = {
@@ -450,6 +451,8 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
       />
 
       <CategorizationReviewQueue services={services} categories={categories} onRefresh={refresh} />
+
+      <BrainManagementView services={services} onRefresh={refresh} />
 
       <section className="import-panel" aria-labelledby="ledger-title">
         <div className="section-heading">

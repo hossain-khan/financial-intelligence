@@ -13,6 +13,7 @@ export type MerchantId = OpaqueIdentifier<"MerchantId">;
 export type AliasId = OpaqueIdentifier<"AliasId">;
 export type RuleId = OpaqueIdentifier<"RuleId">;
 export type OperationId = OpaqueIdentifier<"OperationId">;
+export type BrainId = OpaqueIdentifier<"BrainId">;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -36,3 +37,4 @@ export const parseAliasId = (value: string): AliasId => parseIdentifier(value, "
 export const parseRuleId = (value: string): RuleId => parseIdentifier(value, "RuleId");
 export const parseOperationId = (value: string): OperationId =>
   parseIdentifier(value, "OperationId");
+export const parseBrainId = (value: string): BrainId => parseIdentifier(value, "BrainId");

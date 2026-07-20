@@ -82,6 +82,9 @@ importers:
       "@financial-intelligence/import-csv":
         specifier: workspace:*
         version: link:../../packages/import-csv
+      "@financial-intelligence/schemas":
+        specifier: workspace:*
+        version: link:../../packages/schemas
       "@financial-intelligence/storage-indexeddb":
         specifier: workspace:*
         version: link:../../packages/storage-indexeddb
