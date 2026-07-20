@@ -80,6 +80,13 @@ export {
   UpdateRuleUseCase,
 } from "./rules";
 export type { RuleImpactPreview, RuleRepository } from "./rules";
+export { ApplyReviewCorrectionUseCase, QueryReviewQueue } from "./review-queue";
+export type {
+  ApplyReviewCorrectionInput,
+  ApplyReviewCorrectionResult,
+  QueryReviewQueueInput,
+  ReviewQueueQueryResult,
+} from "./review-queue";
 export type {
   BulkEditPreview,
   BulkTransactionChange,

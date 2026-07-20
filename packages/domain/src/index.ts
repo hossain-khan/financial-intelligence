@@ -54,6 +54,8 @@ export type {
   TransactionRuleEvaluation,
   TransactionRuleEvaluationContext,
 } from "./classification-rule";
+export { deriveReviewQueueItem } from "./review-queue";
+export type { ReviewQueueItem, ReviewReason } from "./review-queue";
 export {
   NORMALIZER_VERSION,
   addAliasToMerchant,

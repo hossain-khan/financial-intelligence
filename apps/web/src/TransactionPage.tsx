@@ -2,15 +2,20 @@ import type {
   BulkTransactionOperation,
   CashFlowFilter,
   CashFlowReport,
+  ReviewQueueQueryResult,
+  RuleImpactPreview,
   TransactionLedgerPage,
   TransactionLedgerSortField,
 } from "@financial-intelligence/application";
 import {
   duplicateEvidenceSignature,
+  parseCategoryId,
+  parseTransactionId,
   type Account,
   type Category,
   type DuplicateCandidate,
   type DuplicateDecision,
+  type ReviewReason,
   type Transaction,
 } from "@financial-intelligence/domain";
 import {
@@ -443,6 +448,8 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
           setMessage("Duplicate decision undone.");
         }}
       />
+
+      <CategorizationReviewQueue services={services} categories={categories} onRefresh={refresh} />
 
       <section className="import-panel" aria-labelledby="ledger-title">
         <div className="section-heading">
@@ -1316,4 +1323,367 @@ function bulkEdit(categoryId: string, reviewState: string, categories: readonly 
       ? {}
       : { reviewState: reviewState as "unreviewed" | "needsReview" | "reviewed" }),
   };
+}
+
+function CategorizationReviewQueue({
+  services,
+  categories,
+  onRefresh,
+}: {
+  readonly services: ApplicationServices;
+  readonly categories: readonly Category[];
+  readonly onRefresh: () => Promise<void>;
+}) {
+  const [queue, setQueue] = useState<ReviewQueueQueryResult>();
+  const [filterReason, setFilterReason] = useState<ReviewReason | "">("");
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
+  const [modalOpen, setModalOpen] = useState(false);
+  const [targetCategory, setTargetCategory] = useState("");
+  const [correctionMode, setCorrectionMode] = useState<"one-off" | "reusable-rule">("one-off");
+  const [ruleName, setRuleName] = useState("");
+  const [highImpactConfirmed, setHighImpactConfirmed] = useState(false);
+  const [ruleImpact, setRuleImpact] = useState<RuleImpactPreview>();
+  const [message, setMessage] = useState<string>();
+  const [lastOpId, setLastOpId] = useState<string>();
+
+  useEffect(() => {
+    let active = true;
+    void services.queryReviewQueue
+      .execute(filterReason === "" ? {} : { reason: filterReason })
+      .then((res) => {
+        if (active) setQueue(res);
+      });
+    return () => {
+      active = false;
+    };
+  }, [filterReason, services]);
+
+  useEffect(() => {
+    if (!modalOpen || correctionMode !== "reusable-rule" || targetCategory === "") {
+      return;
+    }
+    let active = true;
+    void services.previewRuleImpactUseCase.execute([]).then((impact) => {
+      if (active) setRuleImpact(impact);
+    });
+    return () => {
+      active = false;
+    };
+  }, [modalOpen, correctionMode, targetCategory, services]);
+
+  const toggleSelect = (id: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const selectAllVisible = () => {
+    if (queue === undefined) return;
+    setSelectedIds(new Set(queue.items.map((i) => i.transactionId)));
+  };
+
+  const deselectAll = () => setSelectedIds(new Set());
+
+  const handleApplyCorrection = async (e: FormEvent) => {
+    e.preventDefault();
+    if (selectedIds.size === 0 || targetCategory === "") return;
+
+    try {
+      const categoryId = parseCategoryId(targetCategory);
+      const transactionIds = Array.from(selectedIds).map((id) => parseTransactionId(id));
+
+      const res = await services.applyReviewCorrectionUseCase.execute({
+        transactionIds,
+        categoryId,
+        ...(correctionMode === "reusable-rule" && ruleName.trim() !== ""
+          ? {
+              createRule: {
+                name: ruleName.trim(),
+                conditions: [
+                  {
+                    field: "normalizedDescription" as const,
+                    operator: "startsWith" as const,
+                    value:
+                      queue?.items.find((i) => selectedIds.has(i.transactionId))
+                        ?.normalizedDescription ?? "",
+                  },
+                ],
+                actions: [{ type: "setCategory" as const, value: categoryId }],
+              },
+            }
+          : {}),
+      });
+
+      setLastOpId(res.operationId);
+      setSelectedIds(new Set());
+      setModalOpen(false);
+      setRuleName("");
+      setHighImpactConfirmed(false);
+
+      const refreshedQueue = await services.queryReviewQueue.execute(
+        filterReason === "" ? {} : { reason: filterReason },
+      );
+      setQueue(refreshedQueue);
+
+      await onRefresh();
+      setMessage(
+        `Corrected ${res.updatedCount} transaction(s) successfully.${res.createdRuleId ? " Created reusable classification rule." : ""}`,
+      );
+    } catch {
+      setMessage("Error applying categorization correction.");
+    }
+  };
+
+  const handleUndoLast = async () => {
+    if (lastOpId === undefined) return;
+    try {
+      await services.undoBulkTransactionEdit.execute(lastOpId);
+      setLastOpId(undefined);
+      const refreshedQueue = await services.queryReviewQueue.execute(
+        filterReason === "" ? {} : { reason: filterReason },
+      );
+      setQueue(refreshedQueue);
+      await onRefresh();
+      setMessage("Undone last categorization correction.");
+    } catch {
+      setMessage("Failed to undo correction.");
+    }
+  };
+
+  if (queue === undefined) return null;
+
+  return (
+    <section className="import-panel" aria-labelledby="review-queue-title">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Explainable Learning</p>
+          <h2 id="review-queue-title">Categorization review queue</h2>
+        </div>
+        <span className="storage-chip">{queue.totalCount} items needing review</span>
+      </div>
+
+      {message && (
+        <p role="status" className="mapping-status" aria-live="polite">
+          {message}
+        </p>
+      )}
+
+      <div className="ledger-filters" style={{ marginBottom: "1rem" }}>
+        <button
+          type="button"
+          className={filterReason === "" ? "primary-button" : "secondary-button"}
+          onClick={() => setFilterReason("")}
+        >
+          All ({queue.totalCount})
+        </button>
+        <button
+          type="button"
+          className={filterReason === "unclassified" ? "primary-button" : "secondary-button"}
+          onClick={() => setFilterReason("unclassified")}
+        >
+          Unclassified ({queue.countsByReason.unclassified})
+        </button>
+        <button
+          type="button"
+          className={filterReason === "rule-conflict" ? "primary-button" : "secondary-button"}
+          onClick={() => setFilterReason("rule-conflict")}
+        >
+          Rule Conflict ({queue.countsByReason["rule-conflict"]})
+        </button>
+        <button
+          type="button"
+          className={filterReason === "merchant-collision" ? "primary-button" : "secondary-button"}
+          onClick={() => setFilterReason("merchant-collision")}
+        >
+          Merchant Collision ({queue.countsByReason["merchant-collision"]})
+        </button>
+        <button
+          type="button"
+          className={filterReason === "low-confidence" ? "primary-button" : "secondary-button"}
+          onClick={() => setFilterReason("low-confidence")}
+        >
+          Low Confidence ({queue.countsByReason["low-confidence"]})
+        </button>
+      </div>
+
+      <div className="preview-actions" style={{ marginBottom: "1rem" }}>
+        <button type="button" onClick={selectAllVisible}>
+          Select all visible
+        </button>
+        <button type="button" className="secondary-button" onClick={deselectAll}>
+          Deselect all
+        </button>
+        <button type="button" disabled={selectedIds.size === 0} onClick={() => setModalOpen(true)}>
+          Correct selected ({selectedIds.size})
+        </button>
+        {lastOpId !== undefined && (
+          <button type="button" className="secondary-button" onClick={() => void handleUndoLast()}>
+            Undo last correction
+          </button>
+        )}
+      </div>
+
+      {queue.items.length === 0 ? (
+        <p>No transactions currently require categorization review.</p>
+      ) : (
+        <div className="table-scroll" tabIndex={0} role="region" aria-label="Review Queue Table">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Select</th>
+                <th scope="col">Date</th>
+                <th scope="col">Description</th>
+                <th scope="col">Amount</th>
+                <th scope="col">Review Reason</th>
+                <th scope="col">Explanation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {queue.items.map((item) => (
+                <tr key={item.transactionId}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(item.transactionId)}
+                      onChange={() => toggleSelect(item.transactionId)}
+                      aria-label={`Select ${item.rawDescription}`}
+                    />
+                  </td>
+                  <td>{item.postedDate}</td>
+                  <td>
+                    <strong>{item.rawDescription}</strong>
+                    <br />
+                    <small>{item.normalizedDescription}</small>
+                  </td>
+                  <td>{item.amount.toString()}</td>
+                  <td>
+                    <span className="storage-chip" style={{ textTransform: "capitalize" }}>
+                      {item.reason.replace("-", " ")}
+                    </span>
+                  </td>
+                  <td>{item.explanation}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {modalOpen && (
+        <div
+          className="import-panel"
+          style={{ marginTop: "1.5rem", border: "2px solid var(--forest)" }}
+        >
+          <h3>Apply Categorization Correction</h3>
+          <form onSubmit={(e) => void handleApplyCorrection(e)}>
+            <div style={{ display: "grid", gap: "1rem", marginBottom: "1rem" }}>
+              <label>
+                Target Category:
+                <select
+                  value={targetCategory}
+                  onChange={(e) => setTargetCategory(e.target.value)}
+                  required
+                >
+                  <option value="">Select category...</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <fieldset>
+                <legend style={{ fontWeight: "bold" }}>Correction Scope</legend>
+                <label style={{ display: "block", margin: "0.5rem 0" }}>
+                  <input
+                    type="radio"
+                    name="scope"
+                    checked={correctionMode === "one-off"}
+                    onChange={() => setCorrectionMode("one-off")}
+                  />{" "}
+                  One-off Override (Locks selected transactions only)
+                </label>
+                <label style={{ display: "block", margin: "0.5rem 0" }}>
+                  <input
+                    type="radio"
+                    name="scope"
+                    checked={correctionMode === "reusable-rule"}
+                    onChange={() => setCorrectionMode("reusable-rule")}
+                  />{" "}
+                  Create Reusable Rule (Applies to current & future transactions)
+                </label>
+              </fieldset>
+
+              {correctionMode === "reusable-rule" && (
+                <>
+                  <label>
+                    Rule Name:
+                    <input
+                      type="text"
+                      value={ruleName}
+                      onChange={(e) => setRuleName(e.target.value)}
+                      placeholder="e.g. Tim Hortons Rule"
+                      required
+                    />
+                  </label>
+                  {ruleImpact !== undefined && (
+                    <div
+                      style={{
+                        background: "var(--forest-soft)",
+                        padding: "0.75rem",
+                        borderRadius: "8px",
+                      }}
+                    >
+                      <strong>Rule Impact Preview:</strong>
+                      <p style={{ margin: "0.25rem 0" }}>
+                        Matched: {ruleImpact.matchedTransactions} · Locked Exclusions:{" "}
+                        {ruleImpact.lockedTransactions} · Conflicts:{" "}
+                        {ruleImpact.conflictTransactions}
+                      </p>
+                      {ruleImpact.matchedTransactions > 10 && (
+                        <label
+                          style={{ display: "block", marginTop: "0.5rem", fontWeight: "bold" }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={highImpactConfirmed}
+                            onChange={(e) => setHighImpactConfirmed(e.target.checked)}
+                          />{" "}
+                          I confirm applying this rule to over 10 matching transactions
+                        </label>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div className="preview-actions">
+              <button
+                type="submit"
+                disabled={
+                  targetCategory === "" ||
+                  (correctionMode === "reusable-rule" &&
+                    ruleImpact !== undefined &&
+                    ruleImpact.matchedTransactions > 10 &&
+                    !highImpactConfirmed)
+                }
+              >
+                Apply Correction
+              </button>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setModalOpen(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </section>
+  );
 }

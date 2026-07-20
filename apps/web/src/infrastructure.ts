@@ -1,6 +1,10 @@
 import {
+  AddMerchantAliasUseCase,
   ApplyBulkTransactionEdit,
+  ApplyReviewCorrectionUseCase,
   CreateAccount,
+  CreateMerchantUseCase,
+  CreateRuleUseCase,
   CreateWorkspace,
   CommitAcceptedImport,
   CreateEncryptedWorkspaceBackup,
@@ -10,11 +14,15 @@ import {
   ListCategories,
   ListDuplicateResolutions,
   ListImportHistory,
+  ListMerchants,
+  ListRules,
   ListTransactionEditHistory,
   ListTransactions,
   ListWorkspaces,
   PreviewBulkTransactionEdit,
   PreviewEncryptedWorkspaceBackup,
+  PreviewRuleImpactUseCase,
+  QueryReviewQueue,
   QueryTransactionLedger,
   QueryCashFlowSummary,
   RenameAccount,
@@ -32,6 +40,8 @@ import {
   IndexedDbCategoryRepository,
   IndexedDbDuplicateResolutionRepository,
   IndexedDbImportCommitRepository,
+  IndexedDbMerchantRepository,
+  IndexedDbRuleRepository,
   IndexedDbTransactionLedgerRepository,
   IndexedDbWorkspaceRepository,
   IndexedDbWorkspaceBackupRepository,
@@ -64,6 +74,16 @@ export interface ApplicationServices {
   readonly listDuplicateResolutions: ListDuplicateResolutions;
   readonly createEncryptedWorkspaceBackup: CreateEncryptedWorkspaceBackup;
   readonly previewEncryptedWorkspaceBackup: PreviewEncryptedWorkspaceBackup;
+
+  // Merchant, Rule & Review Queue services
+  readonly listMerchants: ListMerchants;
+  readonly createMerchantUseCase: CreateMerchantUseCase;
+  readonly addMerchantAliasUseCase: AddMerchantAliasUseCase;
+  readonly listRules: ListRules;
+  readonly createRuleUseCase: CreateRuleUseCase;
+  readonly previewRuleImpactUseCase: PreviewRuleImpactUseCase;
+  readonly queryReviewQueue: QueryReviewQueue;
+  readonly applyReviewCorrectionUseCase: ApplyReviewCorrectionUseCase;
 }
 
 const database = new FinancialDatabase();
@@ -72,6 +92,8 @@ const accountRepository = new IndexedDbAccountRepository(database);
 const importRepository = new IndexedDbImportCommitRepository(database);
 const categoryRepository = new IndexedDbCategoryRepository(database);
 const ledgerRepository = new IndexedDbTransactionLedgerRepository(database);
+const merchantRepository = new IndexedDbMerchantRepository(database);
+const ruleRepository = new IndexedDbRuleRepository(database);
 const duplicateResolutionRepository = new IndexedDbDuplicateResolutionRepository(database);
 const backupRepository = new IndexedDbWorkspaceBackupRepository(database);
 const clock = { now: () => new Date() };
@@ -82,6 +104,10 @@ const digest = {
     return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
   },
 };
+
+const applyBulkTransactionEdit = new ApplyBulkTransactionEdit(ledgerRepository, clock, ids);
+const createRuleUseCase = new CreateRuleUseCase(ruleRepository, clock, ids);
+const addMerchantAliasUseCase = new AddMerchantAliasUseCase(merchantRepository, clock, ids);
 
 export const applicationServices: ApplicationServices = {
   createWorkspace: new CreateWorkspace(workspaceRepository, clock, ids),
@@ -115,7 +141,7 @@ export const applicationServices: ApplicationServices = {
   ),
   listTransactionEditHistory: new ListTransactionEditHistory(ledgerRepository),
   previewBulkTransactionEdit: new PreviewBulkTransactionEdit(ledgerRepository),
-  applyBulkTransactionEdit: new ApplyBulkTransactionEdit(ledgerRepository, clock, ids),
+  applyBulkTransactionEdit,
   undoBulkTransactionEdit: new UndoBulkTransactionEdit(ledgerRepository, clock),
   findDuplicateCandidates: new FindDuplicateCandidates(ledgerRepository),
   resolveDuplicate: new ResolveDuplicate(duplicateResolutionRepository, clock, ids),
@@ -123,4 +149,17 @@ export const applicationServices: ApplicationServices = {
   listDuplicateResolutions: new ListDuplicateResolutions(duplicateResolutionRepository),
   createEncryptedWorkspaceBackup: new CreateEncryptedWorkspaceBackup(backupRepository, clock),
   previewEncryptedWorkspaceBackup: new PreviewEncryptedWorkspaceBackup(),
+
+  listMerchants: new ListMerchants(merchantRepository),
+  createMerchantUseCase: new CreateMerchantUseCase(merchantRepository, clock, ids),
+  addMerchantAliasUseCase,
+  listRules: new ListRules(ruleRepository),
+  createRuleUseCase,
+  previewRuleImpactUseCase: new PreviewRuleImpactUseCase(ruleRepository),
+  queryReviewQueue: new QueryReviewQueue(ledgerRepository, ruleRepository, merchantRepository),
+  applyReviewCorrectionUseCase: new ApplyReviewCorrectionUseCase(
+    applyBulkTransactionEdit,
+    createRuleUseCase,
+    addMerchantAliasUseCase,
+  ),
 };
