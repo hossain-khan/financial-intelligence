@@ -96,6 +96,9 @@ Workspace packages follow the dependency direction documented in the [technology
 - Meet WCAG 2.2 AA for supported workflows.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) before proposing changes.
+AI coding agents must also follow the repository-wide [`AGENTS.md`](AGENTS.md) operating contract;
+it requires issue-aligned work, documentation and ADR maintenance, complete verification, and a pull
+request for every change.
 
 ## License
 
