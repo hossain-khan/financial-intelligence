@@ -71,6 +71,15 @@ export {
   UnmergeMerchantUseCase,
 } from "./merchants";
 export type { MerchantRepository } from "./merchants";
+export {
+  CreateRuleUseCase,
+  DeleteRuleUseCase,
+  EvaluateTransactionRulesUseCase,
+  ListRules,
+  PreviewRuleImpactUseCase,
+  UpdateRuleUseCase,
+} from "./rules";
+export type { RuleImpactPreview, RuleRepository } from "./rules";
 export type {
   BulkEditPreview,
   BulkTransactionChange,

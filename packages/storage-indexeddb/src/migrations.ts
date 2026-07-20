@@ -25,6 +25,8 @@ const TRANSACTION_FINGERPRINT_SCHEMA =
 const CATEGORY_SCHEMA = "&id, kind, order, archived, name, updatedAt";
 const TRANSACTION_OPERATION_SCHEMA = "&id, kind, createdAt, undoneAt";
 const DUPLICATE_RESOLUTION_SCHEMA = "&id, type, candidateId, occurredAt";
+const MERCHANT_SCHEMA = "&id, name, archived, updatedAt";
+const CLASSIFICATION_RULE_SCHEMA = "&id, priority, enabled, name, updatedAt";
 
 export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
   {
@@ -74,6 +76,23 @@ export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
       categories: CATEGORY_SCHEMA,
       transactionOperations: TRANSACTION_OPERATION_SCHEMA,
       duplicateResolutionEvents: DUPLICATE_RESOLUTION_SCHEMA,
+    },
+  },
+  {
+    version: 6,
+    description: "Add merchants and classification rules",
+    stores: {
+      workspaces: WORKSPACE_SCHEMA,
+      migrationJournal: MIGRATION_JOURNAL_SCHEMA,
+      accounts: ACCOUNT_SCHEMA,
+      imports: IMPORT_SCHEMA,
+      transactions: REVIEWABLE_TRANSACTION_SCHEMA,
+      transactionFingerprints: TRANSACTION_FINGERPRINT_SCHEMA,
+      categories: CATEGORY_SCHEMA,
+      transactionOperations: TRANSACTION_OPERATION_SCHEMA,
+      duplicateResolutionEvents: DUPLICATE_RESOLUTION_SCHEMA,
+      merchants: MERCHANT_SCHEMA,
+      classificationRules: CLASSIFICATION_RULE_SCHEMA,
     },
   },
 ];

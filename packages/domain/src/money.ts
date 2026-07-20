@@ -51,6 +51,36 @@ export class Money {
     return Money.from(amount, this.currency);
   }
 
+  public abs(): Money {
+    return Money.from(this.#value.abs().toFixed(), this.currency);
+  }
+
+  public equals(other: Money): boolean {
+    if (this.currency !== other.currency) return false;
+    return this.#value.equals(other.#value);
+  }
+
+  public compareTo(other: Money): number {
+    this.#assertSameCurrency(other);
+    return this.#value.comparedTo(other.#value);
+  }
+
+  public isGreaterThan(other: Money): boolean {
+    return this.compareTo(other) > 0;
+  }
+
+  public isLessThan(other: Money): boolean {
+    return this.compareTo(other) < 0;
+  }
+
+  public isGreaterThanOrEqual(other: Money): boolean {
+    return this.compareTo(other) >= 0;
+  }
+
+  public isLessThanOrEqual(other: Money): boolean {
+    return this.compareTo(other) <= 0;
+  }
+
   public isInflow(): boolean {
     return this.#value.isPositive();
   }

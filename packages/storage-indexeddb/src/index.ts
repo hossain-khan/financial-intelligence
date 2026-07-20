@@ -4,6 +4,8 @@ export {
   IndexedDbCategoryRepository,
   IndexedDbDuplicateResolutionRepository,
   IndexedDbImportCommitRepository,
+  IndexedDbMerchantRepository,
+  IndexedDbRuleRepository,
   IndexedDbTransactionLedgerRepository,
   IndexedDbWorkspaceRepository,
   IndexedDbWorkspaceBackupRepository,
