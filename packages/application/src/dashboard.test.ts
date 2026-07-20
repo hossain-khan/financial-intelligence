@@ -8,6 +8,7 @@ import {
   parseImportId,
   parseMerchantId,
   parseTransactionId,
+  parseTransferLinkId,
   parseUtcTimestamp,
   parseDateOnly,
   type Category,
@@ -148,5 +149,84 @@ describe("Dashboard application use cases", () => {
 
     const moneyFlowReport = await queryMoneyFlow.execute();
     expect(moneyFlowReport.currencies).toHaveLength(1);
+  });
+
+  it("handles transfer decisions in merchant, savings, and money flow queries", async () => {
+    const txOutflow = createTransaction({
+      id: parseTransactionId("018f6b80-0d62-7d2c-9a5c-7f5f59cda020"),
+      accountId: ACCOUNT_ID,
+      importId: IMPORT_ID,
+      postedDate: parseDateOnly("2026-06-01"),
+      money: Money.from("-500.00", "CAD"),
+      description: "TRANSFER TO SAVINGS",
+      provenance: {
+        parserId: "csv",
+        parserVersion: "1.0.0",
+        sourceLocation: "1",
+        original: {},
+        transformations: [],
+      },
+      now: NOW,
+    });
+
+    const txInflow = createTransaction({
+      id: parseTransactionId("018f6b80-0d62-7d2c-9a5c-7f5f59cda021"),
+      accountId: ACCOUNT_ID,
+      importId: IMPORT_ID,
+      postedDate: parseDateOnly("2026-06-01"),
+      money: Money.from("500.00", "CAD"),
+      description: "TRANSFER FROM CHECKING",
+      provenance: {
+        parserId: "csv",
+        parserVersion: "1.0.0",
+        sourceLocation: "2",
+        original: {},
+        transformations: [],
+      },
+      now: NOW,
+    });
+
+    const ledger = new InMemoryLedger([txOutflow, txInflow]);
+    const merchantRepo = new InMemoryMerchantRepo([]);
+    const categoryRepo = new InMemoryCategoryRepo([]);
+    const transferDecisionRepo = {
+      list: async () => [
+        {
+          id: parseTransferLinkId("018f6b80-0d62-7d2c-9a5c-7f5f59cda555"),
+          signature: "sig-1",
+          outflowTransactionId: txOutflow.id,
+          inflowTransactionId: txInflow.id,
+          status: "confirmed" as const,
+          score: 100,
+          evidence: [],
+          createdAt: NOW,
+          updatedAt: NOW,
+        },
+      ],
+      save: async () => {},
+      findById: async () => undefined,
+      findBySignature: async () => undefined,
+    };
+
+    const queryMerchantRanking = new QueryMerchantRankingUseCase(
+      ledger,
+      merchantRepo,
+      transferDecisionRepo,
+    );
+    const querySavingsRate = new QuerySavingsRateUseCase(
+      ledger,
+      categoryRepo,
+      transferDecisionRepo,
+    );
+    const queryMoneyFlow = new QueryMoneyFlowUseCase(ledger, categoryRepo, transferDecisionRepo);
+
+    const ranking = await queryMerchantRanking.execute();
+    expect(ranking.currencies).toHaveLength(0); // confirmed transfer excluded from merchant spend
+
+    const savings = await querySavingsRate.execute();
+    expect(savings.currencies).toHaveLength(1);
+
+    const flow = await queryMoneyFlow.execute();
+    expect(flow.currencies).toHaveLength(1);
   });
 });
