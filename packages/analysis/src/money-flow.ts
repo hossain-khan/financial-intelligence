@@ -36,7 +36,6 @@ export interface MoneyFlowReport {
 export function analyzeMoneyFlow(report: CashFlowReport): MoneyFlowReport {
   const currencyReports: MoneyFlowCurrencyReport[] = report.currencies.map((curr) => {
     const totalSpendingMoney = Money.from(curr.spending, curr.currency);
-    const totalSpendingVal = Number(totalSpendingMoney.toJSON().amount);
 
     const nodes: MoneyFlowNode[] = [
       { id: "income", label: "Income & Cash Inflow", type: "source" },
@@ -52,9 +51,11 @@ export function analyzeMoneyFlow(report: CashFlowReport): MoneyFlowReport {
         type: "destination",
       });
 
-      const catVal = Number(cat.spending);
+      const categoryMoney = Money.from(cat.spending, curr.currency);
       const pct =
-        totalSpendingVal > 0 ? ((catVal / totalSpendingVal) * 100).toFixed(1) + "%" : "0.0%";
+        !totalSpendingMoney.isZero() && totalSpendingMoney.isInflow()
+          ? `${categoryMoney.percentageOf(totalSpendingMoney, 1)}%`
+          : "0.0%";
 
       edges.push({
         sourceId: "income",

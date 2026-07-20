@@ -1,12 +1,19 @@
 import {
   createAccount,
+  createClassificationRule,
+  createMerchant,
   createWorkspace,
   parseAccountId,
+  parseCategoryId,
+  parseMerchantId,
+  parseRuleId,
   parseUtcTimestamp,
   parseWorkspaceId,
   type Account,
   type AccountId,
   type ImportId,
+  type ClassificationRule,
+  type Merchant,
   type StatementImport,
   type Transaction,
   type Workspace,
@@ -15,6 +22,8 @@ import {
 import { describe, expect, it, vi } from "vitest";
 
 import type { AccountRepository } from "./accounts";
+import type { MerchantRepository } from "./merchants";
+import type { RuleRepository } from "./rules";
 import {
   CommitAcceptedImport,
   ImportCommitCancelledError,
@@ -108,6 +117,35 @@ describe("CommitAcceptedImport", () => {
       ),
     ).rejects.toThrow(ImportCommitValidationError);
   });
+
+  it("applies learned merchant aliases and deterministic rules to a later import", async () => {
+    const now = parseUtcTimestamp("2026-07-19T20:00:00.000Z");
+    const categoryId = parseCategoryId("3f791740-0a5b-52a6-9ae1-f46258c30b01");
+    const merchant = createMerchant({
+      id: parseMerchantId("018f6b80-0d62-7d2c-9a5c-7f5f59cda260"),
+      name: "Coffee",
+      now,
+    });
+    const rule = createClassificationRule({
+      id: parseRuleId("018f6b80-0d62-7d2c-9a5c-7f5f59cda261"),
+      name: "Coffee is dining",
+      conditions: [{ field: "merchantId", operator: "equals", value: merchant.id }],
+      actions: [{ type: "setCategory", value: categoryId }],
+      now,
+    });
+    const fixture = setup({ rules: [rule], merchants: [merchant] });
+
+    await fixture.useCase.execute(command());
+
+    expect(fixture.commitRepository.plans[0]?.transactions[0]).toMatchObject({
+      merchantId: merchant.id,
+      categoryId,
+      classifications: {
+        merchant: { method: "merchantMapping", locked: false },
+        category: { method: "rule", locked: false },
+      },
+    });
+  });
 });
 
 describe("RebuildTransactionFingerprints", () => {
@@ -125,7 +163,12 @@ describe("RebuildTransactionFingerprints", () => {
   });
 });
 
-function setup() {
+function setup(
+  options: {
+    readonly rules?: readonly ClassificationRule[];
+    readonly merchants?: readonly Merchant[];
+  } = {},
+) {
   const workspace = createWorkspace({
     id: parseWorkspaceId(WORKSPACE_ID),
     name: "Household",
@@ -148,8 +191,35 @@ function setup() {
     { now: () => new Date("2026-07-19T21:00:00.000Z") },
     { generate: () => ids.shift() ?? TRANSACTION_ID },
     digest,
+    undefined,
+    new MemoryRuleRepository(options.rules ?? []),
+    new MemoryMerchantRepository(options.merchants ?? []),
   );
   return { useCase, commitRepository };
+}
+
+class MemoryRuleRepository implements RuleRepository {
+  public constructor(private readonly rules: readonly ClassificationRule[]) {}
+  public async list(): Promise<readonly ClassificationRule[]> {
+    return this.rules;
+  }
+  public async findById(): Promise<ClassificationRule | undefined> {
+    return undefined;
+  }
+  public async save(): Promise<void> {}
+  public async delete(): Promise<void> {}
+}
+
+class MemoryMerchantRepository implements MerchantRepository {
+  public constructor(private readonly merchants: readonly Merchant[]) {}
+  public async list(): Promise<readonly Merchant[]> {
+    return this.merchants;
+  }
+  public async findById(): Promise<Merchant | undefined> {
+    return undefined;
+  }
+  public async save(): Promise<void> {}
+  public async saveMany(): Promise<void> {}
 }
 
 const digest: Sha256Digest = {

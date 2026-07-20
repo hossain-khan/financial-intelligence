@@ -5,8 +5,12 @@ import {
   type Account,
   type Category,
   type CanonicalTransactionDocument,
+  type ClassificationRule,
   type DuplicateResolutionEvent,
+  type Merchant,
+  type RecurringDecisionRecord,
   type StatementImportDocument,
+  type TransferLink,
   type Workspace,
 } from "@financial-intelligence/domain";
 
@@ -43,6 +47,10 @@ export interface WorkspaceBackupSnapshot {
   readonly imports: readonly StatementImportDocument[];
   readonly transactions: readonly CanonicalTransactionDocument[];
   readonly categories: readonly Category[];
+  readonly merchants: readonly Merchant[];
+  readonly classificationRules: readonly ClassificationRule[];
+  readonly transferDecisions: readonly TransferLink[];
+  readonly recurringDecisions: readonly RecurringDecisionRecord[];
   readonly transactionOperations: readonly BackupTransactionOperationDocument[];
   readonly duplicateResolutionEvents: readonly BackupDuplicateResolutionEventDocument[];
 }
@@ -56,6 +64,10 @@ export interface WorkspaceBackupPreview {
     readonly imports: number;
     readonly transactions: number;
     readonly categories: number;
+    readonly merchants: number;
+    readonly classificationRules: number;
+    readonly transferDecisions: number;
+    readonly recurringDecisions: number;
     readonly transactionOperations: number;
     readonly duplicateResolutionEvents: number;
   };
@@ -78,8 +90,9 @@ export function parseSnapshot(bytes: Uint8Array): WorkspaceBackupSnapshot {
   } catch {
     throw new BackupValidationError("INVALID_PAYLOAD");
   }
-  validateSnapshot(value);
-  return value;
+  const normalized = normalizeLegacySnapshot(value);
+  validateSnapshot(normalized);
+  return normalized;
 }
 
 export function previewSnapshot(snapshot: WorkspaceBackupSnapshot): WorkspaceBackupPreview {
@@ -92,6 +105,10 @@ export function previewSnapshot(snapshot: WorkspaceBackupSnapshot): WorkspaceBac
       imports: snapshot.imports.length,
       transactions: snapshot.transactions.length,
       categories: snapshot.categories.length,
+      merchants: snapshot.merchants.length,
+      classificationRules: snapshot.classificationRules.length,
+      transferDecisions: snapshot.transferDecisions.length,
+      recurringDecisions: snapshot.recurringDecisions.length,
       transactionOperations: snapshot.transactionOperations.length,
       duplicateResolutionEvents: snapshot.duplicateResolutionEvents.length,
     },
@@ -119,6 +136,10 @@ function validateSnapshot(value: unknown): asserts value is WorkspaceBackupSnaps
     !Array.isArray(value.imports) ||
     !Array.isArray(value.transactions) ||
     !Array.isArray(value.categories) ||
+    !Array.isArray(value.merchants) ||
+    !Array.isArray(value.classificationRules) ||
+    !Array.isArray(value.transferDecisions) ||
+    !Array.isArray(value.recurringDecisions) ||
     !Array.isArray(value.transactionOperations) ||
     !Array.isArray(value.duplicateResolutionEvents)
   )
@@ -132,6 +153,10 @@ function validateSnapshot(value: unknown): asserts value is WorkspaceBackupSnaps
   const imports = value.imports;
   const transactions = value.transactions;
   const categories = value.categories;
+  const merchants = value.merchants;
+  const classificationRules = value.classificationRules;
+  const transferDecisions = value.transferDecisions;
+  const recurringDecisions = value.recurringDecisions;
   const operations = value.transactionOperations;
   const events = value.duplicateResolutionEvents;
   try {
@@ -155,6 +180,21 @@ function validateSnapshot(value: unknown): asserts value is WorkspaceBackupSnaps
     if (uniqueIds(categories).size !== categories.length) invalid();
     validateCategoryHierarchy(categories as unknown as readonly Category[]);
     const transactionIds = uniqueIds(transactions);
+    if (uniqueIds(merchants).size !== merchants.length) invalid();
+    if (uniqueIds(classificationRules).size !== classificationRules.length) invalid();
+    if (uniqueIds(transferDecisions).size !== transferDecisions.length) invalid();
+    for (const decision of transferDecisions) {
+      if (
+        !isObject(decision) ||
+        typeof decision.outflowTransactionId !== "string" ||
+        typeof decision.inflowTransactionId !== "string" ||
+        !transactionIds.has(decision.outflowTransactionId) ||
+        !transactionIds.has(decision.inflowTransactionId) ||
+        decision.outflowTransactionId === decision.inflowTransactionId
+      )
+        invalid();
+    }
+    if (uniqueIds(recurringDecisions).size !== recurringDecisions.length) invalid();
     if (uniqueIds(operations).size !== operations.length) invalid();
     for (const operation of operations) {
       if (!isOperation(operation)) invalid();
@@ -170,6 +210,17 @@ function validateSnapshot(value: unknown): asserts value is WorkspaceBackupSnaps
     if (error instanceof BackupValidationError) throw error;
     invalid();
   }
+}
+
+function normalizeLegacySnapshot(value: unknown): unknown {
+  if (!isObject(value)) return value;
+  return {
+    ...value,
+    merchants: value.merchants === undefined ? [] : value.merchants,
+    classificationRules: value.classificationRules === undefined ? [] : value.classificationRules,
+    transferDecisions: value.transferDecisions === undefined ? [] : value.transferDecisions,
+    recurringDecisions: value.recurringDecisions === undefined ? [] : value.recurringDecisions,
+  };
 }
 
 function invalid(): never {

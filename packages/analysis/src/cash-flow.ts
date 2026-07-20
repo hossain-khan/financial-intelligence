@@ -3,6 +3,7 @@ import {
   parseAccountId,
   parseCategoryId,
   parseDateOnly,
+  parseTransactionId,
   type AccountId,
   type Category,
   type CategoryId,
@@ -12,6 +13,7 @@ import {
 } from "@financial-intelligence/domain";
 
 export interface CashFlowFilter {
+  readonly transactionIds?: readonly string[];
   readonly accountIds?: readonly string[];
   readonly categoryIds?: readonly string[];
   readonly currencies?: readonly string[];
@@ -81,6 +83,7 @@ export interface AnalyzeCashFlowInput {
 }
 
 interface NormalizedFilter {
+  readonly transactionIds?: ReadonlySet<TransactionId>;
   readonly accountIds?: ReadonlySet<AccountId>;
   readonly categoryIds?: ReadonlySet<CategoryId>;
   readonly currencies?: ReadonlySet<string>;
@@ -119,6 +122,8 @@ export function filterCashFlowTransactions(
 ): readonly Transaction[] {
   const normalized = normalizeFilter(filter);
   return transactions.filter((transaction) => {
+    if (normalized.transactionIds !== undefined && !normalized.transactionIds.has(transaction.id))
+      return false;
     if (normalized.accountIds !== undefined && !normalized.accountIds.has(transaction.accountId))
       return false;
     if (normalized.categoryIds !== undefined) {
@@ -302,6 +307,9 @@ function normalizeFilter(filter: CashFlowFilter): NormalizedFilter {
     throw new RangeError("Summary start date must not be after end date");
   }
   return {
+    ...(filter.transactionIds === undefined
+      ? {}
+      : { transactionIds: new Set(filter.transactionIds.map(parseTransactionId)) }),
     ...(filter.accountIds === undefined
       ? {}
       : { accountIds: new Set(filter.accountIds.map(parseAccountId)) }),
@@ -318,6 +326,7 @@ function normalizeFilter(filter: CashFlowFilter): NormalizedFilter {
 
 function matchesNormalizedFilter(transaction: Transaction, filter: NormalizedFilter): boolean {
   return (
+    (filter.transactionIds === undefined || filter.transactionIds.has(transaction.id)) &&
     (filter.accountIds === undefined || filter.accountIds.has(transaction.accountId)) &&
     (filter.categoryIds === undefined ||
       (transaction.categoryId !== undefined && filter.categoryIds.has(transaction.categoryId))) &&
@@ -349,6 +358,9 @@ function takeaway(currency: string, netCashFlow: string): string {
 
 function describeFilter(filter: CashFlowFilter): string {
   return [
+    filter.transactionIds === undefined
+      ? "all transactions"
+      : `${filter.transactionIds.length} selected transaction(s)`,
     filter.fromDate === undefined && filter.toDate === undefined
       ? "All dates"
       : `${filter.fromDate ?? "Beginning"} to ${filter.toDate ?? "Today"}`,

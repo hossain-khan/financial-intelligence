@@ -10,6 +10,7 @@ import {
   type Merchant,
 } from "./merchant";
 import type { Money } from "./money";
+import type { AccountType } from "./account";
 import type { DateOnly } from "./temporal";
 import type { Transaction } from "./transaction";
 
@@ -37,24 +38,29 @@ export function deriveReviewQueueItem(
   transaction: Transaction,
   rules: readonly ClassificationRule[] = [],
   merchants: readonly Merchant[] = [],
+  accountType: AccountType = "checking",
 ): ReviewQueueItem | undefined {
   const normDescription = normalizeMerchantDescription(transaction.description);
 
   const isLockedCategory =
     transaction.classifications.category?.locked ??
     transaction.classifications.category?.method === "user";
-  const isLockedMerchant = false;
+  const isLockedMerchant =
+    transaction.classifications.merchant?.locked ??
+    transaction.classifications.merchant?.method === "user";
 
   const evalContext: TransactionRuleEvaluationContext = {
     transactionId: transaction.id,
     rawDescription: transaction.description,
     normalizedDescription: normDescription,
     accountId: transaction.accountId,
-    accountType: "checking",
+    accountType,
+    postedDate: transaction.postedDate,
     amount: transaction.money,
     tags: transaction.tags,
     isLockedCategory,
-    isLockedMerchant,
+    isLockedMerchant: transaction.merchantId !== undefined,
+    ...(transaction.merchantId === undefined ? {} : { merchantId: transaction.merchantId }),
     ...(transaction.categoryId === undefined ? {} : { categoryId: transaction.categoryId }),
   };
 
@@ -94,6 +100,9 @@ export function deriveReviewQueueItem(
       ...(transaction.categoryId === undefined
         ? {}
         : { currentCategoryId: transaction.categoryId }),
+      ...(transaction.merchantId === undefined
+        ? {}
+        : { currentMerchantId: transaction.merchantId }),
       ...(suggestedCategory === undefined ? {} : { suggestedCategory }),
       ...(suggestedMerchant === undefined ? {} : { suggestedMerchant }),
     };
@@ -120,6 +129,9 @@ export function deriveReviewQueueItem(
       ...(transaction.categoryId === undefined
         ? {}
         : { currentCategoryId: transaction.categoryId }),
+      ...(transaction.merchantId === undefined
+        ? {}
+        : { currentMerchantId: transaction.merchantId }),
       ...(suggestedCategory === undefined ? {} : { suggestedCategory }),
       ...(suggestedMerchant === undefined ? {} : { suggestedMerchant }),
     };
@@ -140,6 +152,9 @@ export function deriveReviewQueueItem(
       normalizedDescription: normDescription,
       amount: transaction.money,
       currentCategoryId: transaction.categoryId,
+      ...(transaction.merchantId === undefined
+        ? {}
+        : { currentMerchantId: transaction.merchantId }),
       reason: "rule-changed",
       explanation: `Rule evaluation proposed category '${suggestedCategory}' differing from current category '${transaction.categoryId}'`,
       suggestedCategory,
@@ -165,6 +180,9 @@ export function deriveReviewQueueItem(
       ...(transaction.categoryId === undefined
         ? {}
         : { currentCategoryId: transaction.categoryId }),
+      ...(transaction.merchantId === undefined
+        ? {}
+        : { currentMerchantId: transaction.merchantId }),
       ...(suggestedCategory === undefined ? {} : { suggestedCategory }),
       ...(suggestedMerchant === undefined ? {} : { suggestedMerchant }),
     };
@@ -183,6 +201,9 @@ export function deriveReviewQueueItem(
       explanation: "Transaction has no assigned category",
       isLockedCategory,
       isLockedMerchant,
+      ...(transaction.merchantId === undefined
+        ? {}
+        : { currentMerchantId: transaction.merchantId }),
       ...(suggestedCategory === undefined ? {} : { suggestedCategory }),
       ...(suggestedMerchant === undefined ? {} : { suggestedMerchant }),
     };

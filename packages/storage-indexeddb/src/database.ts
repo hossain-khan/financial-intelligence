@@ -280,6 +280,8 @@ export class IndexedDbWorkspaceBackupRepository implements WorkspaceBackupReposi
           this.database.categories,
           this.database.merchants,
           this.database.classificationRules,
+          this.database.transferDecisions,
+          this.database.recurringDecisions,
           this.database.transactionOperations,
           this.database.duplicateResolutionEvents,
         ],
@@ -298,6 +300,11 @@ export class IndexedDbWorkspaceBackupRepository implements WorkspaceBackupReposi
             accountIds.has(item.accountId),
           );
           const transactionIds = new Set(transactions.map((item) => item.id));
+          const transferDecisions = (await this.database.transferDecisions.toArray()).filter(
+            (item) =>
+              transactionIds.has(item.outflowTransactionId) &&
+              transactionIds.has(item.inflowTransactionId),
+          );
           const transactionOperations = (await this.database.transactionOperations.toArray())
             .filter((item) =>
               item.changes.some((change) => transactionIds.has(change.transactionId)),
@@ -324,6 +331,13 @@ export class IndexedDbWorkspaceBackupRepository implements WorkspaceBackupReposi
             imports,
             transactions,
             categories: await this.database.categories.orderBy("order").toArray(),
+            merchants: await this.database.merchants.orderBy("name").toArray(),
+            classificationRules: await this.database.classificationRules
+              .orderBy("priority")
+              .reverse()
+              .toArray(),
+            transferDecisions,
+            recurringDecisions: await this.database.recurringDecisions.toArray(),
             transactionOperations,
             duplicateResolutionEvents,
           };

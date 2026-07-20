@@ -1,17 +1,24 @@
-import type { CategoryId } from "./identifiers";
+import type { CategoryId, MerchantId } from "./identifiers";
 import type { UtcTimestamp } from "./temporal";
 import type { Transaction, TransactionClassification, TransactionReviewState } from "./transaction";
 
 export interface ManualTransactionEdit {
+  readonly merchant?: MerchantId | null;
   readonly category?: CategoryId | null;
   readonly notes?: string | null;
   readonly tags?: readonly string[];
   readonly reviewState?: TransactionReviewState;
   readonly unlockCategory?: boolean;
+  readonly unlockMerchant?: boolean;
 }
 
 export interface AutomaticCategoryEdit {
   readonly category: CategoryId | null;
+  readonly classification: Omit<TransactionClassification, "locked">;
+}
+
+export interface AutomaticMerchantEdit {
+  readonly merchant: MerchantId | null;
   readonly classification: Omit<TransactionClassification, "locked">;
 }
 
@@ -22,6 +29,19 @@ export function applyManualTransactionEdit(
   now: UtcTimestamp,
 ): Transaction {
   const next: MutableTransaction = { ...current, classifications: { ...current.classifications } };
+  if (edit.merchant !== undefined) {
+    if (edit.merchant === null) delete next.merchantId;
+    else next.merchantId = edit.merchant;
+    next.classifications = {
+      ...next.classifications,
+      merchant: userClassification(now, !edit.unlockMerchant),
+    };
+  } else if (edit.unlockMerchant && next.classifications.merchant !== undefined) {
+    next.classifications = {
+      ...next.classifications,
+      merchant: { ...next.classifications.merchant, locked: false, decidedAt: now },
+    };
+  }
   if (edit.category !== undefined) {
     if (edit.category === null) delete next.categoryId;
     else next.categoryId = edit.category;
@@ -57,6 +77,23 @@ export function applyAutomaticCategoryEdit(
   next.classifications = {
     ...current.classifications,
     category: { ...edit.classification, locked: false },
+  };
+  return { ...next, updatedAt: now };
+}
+
+/** A locked merchant is never overwritten by a rule, heuristic, or model. */
+export function applyAutomaticMerchantEdit(
+  current: Transaction,
+  edit: AutomaticMerchantEdit,
+  now: UtcTimestamp,
+): Transaction {
+  if (current.classifications.merchant?.locked === true) return current;
+  const next: MutableTransaction = { ...current };
+  if (edit.merchant === null) delete next.merchantId;
+  else next.merchantId = edit.merchant;
+  next.classifications = {
+    ...current.classifications,
+    merchant: { ...edit.classification, locked: false },
   };
   return { ...next, updatedAt: now };
 }

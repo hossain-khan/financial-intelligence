@@ -146,6 +146,7 @@ describe("Transfer application use cases", () => {
       decisions,
       { now: () => new Date("2026-07-20T10:00:00Z") },
       { generate: () => "018f6b80-0d62-7d2c-9a5c-7f5f59cda888" },
+      ledger,
     );
     const rejectUseCase = new RejectTransferProposalUseCase(
       decisions,
@@ -158,6 +159,9 @@ describe("Transfer application use cases", () => {
 
     const proposals = await findUseCase.execute();
     expect(proposals).toHaveLength(1);
+    await expect(confirmUseCase.execute({ ...proposals[0]!, isAmbiguous: true })).rejects.toThrow(
+      /ambiguous/i,
+    );
 
     const rejectedLink = await rejectUseCase.execute(proposals[0]!);
     expect(rejectedLink.status).toBe("rejected");

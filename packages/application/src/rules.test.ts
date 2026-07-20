@@ -15,6 +15,7 @@ import {
   EvaluateTransactionRulesUseCase,
   ListRules,
   PreviewRuleImpactUseCase,
+  RuleActivationConflictError,
   UpdateRuleUseCase,
   type RuleRepository,
 } from "./rules";
@@ -49,6 +50,7 @@ const mockIds = {
 };
 
 const CATEGORY_ID_RESTAURANTS = parseCategoryId("3f791740-0a5b-52a6-9ae1-f46258c30b04");
+const CATEGORY_ID_GROCERIES = parseCategoryId("3f791740-0a5b-52a6-9ae1-f46258c30b05");
 const TRANSACTION_ID = parseTransactionId("018f6b80-0d62-7d2c-9a5c-7f5f59cda210");
 const ACCOUNT_ID = parseAccountId("018f6b80-0d62-7d2c-9a5c-7f5f59cda220");
 
@@ -117,5 +119,29 @@ describe("Rule application use cases", () => {
     expect(preview.matchedTransactions).toBe(1);
     expect(preview.lockedTransactions).toBe(0);
     expect(preview.conflictTransactions).toBe(0);
+  });
+
+  it("rejects a definite equal-precedence conflict before activation", async () => {
+    const repository = new InMemoryRuleRepository();
+    const createUseCase = new CreateRuleUseCase(repository, mockClock, mockIds);
+    const conditions = [
+      { field: "normalizedDescription" as const, operator: "startsWith" as const, value: "market" },
+    ];
+    await createUseCase.execute({
+      name: "Market restaurants",
+      priority: 10,
+      conditions,
+      actions: [{ type: "setCategory", value: CATEGORY_ID_RESTAURANTS }],
+    });
+
+    await expect(
+      createUseCase.execute({
+        name: "Market groceries",
+        priority: 10,
+        conditions,
+        actions: [{ type: "setCategory", value: CATEGORY_ID_GROCERIES }],
+      }),
+    ).rejects.toBeInstanceOf(RuleActivationConflictError);
+    expect(await repository.list()).toHaveLength(1);
   });
 });

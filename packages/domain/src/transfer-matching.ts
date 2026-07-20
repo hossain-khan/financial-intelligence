@@ -108,8 +108,9 @@ export function findTransferProposals(
           ? outflowAbs.subtract(inflowAbs)
           : inflowAbs.subtract(outflowAbs);
 
-        // Accept fee differences up to $10 CAD/USD
-        if (diff.isLessThanOrEqual(Money.from("10.00", outflow.money.currency))) {
+        const maxFee = Money.from(options.maxFeeAbsolute ?? "10.00", outflow.money.currency);
+        if (maxFee.isOutflow()) throw new RangeError("Maximum transfer fee cannot be negative");
+        if (diff.isLessThanOrEqual(maxFee)) {
           feeAmount = diff;
           evidence.push({
             code: "possible-fee",

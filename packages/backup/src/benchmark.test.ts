@@ -118,6 +118,10 @@ function syntheticSnapshot(count: number): WorkspaceBackupSnapshot {
       updatedAt: timestamp,
     })),
     categories: [],
+    merchants: [],
+    classificationRules: [],
+    transferDecisions: [],
+    recurringDecisions: [],
     transactionOperations: [],
     duplicateResolutionEvents: [],
   };

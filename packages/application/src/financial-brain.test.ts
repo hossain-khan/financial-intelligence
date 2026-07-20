@@ -11,6 +11,7 @@ import {
   type ClassificationRule,
   type FinancialBrainDocument,
   type Merchant,
+  type RecurringDecisionRecord,
 } from "@financial-intelligence/domain";
 
 import type { CategoryRepository } from "./categories";
@@ -21,6 +22,7 @@ import {
 } from "./financial-brain";
 import type { MerchantRepository } from "./merchants";
 import type { RuleRepository } from "./rules";
+import type { RecurringDecisionRepository } from "./recurring";
 
 const NOW = parseUtcTimestamp("2026-07-20T10:00:00Z");
 
@@ -72,11 +74,33 @@ class InMemoryRuleRepository implements RuleRepository {
   }
 }
 
+class InMemoryRecurringRepository implements RecurringDecisionRepository {
+  private readonly items = new Map<string, RecurringDecisionRecord>();
+  public async list(): Promise<readonly RecurringDecisionRecord[]> {
+    return Array.from(this.items.values());
+  }
+  public async findBySignature(signature: string): Promise<RecurringDecisionRecord | undefined> {
+    return Array.from(this.items.values()).find((item) => item.signature === signature);
+  }
+  public async save(record: RecurringDecisionRecord): Promise<void> {
+    this.items.set(record.id, record);
+  }
+}
+
 describe("Financial Brain application services", () => {
   it("exports Financial Brain JSON with canonical structure", async () => {
     const categories = new InMemoryCategoryRepository();
     const merchants = new InMemoryMerchantRepository();
     const rules = new InMemoryRuleRepository();
+    const recurring = new InMemoryRecurringRepository();
+    await recurring.save({
+      id: "018f6b80-0d62-7d2c-9a5c-7f5f59cda777",
+      signature: "harbor:CAD:monthly",
+      name: "Harbor Coffee",
+      status: "confirmed",
+      cadence: "monthly",
+      updatedAt: NOW,
+    });
 
     const catId = parseCategoryId("3f791740-0a5b-52a6-9ae1-f46258c30b01");
     await categories.save({
@@ -95,22 +119,36 @@ describe("Financial Brain application services", () => {
       rules,
       { now: () => new Date("2026-07-20T10:00:00Z") },
       { generate: () => "018f6b80-0d62-7d2c-9a5c-7f5f59cda999" },
+      recurring,
     );
 
     const res = await exportUseCase.execute();
     expect(res.fileName).toContain("financial-brain-2026-07-20");
     expect(res.content).toContain('"name": "Food"');
+    expect(res.content).toContain('"signature": "harbor:CAD:monthly"');
   });
 
   it("previews and applies Financial Brain import", async () => {
     const categories = new InMemoryCategoryRepository();
     const merchants = new InMemoryMerchantRepository();
     const rules = new InMemoryRuleRepository();
+    const recurring = new InMemoryRecurringRepository();
 
-    const previewUseCase = new PreviewFinancialBrainImportUseCase(categories, merchants, rules);
-    const applyUseCase = new ApplyFinancialBrainImportUseCase(categories, merchants, rules, {
-      generate: () => "018f6b80-0d62-7d2c-9a5c-7f5f59cda888",
-    });
+    const previewUseCase = new PreviewFinancialBrainImportUseCase(
+      categories,
+      merchants,
+      rules,
+      undefined,
+      recurring,
+    );
+    const applyUseCase = new ApplyFinancialBrainImportUseCase(
+      categories,
+      merchants,
+      rules,
+      { generate: () => "018f6b80-0d62-7d2c-9a5c-7f5f59cda888" },
+      undefined,
+      recurring,
+    );
 
     const catId = parseCategoryId("3f791740-0a5b-52a6-9ae1-f46258c30b01");
     const merchId = parseMerchantId("018f6b80-0d62-7d2c-9a5c-7f5f59cda230");
@@ -157,7 +195,16 @@ describe("Financial Brain application services", () => {
           updatedAt: NOW,
         },
       ],
-      recurringDecisions: [],
+      recurringDecisions: [
+        {
+          id: "018f6b80-0d62-7d2c-9a5c-7f5f59cda777",
+          signature: "metro:CAD:monthly",
+          name: "Metro monthly",
+          status: "confirmed",
+          cadence: "monthly",
+          updatedAt: NOW,
+        },
+      ],
       preferences: { locale: "en-US", firstDayOfWeek: "monday", reviewConfidenceThreshold: 0.8 },
     };
 
@@ -167,10 +214,11 @@ describe("Financial Brain application services", () => {
     expect(preview.plan.additions.merchants).toHaveLength(1);
 
     const applyRes = await applyUseCase.execute({ rawJson: json });
-    expect(applyRes.appliedCount).toBe(3);
+    expect(applyRes.appliedCount).toBe(4);
 
     const importedCats = await categories.list();
     expect(importedCats).toHaveLength(1);
     expect(importedCats[0]?.name).toBe("Groceries");
+    expect(await recurring.list()).toHaveLength(1);
   });
 });

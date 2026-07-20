@@ -7,7 +7,9 @@ import type { UtcTimestamp } from "./temporal";
 export type ConditionField =
   | "normalizedDescription"
   | "merchantId"
+  | "accountId"
   | "accountType"
+  | "postedDate"
   | "direction"
   | "amount"
   | "categoryId"
@@ -56,6 +58,7 @@ export interface TransactionRuleEvaluationContext {
   readonly merchantId?: MerchantId;
   readonly accountId: AccountId;
   readonly accountType: AccountType;
+  readonly postedDate?: string;
   readonly amount: Money;
   readonly categoryId?: CategoryId;
   readonly tags?: readonly string[];
@@ -93,6 +96,21 @@ export interface CreateClassificationRuleInput {
  * Validates and creates a RuleCondition instance.
  */
 export function createRuleCondition(condition: RuleCondition): RuleCondition {
+  const validOperators: Readonly<Record<ConditionField, readonly ConditionOperator[]>> = {
+    normalizedDescription: ["equals", "contains", "startsWith"],
+    merchantId: ["equals"],
+    accountId: ["equals"],
+    accountType: ["equals"],
+    postedDate: ["equals"],
+    direction: ["equals"],
+    amount: ["equals", "inRange"],
+    categoryId: ["equals"],
+    tag: ["equals", "contains"],
+  };
+  if (!validOperators[condition.field].includes(condition.operator)) {
+    throw new TypeError(`${condition.operator} operator is not valid for ${condition.field}`);
+  }
+
   if (condition.operator === "inRange") {
     if (typeof condition.value !== "object" || condition.value === null) {
       throw new TypeError("inRange operator requires an AmountRange object value");
@@ -252,6 +270,18 @@ export function evaluateCondition(
     const val = condition.value as string;
     if (condition.operator === "equals") return context.accountType === val;
     return false;
+  }
+
+  if (condition.field === "accountId") {
+    return condition.operator === "equals" && context.accountId === condition.value;
+  }
+
+  if (condition.field === "postedDate") {
+    return (
+      context.postedDate !== undefined &&
+      condition.operator === "equals" &&
+      context.postedDate === condition.value
+    );
   }
 
   if (condition.field === "direction") {

@@ -134,8 +134,16 @@ export type {
   CreateCategoryInput,
   StarterCategoryDefinition,
 } from "./category";
-export { applyAutomaticCategoryEdit, applyManualTransactionEdit } from "./transaction-editing";
-export type { AutomaticCategoryEdit, ManualTransactionEdit } from "./transaction-editing";
+export {
+  applyAutomaticCategoryEdit,
+  applyAutomaticMerchantEdit,
+  applyManualTransactionEdit,
+} from "./transaction-editing";
+export type {
+  AutomaticCategoryEdit,
+  AutomaticMerchantEdit,
+  ManualTransactionEdit,
+} from "./transaction-editing";
 export {
   DuplicateResolutionConflictError,
   activeDuplicateDecisions,

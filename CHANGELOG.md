@@ -16,3 +16,15 @@ All notable changes to this project will be documented here. The format follows 
 - Exact and likely duplicate review with deterministic evidence, visible keep/link decisions, durable undo, and four-month overlap coverage.
 - Decimal-safe cash-flow summaries grouped by currency, month, account, and category, with shared ledger filters, incomplete-period and unresolved-review disclosures, accessible fact tables, transaction drill-down, and spreadsheet-safe filtered CSV export.
 - Experimental versioned full-workspace backups with Argon2id-derived AES-GCM encryption, authenticated metadata, browser download, integrity-checked restore preview, adversarial tests, bounded benchmarks, and no restore mutation path.
+- Deterministic merchant aliases and categorization rules with conflict explanations, import-time rule application, review and bulk correction workflows, and canonical classification provenance.
+- Versioned Financial Brain export/import preview and merge support for categories, merchants, rules, recurring decisions, safe preferences, schema validation, resource bounds, and possible-duplicate disclosure.
+- Deterministic transfer and recurring-series proposals with explicit confirmation/dismissal, transfer-aware cash-flow analysis, and persistent local decisions.
+- Accessible merchant, recurring, savings-rate, and money-flow dashboards whose rows and edges drill down to the exact contributing ledger records.
+- Phase 2 knowledge stores in encrypted workspace snapshots with backward-compatible reads of pre-Phase-2 experimental snapshots.
+
+### Fixed
+
+- Apply saved merchant aliases and deterministic rules during later imports instead of limiting rule evaluation to the review queue.
+- Keep confirmed and dismissed recurring decisions visible in recurring summaries.
+- Pass exact dashboard contribution IDs into ledger and cash-flow drilldown queries.
+- Align Financial Brain rule and recurring-decision runtime fields with the normative JSON Schema.

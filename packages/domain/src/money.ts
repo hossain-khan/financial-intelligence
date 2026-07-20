@@ -89,6 +89,28 @@ export class Money {
     return this.#value.isNegative();
   }
 
+  public isZero(): boolean {
+    return this.#value.isZero();
+  }
+
+  public ratioTo(other: Money, decimalPlaces = 4): string {
+    this.#assertSameCurrency(other);
+    if (other.#value.isZero()) throw new RangeError("Cannot calculate a ratio with zero");
+    if (!Number.isInteger(decimalPlaces) || decimalPlaces < 0 || decimalPlaces > 20) {
+      throw new RangeError("Ratio decimal places must be an integer between 0 and 20");
+    }
+    return this.#value.dividedBy(other.#value).toFixed(decimalPlaces);
+  }
+
+  public percentageOf(other: Money, decimalPlaces = 1): string {
+    this.#assertSameCurrency(other);
+    if (other.#value.isZero()) throw new RangeError("Cannot calculate a percentage with zero");
+    if (!Number.isInteger(decimalPlaces) || decimalPlaces < 0 || decimalPlaces > 20) {
+      throw new RangeError("Percentage decimal places must be an integer between 0 and 20");
+    }
+    return this.#value.dividedBy(other.#value).times(100).toFixed(decimalPlaces);
+  }
+
   public toJSON(): { amount: string; currency: string } {
     return { amount: this.#value.toFixed(), currency: this.currency };
   }

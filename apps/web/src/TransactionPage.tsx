@@ -33,6 +33,7 @@ import { TransferReviewSection } from "./TransferReviewSection";
 import type { RecurringProposal, TransferProposal } from "@financial-intelligence/domain";
 
 const EMPTY_PAGE: TransactionLedgerPage = { items: [], total: 0, offset: 0, limit: 50 };
+const EMPTY_TRANSACTION_IDS: readonly string[] = [];
 const EMPTY_SUMMARY: CashFlowReport = {
   filter: {},
   filterSummary: "All dates · all accounts · all currencies · all categories",
@@ -40,7 +41,13 @@ const EMPTY_SUMMARY: CashFlowReport = {
   currencies: [],
 };
 
-export function TransactionPage({ services }: { readonly services: ApplicationServices }) {
+export function TransactionPage({
+  services,
+  initialTransactionIds = EMPTY_TRANSACTION_IDS,
+}: {
+  readonly services: ApplicationServices;
+  readonly initialTransactionIds?: readonly string[];
+}) {
   const [accounts, setAccounts] = useState<readonly Account[]>([]);
   const [categories, setCategories] = useState<readonly Category[]>([]);
   const [accountId, setAccountId] = useState("");
@@ -88,13 +95,10 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
     );
     const nextCurrency = currency === "" || !availableCurrencies.has(currency) ? "" : currency;
     const loadedCategories = await services.listCategories.execute();
-    const sharedFilter = createCashFlowFilter(
-      nextAccountId,
-      nextCurrency,
-      categoryId,
-      fromDate,
-      toDate,
-    );
+    const sharedFilter = {
+      ...createCashFlowFilter(nextAccountId, nextCurrency, categoryId, fromDate, toDate),
+      ...(initialTransactionIds.length === 0 ? {} : { transactionIds: initialTransactionIds }),
+    };
     const [
       loadedPage,
       loadedSummary,
@@ -157,6 +161,7 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
     currency,
     direction,
     fromDate,
+    initialTransactionIds,
     pageIndex,
     reviewState,
     search,
@@ -298,7 +303,10 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
     setPreviewCount(preview.affectedCount);
   };
 
-  const sharedFilter = createCashFlowFilter(accountId, currency, categoryId, fromDate, toDate);
+  const sharedFilter = {
+    ...createCashFlowFilter(accountId, currency, categoryId, fromDate, toDate),
+    ...(initialTransactionIds.length === 0 ? {} : { transactionIds: initialTransactionIds }),
+  };
   const availableCurrencies = [
     ...new Set(
       accounts
@@ -333,6 +341,13 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
           Filters, categories, duplicate decisions, and undo remain entirely on this device.
         </p>
       </section>
+
+      {initialTransactionIds.length > 0 && (
+        <p role="status" className="mapping-status">
+          Showing the exact {initialTransactionIds.length} transaction(s) selected from the
+          dashboard. Use Transactions in the main navigation to return to the complete ledger.
+        </p>
+      )}
 
       <TransferReviewSection
         proposals={proposals}

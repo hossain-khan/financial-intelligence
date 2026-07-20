@@ -57,7 +57,7 @@
       "additionalProperties": false,
       "required": ["field", "operator", "value"],
       "properties": {
-        "field": { "enum": ["normalizedDescription", "merchantId", "accountType", "direction", "amount", "categoryId", "tag"] },
+        "field": { "enum": ["normalizedDescription", "merchantId", "accountId", "accountType", "postedDate", "direction", "amount", "categoryId", "tag"] },
         "operator": { "enum": ["equals", "contains", "startsWith", "inRange"] },
         "value": {
           "oneOf": [
@@ -92,8 +92,9 @@
     "rule": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "enabled", "priority", "conditions", "actions", "createdBy", "createdAt", "updatedAt"],
+      "required": ["schemaVersion", "id", "name", "enabled", "priority", "conditions", "actions", "createdBy", "createdAt", "updatedAt"],
       "properties": {
+        "schemaVersion": { "const": "1.0.0" },
         "id": { "$ref": "#/$defs/uuid" },
         "name": { "type": "string", "minLength": 1, "maxLength": 160 },
         "enabled": { "type": "boolean" },
@@ -112,6 +113,7 @@
       "properties": {
         "id": { "$ref": "#/$defs/uuid" },
         "signature": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 160 },
         "merchantId": { "$ref": "#/$defs/uuid" },
         "status": { "enum": ["confirmed", "dismissed", "muted"] },
         "cadence": { "enum": ["weekly", "biweekly", "monthly", "quarterly", "yearly", "irregular"] },

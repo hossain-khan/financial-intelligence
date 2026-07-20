@@ -53,10 +53,15 @@ Start with:
 - [Technology stack](docs/16-TECHNOLOGY-STACK.md)
 - [Quality baseline and browser support](docs/17-QUALITY-BASELINE.md)
 - [Cash-flow summaries and filtered CSV export](docs/18-CASH-FLOW-AND-FILTERED-EXPORT.md)
+- [Phase 2 implementation and hardening](docs/20-PHASE-2-IMPLEMENTATION.md)
 
 ## Project status
 
-**Initial implementation.** The repository contains the product specification and the first executable vertical slice: a React/Vite PWA that creates and reloads a private workspace through application ports backed by IndexedDB. Statement import and financial analysis follow the phased roadmap.
+**Phase 2 hardening.** The offline PWA supports local CSV import, canonical ledger review,
+deterministic merchant/category learning, Financial Brain portability, transfer and recurring review,
+and reconciled financial dashboards. Remaining milestone exit work—especially atomic Brain rollback
+and cross-store correction journaling—is tracked explicitly rather than hidden behind the feature
+surface.
 
 ## Local development
 

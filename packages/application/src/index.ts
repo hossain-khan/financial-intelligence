@@ -77,6 +77,7 @@ export {
   EvaluateTransactionRulesUseCase,
   ListRules,
   PreviewRuleImpactUseCase,
+  RuleActivationConflictError,
   UpdateRuleUseCase,
 } from "./rules";
 export type { RuleImpactPreview, RuleRepository } from "./rules";

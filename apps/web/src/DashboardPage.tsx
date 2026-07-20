@@ -12,7 +12,7 @@ import type { ApplicationServices } from "./infrastructure";
 
 export interface DashboardPageProps {
   readonly services: ApplicationServices;
-  readonly onNavigateToLedger?: (filter: CashFlowFilter) => void;
+  readonly onNavigateToLedger?: (transactionIds: readonly string[]) => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({ services, onNavigateToLedger }) => {
@@ -80,13 +80,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ services, onNaviga
     };
   }, [services, accountId, currency, fromDate, toDate, refreshKey]);
 
-  const handleDrilldown = (targetFilter: CashFlowFilter) => {
+  const handleDrilldown = (transactionIds: readonly string[]) => {
     if (onNavigateToLedger) {
-      onNavigateToLedger({
-        ...targetFilter,
-        ...(accountId ? { accountIds: [accountId] } : {}),
-        ...(currency ? { currencies: [currency] } : {}),
-      });
+      onNavigateToLedger(transactionIds);
     }
   };
 
@@ -377,7 +373,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ services, onNaviga
                           <td className="py-2 px-3 text-right">
                             <button
                               type="button"
-                              onClick={() => handleDrilldown({})}
+                              onClick={() => handleDrilldown(row.transactionIds)}
                               className="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 font-medium transition-colors"
                             >
                               View Txs ({row.transactionCount})
@@ -507,7 +503,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ services, onNaviga
                           <td className="py-2 px-3 text-right">
                             <button
                               type="button"
-                              onClick={() => handleDrilldown({})}
+                              onClick={() => handleDrilldown(edge.transactionIds)}
                               className="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 font-medium transition-colors"
                             >
                               View Txs ({edge.transactionIds.length})

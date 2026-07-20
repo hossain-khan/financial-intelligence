@@ -117,6 +117,15 @@ describe("transaction ledger query", () => {
     ).toEqual(["CAD income"]);
   });
 
+  it("limits dashboard drilldown to the exact contributing transaction IDs", () => {
+    const included = transaction(1, "-2", "Included");
+    const excluded = transaction(2, "-3", "Excluded");
+    const page = queryTransactionLedger([included, excluded], {
+      filter: { transactionIds: [included.id] },
+    });
+    expect(page.items.map(({ id }) => id)).toEqual([included.id]);
+  });
+
   it("keeps a typical 50,000-record query bounded before UI pagination", () => {
     const base = transaction(1, "-1", "Merchant");
     const records = Array.from({ length: 50_000 }, (_, index) => ({

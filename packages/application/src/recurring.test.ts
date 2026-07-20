@@ -140,6 +140,8 @@ describe("Recurring application use cases", () => {
 
     const proposalsAfterConfirm = await findUseCase.execute();
     expect(proposalsAfterConfirm).toHaveLength(0);
+    const proposalsForSummary = await findUseCase.execute({ includeResolved: true });
+    expect(proposalsForSummary).toHaveLength(1);
 
     const dismissedRecord = await dismissUseCase.execute(proposals[0]!);
     expect(dismissedRecord.status).toBe("dismissed");

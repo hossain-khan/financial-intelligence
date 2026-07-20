@@ -18,4 +18,11 @@ describe("Money", () => {
   it("normalizes negative zero", () => {
     expect(Money.zero("CAD").negate().toJSON().amount).toBe("0");
   });
+
+  it("calculates ratios and percentages without binary floating-point conversion", () => {
+    const part = Money.from("1", "CAD");
+    const total = Money.from("3", "CAD");
+    expect(part.ratioTo(total, 4)).toBe("0.3333");
+    expect(part.percentageOf(total, 1)).toBe("33.3");
+  });
 });

@@ -1,4 +1,8 @@
-import type { BrainImportPlan, FinancialBrainDocument } from "@financial-intelligence/domain";
+import {
+  MAX_BRAIN_FILE_BYTES,
+  type BrainImportPlan,
+  type FinancialBrainDocument,
+} from "@financial-intelligence/domain";
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import type { ApplicationServices } from "./infrastructure";
 
@@ -44,6 +48,11 @@ export function BrainManagementView({
     if (file === undefined) return;
 
     try {
+      if (file.size === 0 || file.size > MAX_BRAIN_FILE_BYTES) {
+        throw new RangeError(
+          `Financial Brain file must be between 1 byte and ${MAX_BRAIN_FILE_BYTES} bytes.`,
+        );
+      }
       const text = await file.text();
       const { doc, plan } = await services.previewFinancialBrainImportUseCase.execute(text);
 
@@ -157,15 +166,20 @@ export function BrainManagementView({
               Additions:{" "}
               {importPlan.additions.categories.length +
                 importPlan.additions.merchants.length +
-                importPlan.additions.rules.length}
+                importPlan.additions.rules.length +
+                importPlan.additions.recurringDecisions.length}
             </span>
             <span className="storage-chip">
               Updates:{" "}
               {importPlan.updates.categories.length +
                 importPlan.updates.merchants.length +
-                importPlan.updates.rules.length}
+                importPlan.updates.rules.length +
+                importPlan.updates.recurringDecisions.length}
             </span>
             <span className="storage-chip">Unchanged: {importPlan.unchangedCount}</span>
+            <span className="storage-chip">
+              Possible duplicates: {importPlan.semanticDuplicates.length}
+            </span>
             <span
               className="storage-chip"
               style={{ color: importPlan.conflicts.length > 0 ? "var(--danger)" : "inherit" }}
@@ -173,6 +187,20 @@ export function BrainManagementView({
               Conflicts: {importPlan.conflicts.length}
             </span>
           </div>
+
+          {importPlan.semanticDuplicates.length > 0 && (
+            <div role="status" className="mapping-status">
+              <strong>Possible duplicates need review.</strong> They will remain separate records;
+              this import never silently merges different stable IDs.
+              <ul>
+                {importPlan.semanticDuplicates.map((duplicate) => (
+                  <li key={`${duplicate.kind}:${duplicate.localId}:${duplicate.incomingId}`}>
+                    {duplicate.reason}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {importPlan.conflicts.length > 0 && (
             <div style={{ marginBottom: "1rem" }}>
