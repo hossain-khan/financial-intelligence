@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { analyzeCashFlow } from "@financial-intelligence/analysis";
 import {
   Money,
   createAccount,
@@ -36,7 +37,9 @@ describe("TransactionPage", () => {
       expect(services.queryTransactionLedger.execute).toHaveBeenCalledTimes(2);
     });
     expect(screen.getByRole("region", { name: "Transaction ledger" })).toBeInTheDocument();
-    expect(screen.getByText("Coffee shop")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Cash-flow summary" })).toBeInTheDocument();
+    expect(screen.getAllByText("CAD 4.25").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Coffee shop").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByText("Source details"));
     expect(screen.getByText("line:2")).toBeInTheDocument();
     expect(screen.getByText(/raw coffee/)).toBeInTheDocument();
@@ -49,9 +52,16 @@ describe("TransactionPage", () => {
     fireEvent.change(screen.getByLabelText("To date"), {
       target: { value: "2026-07-31" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Reset filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Reset shared filters" }));
     expect(screen.getByLabelText("From date")).toHaveValue("");
     expect(screen.getByLabelText("To date")).toHaveValue("");
+    fireEvent.click(screen.getAllByText("View 1 transaction(s)")[0]!);
+    expect(
+      screen.getAllByText(
+        "These are the exact canonical records contributing to the selected fact.",
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByRole("list", { name: /2026-07 CAD cash flow/u })).toBeInTheDocument();
 
     fireEvent.change(screen.getByRole("combobox", { name: "Category for Coffee shop" }), {
       target: { value: createStarterCategories(NOW)[2]!.id },
@@ -154,10 +164,30 @@ function fixtureServices(
     ],
     createdAt: NOW,
   } as const;
+  const starterCategories = createStarterCategories(NOW);
   return {
     listWorkspaces: { execute: vi.fn(async () => [workspace]) },
     listAccounts: { execute: vi.fn(async () => [account]) },
-    listCategories: { execute: vi.fn(async () => createStarterCategories(NOW)) },
+    listCategories: { execute: vi.fn(async () => starterCategories) },
+    queryCashFlowSummary: {
+      execute: vi.fn(async (filter) =>
+        analyzeCashFlow({
+          transactions,
+          categories: starterCategories,
+          filter,
+          asOfDate: "2026-07-19",
+        }),
+      ),
+    },
+    exportFilteredTransactions: {
+      execute: vi.fn(async () => ({
+        mediaType: "text/csv;charset=utf-8" as const,
+        fileName: "financial-intelligence-transactions-2026-07-19.csv",
+        content: "transaction_id\r\n",
+        rowCount: transactions.length,
+        filterSummary: "All dates",
+      })),
+    },
     queryTransactionLedger: {
       execute: vi.fn(async () => ({
         items: transactions,

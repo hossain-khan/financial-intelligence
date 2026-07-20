@@ -104,6 +104,19 @@ describe("transaction ledger query", () => {
     ).toEqual(["Uncategorized"]);
   });
 
+  it("filters currency and signed direction without coupling the two", () => {
+    const records = [
+      transaction(1, "10", "CAD income"),
+      transaction(2, "-2", "CAD spending"),
+      { ...transaction(3, "5", "USD income"), money: Money.from("5", "USD") },
+    ];
+    expect(
+      queryTransactionLedger(records, {
+        filter: { currencies: ["CAD"], directions: ["inflow"] },
+      }).items.map(({ description }) => description),
+    ).toEqual(["CAD income"]);
+  });
+
   it("keeps a typical 50,000-record query bounded before UI pagination", () => {
     const base = transaction(1, "-1", "Merchant");
     const records = Array.from({ length: 50_000 }, (_, index) => ({

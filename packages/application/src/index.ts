@@ -56,6 +56,8 @@ export {
   previewBulkTransactionEdit,
   queryTransactionLedger,
 } from "./transaction-ledger";
+export { ExportFilteredTransactions, QueryCashFlowSummary } from "./summaries";
+export type { CashFlowFilter, CashFlowReport, TransactionCsvExport } from "./summaries";
 export { ListCategories, RenameCategory, SetCategoryArchived } from "./categories";
 export type { CategoryRepository } from "./categories";
 export type {

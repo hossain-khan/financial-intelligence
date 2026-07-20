@@ -1,5 +1,7 @@
 import type {
   BulkTransactionOperation,
+  CashFlowFilter,
+  CashFlowReport,
   TransactionLedgerPage,
   TransactionLedgerSortField,
 } from "@financial-intelligence/application";
@@ -17,11 +19,17 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import type { ApplicationServices } from "./infrastructure";
 
 const EMPTY_PAGE: TransactionLedgerPage = { items: [], total: 0, offset: 0, limit: 50 };
+const EMPTY_SUMMARY: CashFlowReport = {
+  filter: {},
+  filterSummary: "All dates · all accounts · all currencies · all categories",
+  mixedCurrencies: false,
+  currencies: [],
+};
 
 export function TransactionPage({ services }: { readonly services: ApplicationServices }) {
   const [accounts, setAccounts] = useState<readonly Account[]>([]);
@@ -30,6 +38,7 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
   const [search, setSearch] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [currency, setCurrency] = useState("");
   const [direction, setDirection] = useState<"" | "inflow" | "outflow">("");
   const [categoryId, setCategoryId] = useState("");
   const [reviewState, setReviewState] = useState("");
@@ -45,8 +54,10 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
   const [duplicates, setDuplicates] = useState<readonly DuplicateCandidate[]>([]);
   const [decisions, setDecisions] = useState<ReadonlyMap<string, DuplicateDecision>>(new Map());
   const [allTransactions, setAllTransactions] = useState<readonly Transaction[]>([]);
+  const [summary, setSummary] = useState<CashFlowReport>(EMPTY_SUMMARY);
   const [status, setStatus] = useState<"loading" | "ready" | "saving" | "error">("loading");
   const [message, setMessage] = useState<string>();
+  const accountInitialized = useRef(false);
 
   const refresh = useCallback(async () => {
     const workspaces = await services.listWorkspaces.execute();
@@ -54,46 +65,48 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
     const loadedAccounts =
       workspace === undefined ? [] : await services.listAccounts.execute(workspace.id);
     const activeAccounts = loadedAccounts.filter((account) => !account.archived);
-    const nextAccountId =
-      accountId !== "" && activeAccounts.some((account) => account.id === accountId)
+    const nextAccountId = !accountInitialized.current
+      ? (activeAccounts[0]?.id ?? "")
+      : accountId === "" || activeAccounts.some((account) => account.id === accountId)
         ? accountId
-        : (activeAccounts[0]?.id ?? "");
+        : "";
+    const availableCurrencies = new Set(
+      activeAccounts
+        .filter((account) => nextAccountId === "" || account.id === nextAccountId)
+        .map((account) => account.currency),
+    );
+    const nextCurrency = currency === "" || !availableCurrencies.has(currency) ? "" : currency;
     const loadedCategories = await services.listCategories.execute();
-    const loadedPage = await services.queryTransactionLedger.execute({
-      filter: {
-        ...(nextAccountId === "" ? {} : { accountIds: [nextAccountId] }),
-        ...(search.trim() === "" ? {} : { search }),
-        ...(fromDate === "" ? {} : { fromDate }),
-        ...(toDate === "" ? {} : { toDate }),
-        ...(categoryId === "" ? {} : { categoryIds: [categoryId] }),
-        ...(reviewState === ""
-          ? {}
-          : { reviewStates: [reviewState as "unreviewed" | "needsReview" | "reviewed"] }),
-        ...(direction === ""
-          ? {}
-          : {
-              amount:
-                direction === "inflow"
-                  ? {
-                      currency:
-                        activeAccounts.find((value) => value.id === nextAccountId)?.currency ??
-                        "CAD",
-                      minimum: "0",
-                    }
-                  : {
-                      currency:
-                        activeAccounts.find((value) => value.id === nextAccountId)?.currency ??
-                        "CAD",
-                      maximum: "0",
-                    },
-            }),
-      },
-      sort: { field: sortField, direction: sortDirection },
-      offset: pageIndex * 50,
-      limit: 50,
-    });
-    const transactions =
-      nextAccountId === "" ? [] : await services.listTransactions.execute(nextAccountId);
+    const sharedFilter = createCashFlowFilter(
+      nextAccountId,
+      nextCurrency,
+      categoryId,
+      fromDate,
+      toDate,
+    );
+    const [loadedPage, loadedSummary, transactionGroups, loadedDecisions] = await Promise.all([
+      services.queryTransactionLedger.execute({
+        filter: {
+          ...sharedFilter,
+          ...(search.trim() === "" ? {} : { search }),
+          ...(reviewState === ""
+            ? {}
+            : { reviewStates: [reviewState as "unreviewed" | "needsReview" | "reviewed"] }),
+          ...(direction === "" ? {} : { directions: [direction] }),
+        },
+        sort: { field: sortField, direction: sortDirection },
+        offset: pageIndex * 50,
+        limit: 50,
+      }),
+      services.queryCashFlowSummary.execute(sharedFilter),
+      Promise.all(
+        activeAccounts
+          .filter((account) => nextAccountId === "" || account.id === nextAccountId)
+          .map((account) => services.listTransactions.execute(account.id)),
+      ),
+      services.listDuplicateResolutions.execute(),
+    ]);
+    const transactions = transactionGroups.flat();
     const latestCreatedAt = transactions.reduce(
       (latest, transaction) => (transaction.createdAt > latest ? transaction.createdAt : latest),
       "",
@@ -108,14 +121,18 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
     setAccounts(activeAccounts);
     setCategories(loadedCategories);
     setAccountId(nextAccountId);
+    setCurrency(nextCurrency);
     setPage(loadedPage);
+    setSummary(loadedSummary);
     setAllTransactions(transactions);
     setDuplicates(candidates);
-    setDecisions(await services.listDuplicateResolutions.execute());
+    setDecisions(loadedDecisions);
+    accountInitialized.current = true;
     setStatus("ready");
   }, [
     accountId,
     categoryId,
+    currency,
     direction,
     fromDate,
     pageIndex,
@@ -259,6 +276,32 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
     setPreviewCount(preview.affectedCount);
   };
 
+  const sharedFilter = createCashFlowFilter(accountId, currency, categoryId, fromDate, toDate);
+  const availableCurrencies = [
+    ...new Set(
+      accounts
+        .filter((account) => accountId === "" || account.id === accountId)
+        .map((account) => account.currency),
+    ),
+  ].sort();
+  const exportCurrentQuery = async () => {
+    try {
+      const exported = await services.exportFilteredTransactions.execute(sharedFilter);
+      const url = URL.createObjectURL(new Blob([exported.content], { type: exported.mediaType }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = exported.fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+      setMessage(`Exported ${exported.rowCount} filtered transactions as a safe UTF-8 CSV file.`);
+    } catch {
+      setStatus("error");
+      setMessage(
+        "The filtered transaction export could not be created. Existing data was unchanged.",
+      );
+    }
+  };
+
   return (
     <div className="transaction-page">
       <section className="import-heading" aria-labelledby="transactions-title">
@@ -268,6 +311,118 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
           Filters, categories, duplicate decisions, and undo remain entirely on this device.
         </p>
       </section>
+
+      <section className="import-panel" aria-labelledby="global-filters-title">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Shared query</p>
+            <h2 id="global-filters-title">Summary and ledger filters</h2>
+          </div>
+        </div>
+        <div className="ledger-filters">
+          <label>
+            Account
+            <select
+              value={accountId}
+              onChange={(event) => {
+                setAccountId(event.currentTarget.value);
+                setCurrency("");
+                setPageIndex(0);
+              }}
+            >
+              <option value="">All accounts</option>
+              {accounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name} · {account.currency}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            From date
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(event) => {
+                setFromDate(event.currentTarget.value);
+                setPageIndex(0);
+              }}
+            />
+          </label>
+          <label>
+            To date
+            <input
+              type="date"
+              value={toDate}
+              onChange={(event) => {
+                setToDate(event.currentTarget.value);
+                setPageIndex(0);
+              }}
+            />
+          </label>
+          <label>
+            Currency
+            <select
+              value={currency}
+              onChange={(event) => {
+                setCurrency(event.currentTarget.value);
+                setPageIndex(0);
+              }}
+            >
+              <option value="">All currencies (kept separate)</option>
+              {availableCurrencies.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Category
+            <select
+              value={categoryId}
+              onChange={(event) => {
+                setCategoryId(event.currentTarget.value);
+                setPageIndex(0);
+              }}
+            >
+              <option value="">All categories</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              setAccountId("");
+              setFromDate("");
+              setToDate("");
+              setCurrency("");
+              setCategoryId("");
+              setPageIndex(0);
+            }}
+          >
+            Reset shared filters
+          </button>
+          <button type="button" onClick={() => void exportCurrentQuery()}>
+            Export filtered CSV
+          </button>
+        </div>
+      </section>
+
+      <CashFlowSummaryView
+        key={JSON.stringify(sharedFilter)}
+        report={summary}
+        accountById={new Map(accounts.map((account) => [account.id, account]))}
+        transactionById={transactionById}
+        unresolvedDuplicateCount={
+          duplicates.filter((candidate) => !decisions.has(candidate.id)).length
+        }
+      />
 
       <DuplicateReview
         candidates={duplicates}
@@ -299,49 +454,11 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
         </div>
         <div className="ledger-filters">
           <label>
-            Account
-            <select
-              value={accountId}
-              onChange={(event) => {
-                setAccountId(event.currentTarget.value);
-                setPageIndex(0);
-              }}
-            >
-              {accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.name} · {account.currency}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
             Search
             <input
               value={search}
               onChange={(event) => {
                 setSearch(event.currentTarget.value);
-                setPageIndex(0);
-              }}
-            />
-          </label>
-          <label>
-            From date
-            <input
-              type="date"
-              value={fromDate}
-              onChange={(event) => {
-                setFromDate(event.currentTarget.value);
-                setPageIndex(0);
-              }}
-            />
-          </label>
-          <label>
-            To date
-            <input
-              type="date"
-              value={toDate}
-              onChange={(event) => {
-                setToDate(event.currentTarget.value);
                 setPageIndex(0);
               }}
             />
@@ -358,23 +475,6 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
               <option value="">All</option>
               <option value="inflow">Money in</option>
               <option value="outflow">Money out</option>
-            </select>
-          </label>
-          <label>
-            Category
-            <select
-              value={categoryId}
-              onChange={(event) => {
-                setCategoryId(event.currentTarget.value);
-                setPageIndex(0);
-              }}
-            >
-              <option value="">All</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
             </select>
           </label>
           <label>
@@ -407,7 +507,7 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
             </select>
           </label>
           <label>
-            Direction
+            Sort direction
             <select
               value={sortDirection}
               onChange={(event) =>
@@ -423,15 +523,14 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
             className="secondary-button"
             onClick={() => {
               setSearch("");
-              setFromDate("");
-              setToDate("");
               setDirection("");
-              setCategoryId("");
               setReviewState("");
+              setSortField("postedDate");
+              setSortDirection("descending");
               setPageIndex(0);
             }}
           >
-            Reset filters
+            Reset ledger filters
           </button>
         </div>
 
@@ -573,6 +672,384 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
       <CategoryManager categories={categories} services={services} onChanged={refresh} />
     </div>
   );
+}
+
+function CashFlowSummaryView({
+  report,
+  accountById,
+  transactionById,
+  unresolvedDuplicateCount,
+}: {
+  readonly report: CashFlowReport;
+  readonly accountById: ReadonlyMap<string, Account>;
+  readonly transactionById: ReadonlyMap<string, Transaction>;
+  readonly unresolvedDuplicateCount: number;
+}) {
+  return (
+    <section className="import-panel cash-flow-summary" aria-labelledby="cash-flow-title">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Deterministic facts</p>
+          <h2 id="cash-flow-title">Cash-flow summary</h2>
+        </div>
+        <span className="storage-chip">{report.filterSummary}</span>
+      </div>
+      {report.mixedCurrencies && (
+        <p className="summary-warning" role="status">
+          Multiple currencies are shown separately. No exchange rate or cross-currency total is
+          implied.
+        </p>
+      )}
+      {unresolvedDuplicateCount > 0 && (
+        <p className="summary-warning" role="status">
+          {unresolvedDuplicateCount} unresolved duplicate candidate(s) may affect these totals.
+          Review the overlap choices below before relying on the summary.
+        </p>
+      )}
+      {report.currencies.length === 0 ? (
+        <p>No transactions match the shared summary filters.</p>
+      ) : (
+        <div className="cash-flow-currencies">
+          {report.currencies.map((currencyReport) => {
+            const titleId = `cash-flow-${currencyReport.currency.toLowerCase()}`;
+            const period = describePeriod(currencyReport.months.map(({ month }) => month));
+            return (
+              <article key={currencyReport.currency} aria-labelledby={titleId}>
+                <div className="summary-context">
+                  <h3 id={titleId}>{currencyReport.currency} cash flow</h3>
+                  <p>
+                    Period: {period} · Currency: {currencyReport.currency} · Filters:{" "}
+                    {report.filterSummary}
+                  </p>
+                </div>
+                <div className="metric-grid">
+                  <SummaryMetric
+                    label="Income"
+                    value={currencyReport.income}
+                    currency={currencyReport.currency}
+                    drilldownTitle={`${currencyReport.currency} income`}
+                    transactionIds={currencyReport.incomeTransactionIds}
+                    transactionById={transactionById}
+                  />
+                  <SummaryMetric
+                    label="Spending"
+                    value={currencyReport.spending}
+                    currency={currencyReport.currency}
+                    drilldownTitle={`${currencyReport.currency} spending`}
+                    transactionIds={currencyReport.spendingTransactionIds}
+                    transactionById={transactionById}
+                  />
+                  <SummaryMetric
+                    label="Transfer activity excluded"
+                    value={currencyReport.transfers}
+                    currency={currencyReport.currency}
+                    drilldownTitle={`${currencyReport.currency} excluded transfer activity`}
+                    transactionIds={currencyReport.transferTransactionIds}
+                    transactionById={transactionById}
+                  />
+                  <SummaryMetric
+                    label="Net cash flow"
+                    value={currencyReport.netCashFlow}
+                    currency={currencyReport.currency}
+                    drilldownTitle={`${currencyReport.currency} net cash flow`}
+                    transactionIds={currencyReport.cashFlowTransactionIds}
+                    transactionById={transactionById}
+                  />
+                </div>
+                <p className="summary-takeaway">{currencyReport.takeaway}</p>
+                {(currencyReport.unresolvedReviewCount > 0 ||
+                  currencyReport.excludedVoidCount > 0) && (
+                  <p className="summary-warning">
+                    {currencyReport.unresolvedReviewCount} included transaction(s) still need
+                    review. {currencyReport.excludedVoidCount} void transaction(s) were excluded.
+                  </p>
+                )}
+
+                <h4>Monthly cash flow</h4>
+                <MonthlyCashFlowChart report={currencyReport} />
+                <div
+                  className="table-scroll"
+                  tabIndex={0}
+                  role="region"
+                  aria-label={`${currencyReport.currency} monthly cash-flow data`}
+                >
+                  <table>
+                    <caption>
+                      Monthly cash flow · {period} · {currencyReport.currency} ·{" "}
+                      {report.filterSummary}
+                    </caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Month</th>
+                        <th scope="col">Period status</th>
+                        <th scope="col">Income</th>
+                        <th scope="col">Spending</th>
+                        <th scope="col">Transfers excluded</th>
+                        <th scope="col">Net cash flow</th>
+                        <th scope="col">Records</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currencyReport.months.map((month) => (
+                        <tr key={month.month}>
+                          <th scope="row">{month.month}</th>
+                          <td>{month.incomplete ? "Incomplete" : "Complete"}</td>
+                          <td>{formatAmount(currencyReport.currency, month.income)}</td>
+                          <td>{formatAmount(currencyReport.currency, month.spending)}</td>
+                          <td>{formatAmount(currencyReport.currency, month.transfers)}</td>
+                          <td>{formatAmount(currencyReport.currency, month.netCashFlow)}</td>
+                          <td>
+                            <TransactionDrilldownDisclosure
+                              title={`${month.month} ${currencyReport.currency} cash flow`}
+                              transactionIds={month.transactionIds}
+                              transactionById={transactionById}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <h4>Cash flow by account</h4>
+                <div
+                  className="table-scroll"
+                  tabIndex={0}
+                  role="region"
+                  aria-label={`${currencyReport.currency} account cash-flow data`}
+                >
+                  <table>
+                    <caption>
+                      Account cash flow · {period} · {currencyReport.currency} ·{" "}
+                      {report.filterSummary}
+                    </caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Account</th>
+                        <th scope="col">Income</th>
+                        <th scope="col">Spending</th>
+                        <th scope="col">Transfers excluded</th>
+                        <th scope="col">Net cash flow</th>
+                        <th scope="col">Records</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currencyReport.accounts.map((account) => (
+                        <tr key={account.accountId}>
+                          <th scope="row">
+                            {accountById.get(account.accountId)?.name ?? "Unknown account"}
+                          </th>
+                          <td>{formatAmount(currencyReport.currency, account.income)}</td>
+                          <td>{formatAmount(currencyReport.currency, account.spending)}</td>
+                          <td>{formatAmount(currencyReport.currency, account.transfers)}</td>
+                          <td>{formatAmount(currencyReport.currency, account.netCashFlow)}</td>
+                          <td>
+                            <TransactionDrilldownDisclosure
+                              title={`${accountById.get(account.accountId)?.name ?? "Unknown account"} cash flow in ${currencyReport.currency}`}
+                              transactionIds={account.transactionIds}
+                              transactionById={transactionById}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <h4>Spending by category</h4>
+                <div
+                  className="table-scroll"
+                  tabIndex={0}
+                  role="region"
+                  aria-label={`${currencyReport.currency} category spending data`}
+                >
+                  <table>
+                    <caption>
+                      Category spending · {period} · {currencyReport.currency} ·{" "}
+                      {report.filterSummary}
+                    </caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Category</th>
+                        <th scope="col">Spending</th>
+                        <th scope="col">Records</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currencyReport.categories.map((category) => (
+                        <tr key={category.categoryId ?? "uncategorized"}>
+                          <th scope="row">{category.categoryName}</th>
+                          <td>{formatAmount(currencyReport.currency, category.spending)}</td>
+                          <td>
+                            <TransactionDrilldownDisclosure
+                              title={`${category.categoryName} spending in ${currencyReport.currency}`}
+                              transactionIds={category.transactionIds}
+                              transactionById={transactionById}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SummaryMetric({
+  label,
+  value,
+  currency,
+  drilldownTitle,
+  transactionIds,
+  transactionById,
+}: {
+  readonly label: string;
+  readonly value: string;
+  readonly currency: string;
+  readonly drilldownTitle: string;
+  readonly transactionIds: readonly string[];
+  readonly transactionById: ReadonlyMap<string, Transaction>;
+}) {
+  return (
+    <div className="metric-card">
+      <span>{label}</span>
+      <strong>{formatAmount(currency, value)}</strong>
+      <TransactionDrilldownDisclosure
+        title={drilldownTitle}
+        transactionIds={transactionIds}
+        transactionById={transactionById}
+        compact
+      />
+    </div>
+  );
+}
+
+function TransactionDrilldownDisclosure({
+  title,
+  transactionIds,
+  transactionById,
+  compact = false,
+}: {
+  readonly title: string;
+  readonly transactionIds: readonly string[];
+  readonly transactionById: ReadonlyMap<string, Transaction>;
+  readonly compact?: boolean;
+}) {
+  return (
+    <details className="transaction-drilldown">
+      <summary>
+        {compact
+          ? "View contributing transactions"
+          : `View ${transactionIds.length} transaction(s)`}
+      </summary>
+      <p>These are the exact canonical records contributing to the selected fact.</p>
+      <ol className="drilldown-list" aria-label={title}>
+        {transactionIds.map((id) => {
+          const transaction = transactionById.get(id);
+          if (transaction === undefined) return null;
+          const money = transaction.money.toJSON();
+          return (
+            <li key={transaction.id}>
+              <strong>{transaction.description}</strong>
+              <span>{transaction.postedDate}</span>
+              <span>{formatAmount(money.currency, money.amount)}</span>
+              <span>Review: {transaction.reviewState}</span>
+              <span>Source: {transaction.provenance.sourceLocation}</span>
+            </li>
+          );
+        })}
+      </ol>
+    </details>
+  );
+}
+
+function MonthlyCashFlowChart({
+  report,
+}: {
+  readonly report: CashFlowReport["currencies"][number];
+}) {
+  const values = report.months.flatMap(({ income, spending }) => [
+    Number(income),
+    Number(spending),
+  ]);
+  const maximum = Math.max(1, ...values);
+  const width = 720;
+  const height = 180;
+  const groupWidth = width / Math.max(1, report.months.length);
+  return (
+    <svg
+      className="summary-chart"
+      viewBox={`0 0 ${width} ${height}`}
+      role="img"
+      aria-labelledby={`chart-${report.currency}-title chart-${report.currency}-description`}
+    >
+      <title id={`chart-${report.currency}-title`}>
+        Monthly income and spending in {report.currency}
+      </title>
+      <desc id={`chart-${report.currency}-description`}>
+        Visual comparison only. The adjacent table contains exact values and incomplete-period
+        markers.
+      </desc>
+      {report.months.map((month, index) => {
+        const incomeHeight = (Number(month.income) / maximum) * 130;
+        const spendingHeight = (Number(month.spending) / maximum) * 130;
+        const x = index * groupWidth + groupWidth * 0.2;
+        return (
+          <g key={month.month}>
+            <rect
+              className="chart-income"
+              x={x}
+              y={150 - incomeHeight}
+              width={groupWidth * 0.25}
+              height={incomeHeight}
+            />
+            <rect
+              className="chart-spending"
+              x={x + groupWidth * 0.3}
+              y={150 - spendingHeight}
+              width={groupWidth * 0.25}
+              height={spendingHeight}
+            />
+            <text x={x} y={170} fontSize="11">
+              {month.month}
+              {month.incomplete ? "*" : ""}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function createCashFlowFilter(
+  accountId: string,
+  currency: string,
+  categoryId: string,
+  fromDate: string,
+  toDate: string,
+): CashFlowFilter {
+  return {
+    ...(accountId === "" ? {} : { accountIds: [accountId] }),
+    ...(currency === "" ? {} : { currencies: [currency] }),
+    ...(categoryId === "" ? {} : { categoryIds: [categoryId] }),
+    ...(fromDate === "" ? {} : { fromDate }),
+    ...(toDate === "" ? {} : { toDate }),
+  };
+}
+
+function describePeriod(months: readonly string[]): string {
+  if (months.length === 0) return "No matching period";
+  return months.length === 1 ? months[0]! : `${months[0]} to ${months.at(-1)}`;
+}
+
+function formatAmount(currency: string, amount: string): string {
+  return `${currency} ${amount}`;
 }
 
 function TransactionDetails({
