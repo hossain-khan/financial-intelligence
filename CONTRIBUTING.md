@@ -4,10 +4,11 @@ Thank you for helping build Financial Intelligence. The project handles unusuall
 
 ## Before contributing
 
-1. Read the [vision](docs/00-VISION.md), [design principles](docs/01-DESIGN-PRINCIPLES.md), and [glossary](docs/02-GLOSSARY.md).
-2. Check the [product requirements](docs/03-PRODUCT-REQUIREMENTS.md) and [roadmap](docs/15-ROADMAP.md) for scope.
-3. Open an issue before a large change or any change to public schemas, persistence, security boundaries, AI data disclosure, or plugin permissions.
-4. Record decisions with long-lived architectural consequences as an ADR using the conventions in `docs/adr/`.
+1. AI coding agents must read and follow the repository-wide [`AGENTS.md`](AGENTS.md) operating contract.
+2. Read the [vision](docs/00-VISION.md), [design principles](docs/01-DESIGN-PRINCIPLES.md), and [glossary](docs/02-GLOSSARY.md).
+3. Check the [product requirements](docs/03-PRODUCT-REQUIREMENTS.md) and [roadmap](docs/15-ROADMAP.md) for scope.
+4. Open an issue before a large change or any change to public schemas, persistence, security boundaries, AI data disclosure, or plugin permissions.
+5. Record decisions with long-lived architectural consequences as an ADR using the conventions in `docs/adr/`.
 
 ## Engineering expectations
 
@@ -20,13 +21,18 @@ Thank you for helping build Financial Intelligence. The project handles unusuall
 - Preserve keyboard, screen-reader, reduced-motion, high-contrast, and narrow-screen behavior.
 - Do not add telemetry or remote requests without a reviewed ADR and explicit user consent.
 
-## Suggested change workflow
+## Required change workflow
+
+Every change, including documentation, dependency, workflow, and schema changes, must be made on a
+focused branch and merged through a pull request. Direct commits and pushes to `main` are prohibited.
 
 1. Create a focused branch.
 2. Update the relevant specification before or with implementation.
 3. Add tests covering success, malformed input, duplicates, cancellation, and recovery where applicable.
-4. Run formatting, linting, type checking, tests, schema validation, and production build.
-5. Run the Chromium browser gate for UI, storage, PWA, routing, or network-boundary changes.
+4. Run the complete CI-equivalent gate documented in [`AGENTS.md`](AGENTS.md), including formatting,
+   linting, schema validation, type checking, tests, production build, security headers, dependency
+   audit, and browser tests.
+5. Ensure every required pull-request CI job passes; do not weaken or skip a gate to obtain a green build.
 6. Describe privacy impact, data-model impact, migration behavior, and screenshots for UI changes in the pull request.
 
 ## Commit and pull-request guidance

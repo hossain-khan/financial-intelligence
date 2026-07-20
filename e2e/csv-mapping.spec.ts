@@ -58,7 +58,7 @@ test("atomically commits and reloads a bank-shaped CSV import without network ac
   await expect(page.getByText("synthetic-bank-details.csv", { exact: true })).toBeVisible();
 
   await page.getByRole("link", { name: "Transactions" }).click();
-  await expect(page.getByRole("heading", { name: "Ledger" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ledger", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Cash-flow summary" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "CAD cash flow" })).toBeVisible();
   await expect(page.getByText("Income exceeds spending by CAD 1865.75.")).toBeVisible();
