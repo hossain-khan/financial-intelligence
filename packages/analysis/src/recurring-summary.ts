@@ -51,9 +51,10 @@ export function summarizeRecurringSeries(
 
   for (const p of proposals) {
     const d = decisionMap.get(p.id);
-    const status: "confirmed" | "proposed" | "dismissed" | "muted" = d
-      ? (d.status as "confirmed" | "dismissed" | "muted")
-      : "proposed";
+    const status: "confirmed" | "proposed" | "dismissed" | "muted" =
+      d?.status === "confirmed" || d?.status === "dismissed" || d?.status === "muted"
+        ? d.status
+        : "proposed";
 
     const row: RecurringSeriesRow = {
       id: p.id,

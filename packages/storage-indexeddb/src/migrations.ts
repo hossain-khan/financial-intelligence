@@ -29,6 +29,8 @@ const MERCHANT_SCHEMA = "&id, name, archived, updatedAt";
 const CLASSIFICATION_RULE_SCHEMA = "&id, priority, enabled, name, updatedAt";
 const TRANSFER_DECISION_SCHEMA = "&id, signature, status, updatedAt";
 const RECURRING_DECISION_SCHEMA = "&id, signature, status, updatedAt";
+const LEARNING_OPERATION_SCHEMA = "&id, kind, createdAt, undoneAt";
+const DECISION_EVENT_SCHEMA = "&id, aggregateType, aggregateId, action, occurredAt";
 
 export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
   {
@@ -134,9 +136,30 @@ export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
       recurringDecisions: RECURRING_DECISION_SCHEMA,
     },
   },
+  {
+    version: 9,
+    description: "Add atomic learning and derived-decision operation journals",
+    stores: {
+      workspaces: WORKSPACE_SCHEMA,
+      migrationJournal: MIGRATION_JOURNAL_SCHEMA,
+      accounts: ACCOUNT_SCHEMA,
+      imports: IMPORT_SCHEMA,
+      transactions: REVIEWABLE_TRANSACTION_SCHEMA,
+      transactionFingerprints: TRANSACTION_FINGERPRINT_SCHEMA,
+      categories: CATEGORY_SCHEMA,
+      transactionOperations: TRANSACTION_OPERATION_SCHEMA,
+      duplicateResolutionEvents: DUPLICATE_RESOLUTION_SCHEMA,
+      merchants: MERCHANT_SCHEMA,
+      classificationRules: CLASSIFICATION_RULE_SCHEMA,
+      transferDecisions: TRANSFER_DECISION_SCHEMA,
+      recurringDecisions: RECURRING_DECISION_SCHEMA,
+      learningOperations: LEARNING_OPERATION_SCHEMA,
+      decisionEvents: DECISION_EVENT_SCHEMA,
+    },
+  },
 ];
 
-export const CURRENT_DATABASE_VERSION = 8;
+export const CURRENT_DATABASE_VERSION = 9;
 
 export function registerDatabaseMigrations(
   database: Dexie,

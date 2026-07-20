@@ -44,9 +44,11 @@ const EMPTY_SUMMARY: CashFlowReport = {
 export function TransactionPage({
   services,
   initialTransactionIds = EMPTY_TRANSACTION_IDS,
+  returnToDashboard,
 }: {
   readonly services: ApplicationServices;
   readonly initialTransactionIds?: readonly string[];
+  readonly returnToDashboard?: string;
 }) {
   const [accounts, setAccounts] = useState<readonly Account[]>([]);
   const [categories, setCategories] = useState<readonly Category[]>([]);
@@ -343,10 +345,11 @@ export function TransactionPage({
       </section>
 
       {initialTransactionIds.length > 0 && (
-        <p role="status" className="mapping-status">
+        <div role="status" className="mapping-status">
           Showing the exact {initialTransactionIds.length} transaction(s) selected from the
-          dashboard. Use Transactions in the main navigation to return to the complete ledger.
-        </p>
+          dashboard.{" "}
+          {returnToDashboard && <a href={returnToDashboard}>Return to the same dashboard view.</a>}
+        </div>
       )}
 
       <TransferReviewSection

@@ -1,8 +1,10 @@
 export {
   FinancialDatabase,
+  IndexedDbAtomicLearningRepository,
   IndexedDbAccountRepository,
   IndexedDbCategoryRepository,
   IndexedDbDuplicateResolutionRepository,
+  IndexedDbDashboardSnapshotRepository,
   IndexedDbImportCommitRepository,
   IndexedDbMerchantRepository,
   IndexedDbRecurringDecisionRepository,

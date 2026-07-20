@@ -15,6 +15,13 @@ export interface TransferDecisionRepository {
   list(): Promise<readonly TransferLink[]>;
   findBySignature(signature: string): Promise<TransferLink | undefined>;
   save(link: TransferLink): Promise<void>;
+  confirmAtomically?(
+    proposal: TransferProposal,
+    link: TransferLink,
+    eventId: string,
+  ): Promise<void>;
+  saveWithEvent?(link: TransferLink, eventId: string, action: string): Promise<void>;
+  undoLast?(signature: string, eventId: string, occurredAt: string): Promise<void>;
 }
 
 export class FindTransferProposalsUseCase {
@@ -96,7 +103,11 @@ export class ConfirmTransferProposalUseCase {
       updatedAt: now,
     };
 
-    await this.decisionRepository.save(link);
+    if (this.decisionRepository.confirmAtomically !== undefined) {
+      await this.decisionRepository.confirmAtomically(proposal, link, this.ids.generate());
+    } else {
+      await this.decisionRepository.save(link);
+    }
     return link;
   }
 }
@@ -139,7 +150,11 @@ export class RejectTransferProposalUseCase {
       updatedAt: now,
     };
 
-    await this.decisionRepository.save(link);
+    if (this.decisionRepository.saveWithEvent !== undefined) {
+      await this.decisionRepository.saveWithEvent(link, this.ids.generate(), "reject");
+    } else {
+      await this.decisionRepository.save(link);
+    }
     return link;
   }
 }
@@ -148,6 +163,7 @@ export class UnlinkTransferUseCase {
   public constructor(
     private readonly decisionRepository: TransferDecisionRepository,
     private readonly clock: ApplicationClock,
+    private readonly ids?: IdGenerator,
   ) {}
 
   public async execute(signature: string): Promise<void> {
@@ -163,6 +179,29 @@ export class UnlinkTransferUseCase {
       updatedAt: now,
     };
 
-    await this.decisionRepository.save(unlinked);
+    if (this.decisionRepository.saveWithEvent !== undefined && this.ids !== undefined) {
+      await this.decisionRepository.saveWithEvent(unlinked, this.ids.generate(), "unlink");
+    } else {
+      await this.decisionRepository.save(unlinked);
+    }
+  }
+}
+
+export class UndoTransferDecisionUseCase {
+  public constructor(
+    private readonly decisionRepository: TransferDecisionRepository,
+    private readonly clock: ApplicationClock,
+    private readonly ids: IdGenerator,
+  ) {}
+
+  public async execute(signature: string): Promise<void> {
+    if (this.decisionRepository.undoLast === undefined) {
+      throw new Error("Transfer decision undo is unavailable");
+    }
+    await this.decisionRepository.undoLast(
+      signature,
+      this.ids.generate(),
+      this.clock.now().toISOString(),
+    );
   }
 }

@@ -91,6 +91,47 @@ function normalizeDescription(description: string): string {
   return description.toUpperCase().replace(/[0-9]/g, "").replace(/\s+/g, " ").trim();
 }
 
+function recurringGroupIdentity(transaction: Transaction): string {
+  return `${normalizeDescription(transaction.description)}:${transaction.money.currency}`.toLowerCase();
+}
+
+function proposalGroupIdentity(proposal: RecurringProposal): string {
+  const member = proposal.memberTransactions[0];
+  return member === undefined
+    ? proposal.id.slice(0, -(proposal.cadence.length + 1))
+    : recurringGroupIdentity(member);
+}
+
+/** Recomputes only groups touched by added, removed, voided, or regrouped transactions. */
+export function recomputeRecurringProposalsIncrementally(input: {
+  readonly transactions: readonly Transaction[];
+  readonly previous: readonly RecurringProposal[];
+  readonly affectedTransactionIds: ReadonlySet<string>;
+  readonly options?: RecurringDetectionOptions;
+}): readonly RecurringProposal[] {
+  const affectedGroups = new Set<string>();
+  for (const proposal of input.previous) {
+    if (proposal.memberTransactions.some(({ id }) => input.affectedTransactionIds.has(id))) {
+      affectedGroups.add(proposalGroupIdentity(proposal));
+    }
+  }
+  for (const transaction of input.transactions) {
+    if (input.affectedTransactionIds.has(transaction.id)) {
+      affectedGroups.add(recurringGroupIdentity(transaction));
+    }
+  }
+  if (affectedGroups.size === 0) return input.previous;
+  const unaffected = input.previous.filter(
+    (proposal) => !affectedGroups.has(proposalGroupIdentity(proposal)),
+  );
+  const affectedTransactions = input.transactions.filter((transaction) =>
+    affectedGroups.has(recurringGroupIdentity(transaction)),
+  );
+  return [...unaffected, ...findRecurringProposals(affectedTransactions, input.options)].sort(
+    (left, right) => right.confidence - left.confidence || left.id.localeCompare(right.id),
+  );
+}
+
 /**
  * Pure deterministic detector over non-void outflows.
  */

@@ -19,10 +19,14 @@ export function BrainManagementView({
   const [rawJson, setRawJson] = useState<string>();
   const [previewDoc, setPreviewDoc] = useState<FinancialBrainDocument>();
   const [importPlan, setImportPlan] = useState<BrainImportPlan>();
+  const [sourceRevision, setSourceRevision] = useState<string>();
+  const [inputDigest, setInputDigest] = useState<string>();
+  const [duplicatesAcknowledged, setDuplicatesAcknowledged] = useState(false);
   const [conflictResolutions, setConflictResolutions] = useState<
     Map<string, "keep-local" | "accept-incoming">
   >(new Map());
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lastOperationId, setLastOperationId] = useState<string>();
 
   const handleExport = async () => {
     try {
@@ -54,11 +58,19 @@ export function BrainManagementView({
         );
       }
       const text = await file.text();
-      const { doc, plan } = await services.previewFinancialBrainImportUseCase.execute(text);
+      const {
+        doc,
+        plan,
+        sourceRevision: revision,
+        inputDigest: digest,
+      } = await services.previewFinancialBrainImportUseCase.execute(text);
 
       setRawJson(text);
       setPreviewDoc(doc);
       setImportPlan(plan);
+      setSourceRevision(revision);
+      setInputDigest(digest);
+      setDuplicatesAcknowledged(false);
       setConflictResolutions(new Map());
       setModalOpen(true);
       setError(undefined);
@@ -75,26 +87,55 @@ export function BrainManagementView({
 
   const handleApplyImport = async (e: FormEvent) => {
     e.preventDefault();
-    if (rawJson === undefined || importPlan === undefined) return;
+    if (
+      rawJson === undefined ||
+      importPlan === undefined ||
+      sourceRevision === undefined ||
+      inputDigest === undefined
+    )
+      return;
 
     setIsSubmitting(true);
     try {
       const res = await services.applyFinancialBrainImportUseCase.execute({
         rawJson,
         conflictResolutions,
+        sourceRevision,
+        inputDigest,
+        acknowledgeSemanticDuplicates: duplicatesAcknowledged,
       });
 
       setModalOpen(false);
       setRawJson(undefined);
       setPreviewDoc(undefined);
       setImportPlan(undefined);
+      setSourceRevision(undefined);
+      setInputDigest(undefined);
       await onRefresh();
       setMessage(`Successfully imported ${res.appliedCount} Financial Brain item(s).`);
+      setLastOperationId(res.operationId);
       setError(undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to apply Financial Brain import.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleUndo = async () => {
+    if (lastOperationId === undefined) return;
+    try {
+      await services.undoLearningOperationUseCase.execute(lastOperationId);
+      await onRefresh();
+      setMessage("The last Financial Brain import was safely undone.");
+      setLastOperationId(undefined);
+      setError(undefined);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Undo was refused because the learned data changed afterward.",
+      );
     }
   };
 
@@ -117,6 +158,11 @@ export function BrainManagementView({
         <p role="status" className="mapping-status" aria-live="polite">
           {message}
         </p>
+      )}
+      {lastOperationId && (
+        <button type="button" className="secondary-button" onClick={() => void handleUndo()}>
+          Undo last Brain import
+        </button>
       )}
       {error && (
         <p
@@ -199,6 +245,14 @@ export function BrainManagementView({
                   </li>
                 ))}
               </ul>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={duplicatesAcknowledged}
+                  onChange={(event) => setDuplicatesAcknowledged(event.target.checked)}
+                />{" "}
+                I reviewed these possible duplicates and want to keep their stable IDs separate.
+              </label>
             </div>
           )}
 
@@ -244,7 +298,8 @@ export function BrainManagementView({
                 type="submit"
                 disabled={
                   isSubmitting ||
-                  importPlan.conflicts.some((c) => conflictResolutions.get(c.id) === undefined)
+                  importPlan.conflicts.some((c) => conflictResolutions.get(c.id) === undefined) ||
+                  (importPlan.semanticDuplicates.length > 0 && !duplicatesAcknowledged)
                 }
               >
                 Apply Import

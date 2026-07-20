@@ -32,6 +32,8 @@ describe("encrypted workspace backups", () => {
         classificationRules: 0,
         transferDecisions: 0,
         recurringDecisions: 0,
+        learningOperations: 0,
+        decisionEvents: 0,
         transactionOperations: 0,
         duplicateResolutionEvents: 0,
       },

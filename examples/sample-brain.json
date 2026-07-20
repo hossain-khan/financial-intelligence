@@ -74,7 +74,18 @@
       "updatedAt": "2026-07-19T14:15:00Z"
     }
   ],
-  "recurringDecisions": [],
+  "recurringDecisions": [
+    {
+      "id": "7741e998-3270-42d2-a3ea-806a7fc11e0e",
+      "signature": "harbor coffee:cad:weekly",
+      "name": "Weekly coffee",
+      "merchantId": "b1f6221a-c8a2-4f5b-918c-b8706d725a46",
+      "status": "confirmed",
+      "cadence": "weekly",
+      "toleranceDays": 2,
+      "updatedAt": "2026-07-19T14:30:00Z"
+    }
+  ],
   "preferences": {
     "locale": "en-CA",
     "firstDayOfWeek": "monday",

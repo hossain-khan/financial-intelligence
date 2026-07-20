@@ -51,6 +51,8 @@ export interface WorkspaceBackupSnapshot {
   readonly classificationRules: readonly ClassificationRule[];
   readonly transferDecisions: readonly TransferLink[];
   readonly recurringDecisions: readonly RecurringDecisionRecord[];
+  readonly learningOperations?: readonly BackupOperationDocument[];
+  readonly decisionEvents?: readonly BackupOperationDocument[];
   readonly transactionOperations: readonly BackupTransactionOperationDocument[];
   readonly duplicateResolutionEvents: readonly BackupDuplicateResolutionEventDocument[];
 }
@@ -68,9 +70,15 @@ export interface WorkspaceBackupPreview {
     readonly classificationRules: number;
     readonly transferDecisions: number;
     readonly recurringDecisions: number;
+    readonly learningOperations: number;
+    readonly decisionEvents: number;
     readonly transactionOperations: number;
     readonly duplicateResolutionEvents: number;
   };
+}
+
+export interface BackupOperationDocument {
+  readonly id: string;
 }
 
 export function serializeSnapshot(snapshot: WorkspaceBackupSnapshot): Uint8Array {
@@ -109,6 +117,8 @@ export function previewSnapshot(snapshot: WorkspaceBackupSnapshot): WorkspaceBac
       classificationRules: snapshot.classificationRules.length,
       transferDecisions: snapshot.transferDecisions.length,
       recurringDecisions: snapshot.recurringDecisions.length,
+      learningOperations: snapshot.learningOperations?.length ?? 0,
+      decisionEvents: snapshot.decisionEvents?.length ?? 0,
       transactionOperations: snapshot.transactionOperations.length,
       duplicateResolutionEvents: snapshot.duplicateResolutionEvents.length,
     },
@@ -140,6 +150,8 @@ function validateSnapshot(value: unknown): asserts value is WorkspaceBackupSnaps
     !Array.isArray(value.classificationRules) ||
     !Array.isArray(value.transferDecisions) ||
     !Array.isArray(value.recurringDecisions) ||
+    (value.learningOperations !== undefined && !Array.isArray(value.learningOperations)) ||
+    (value.decisionEvents !== undefined && !Array.isArray(value.decisionEvents)) ||
     !Array.isArray(value.transactionOperations) ||
     !Array.isArray(value.duplicateResolutionEvents)
   )
@@ -157,6 +169,8 @@ function validateSnapshot(value: unknown): asserts value is WorkspaceBackupSnaps
   const classificationRules = value.classificationRules;
   const transferDecisions = value.transferDecisions;
   const recurringDecisions = value.recurringDecisions;
+  const learningOperations = value.learningOperations ?? [];
+  const decisionEvents = value.decisionEvents ?? [];
   const operations = value.transactionOperations;
   const events = value.duplicateResolutionEvents;
   try {
@@ -195,6 +209,8 @@ function validateSnapshot(value: unknown): asserts value is WorkspaceBackupSnaps
         invalid();
     }
     if (uniqueIds(recurringDecisions).size !== recurringDecisions.length) invalid();
+    if (uniqueIds(learningOperations).size !== learningOperations.length) invalid();
+    if (uniqueIds(decisionEvents).size !== decisionEvents.length) invalid();
     if (uniqueIds(operations).size !== operations.length) invalid();
     for (const operation of operations) {
       if (!isOperation(operation)) invalid();

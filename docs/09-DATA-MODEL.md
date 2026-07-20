@@ -121,7 +121,18 @@ Connects two transaction IDs with status, matching evidence, confidence if propo
 
 ## Recurring series
 
-Stores ID, optional merchant/category, cadence estimate, amount range, currency, member references or query signature, status, confidence/evidence, last seen, and next expected date. Derived series can be rebuilt; user confirmation/dismissal is preserved as learning.
+Stores ID, signature, name, optional merchant, cadence and bounded tolerance, durable member
+transaction IDs, detector version, status, superseded record IDs, and update time. Operational
+statuses include `superseded` and `invalidated`; those states preserve explanation and recovery but
+are excluded from portable Brain JSON. Split/merge never changes source transactions.
+
+## Operation journals
+
+`learningOperations` records the expected revision, input digest, kind, and exact bounded
+before/after changes for transactions, categories, merchants, rules, and recurring decisions.
+`decisionEvents` records transfer or recurring confirm/reject/edit/split/merge/unlink/invalidate/undo
+events. Both are sensitive local operational state, included in full encrypted backup, and excluded
+from Financial Brain export.
 
 ## Dashboard
 
@@ -144,6 +155,9 @@ Defined by [financial-brain.schema.json](../schemas/financial-brain.schema.json)
 ## Derived data
 
 Monthly/category/merchant aggregates, search indexes, duplicate candidates, dashboard caches, and most recurring candidates are rebuildable projections. They have a source revision and must never be the sole record of a user-confirmed decision.
+
+A dashboard snapshot is not persisted as canonical data. It is a revision-consistent read of all
+stores used by the report and carries an opaque `sourceRevision` for stale-result detection.
 
 ## Deletion semantics
 

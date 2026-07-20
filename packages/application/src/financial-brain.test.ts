@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   parseBrainId,
@@ -23,6 +23,7 @@ import {
 import type { MerchantRepository } from "./merchants";
 import type { RuleRepository } from "./rules";
 import type { RecurringDecisionRepository } from "./recurring";
+import type { AtomicLearningRepository } from "./learning-operations";
 
 const NOW = parseUtcTimestamp("2026-07-20T10:00:00Z");
 
@@ -212,6 +213,71 @@ describe("Financial Brain application services", () => {
     const preview = await previewUseCase.execute(json);
     expect(preview.plan.additions.categories).toHaveLength(1);
     expect(preview.plan.additions.merchants).toHaveLength(1);
+
+    const atomicRepository = {
+      revision: vi.fn(async () => "revision-1"),
+      apply: vi.fn(async () => undefined),
+    } as unknown as AtomicLearningRepository;
+    const digest = { digest: vi.fn(async () => "digest-1") };
+    const atomicPreview = new PreviewFinancialBrainImportUseCase(
+      categories,
+      merchants,
+      rules,
+      undefined,
+      recurring,
+      atomicRepository,
+      digest,
+    );
+    const versionedPreview = await atomicPreview.execute(json);
+    expect(versionedPreview.sourceRevision).toBe("revision-1");
+    expect(versionedPreview.inputDigest).toBe("digest-1");
+
+    const emptyCategories = new InMemoryCategoryRepository();
+    const emptyMerchants = new InMemoryMerchantRepository();
+    const emptyRules = new InMemoryRuleRepository();
+    const emptyRecurring = new InMemoryRecurringRepository();
+    const atomicApply = new ApplyFinancialBrainImportUseCase(
+      emptyCategories,
+      emptyMerchants,
+      emptyRules,
+      { generate: () => "018f6b80-0d62-7d2c-9a5c-7f5f59cda889" },
+      undefined,
+      emptyRecurring,
+      atomicRepository,
+      digest,
+      { now: () => new Date("2026-07-20T10:00:00Z") },
+    );
+    await expect(atomicApply.execute({ rawJson: json })).rejects.toThrow(
+      "requires its preview revision and digest",
+    );
+    digest.digest = vi.fn(async () => "different-digest");
+    await expect(
+      atomicApply.execute({
+        rawJson: json,
+        sourceRevision: "revision-1",
+        inputDigest: "digest-1",
+      }),
+    ).rejects.toThrow("input changed after preview");
+    digest.digest = vi.fn(async () => "digest-1");
+    const atomicResult = await atomicApply.execute({
+      rawJson: json,
+      sourceRevision: "revision-1",
+      inputDigest: "digest-1",
+    });
+    expect(atomicResult.appliedCount).toBe(4);
+    expect(atomicRepository.apply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "018f6b80-0d62-7d2c-9a5c-7f5f59cda889",
+        expectedRevision: "revision-1",
+        inputDigest: "digest-1",
+        changes: expect.arrayContaining([
+          expect.objectContaining({ store: "categories", id: catId }),
+          expect.objectContaining({ store: "merchants", id: merchId }),
+          expect.objectContaining({ store: "classificationRules", id: ruleId }),
+          expect.objectContaining({ store: "recurringDecisions" }),
+        ]),
+      }),
+    );
 
     const applyRes = await applyUseCase.execute({ rawJson: json });
     expect(applyRes.appliedCount).toBe(4);

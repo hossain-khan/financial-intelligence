@@ -1,5 +1,13 @@
 import {
+  addAliasToMerchant,
+  createClassificationRule,
+  createMerchantAlias,
   deriveReviewQueueItem,
+  parseAliasId,
+  parseOperationId,
+  parseRuleId,
+  parseUtcTimestamp,
+  transactionToCanonical,
   type AccountType,
   type AccountId,
   type CategoryId,
@@ -15,8 +23,12 @@ import type { MerchantRepository } from "./merchants";
 import type { AccountRepository } from "./accounts";
 import type { AddMerchantAliasUseCase } from "./merchants";
 import type { CreateRuleUseCase, RuleRepository } from "./rules";
+import { assertNoDefiniteRuleConflict } from "./rules";
 import type { ApplyBulkTransactionEdit } from "./transaction-ledger";
 import type { TransactionLedgerRepository } from "./transaction-ledger";
+import { planBulkTransactionEdit } from "./transaction-ledger";
+import type { AtomicLearningRepository, LearningOperationChange } from "./learning-operations";
+import type { ApplicationClock, IdGenerator } from "./workspaces";
 
 export interface QueryReviewQueueInput {
   readonly accountId?: AccountId;
@@ -138,6 +150,12 @@ export class ApplyReviewCorrectionUseCase {
     private readonly applyBulkEdit: ApplyBulkTransactionEdit,
     private readonly createRuleUseCase?: CreateRuleUseCase,
     private readonly addMerchantAliasUseCase?: AddMerchantAliasUseCase,
+    private readonly atomicRepository?: AtomicLearningRepository,
+    private readonly ledgerRepository?: TransactionLedgerRepository,
+    private readonly ruleRepository?: RuleRepository,
+    private readonly merchantRepository?: MerchantRepository,
+    private readonly clock?: ApplicationClock,
+    private readonly ids?: IdGenerator,
   ) {}
 
   public async execute(input: ApplyReviewCorrectionInput): Promise<ApplyReviewCorrectionResult> {
@@ -149,6 +167,80 @@ export class ApplyReviewCorrectionUseCase {
       ...(input.merchantId === undefined ? {} : { merchant: input.merchantId }),
       ...(input.categoryId === undefined ? {} : { category: input.categoryId }),
     };
+
+    if (
+      this.atomicRepository !== undefined &&
+      this.ledgerRepository !== undefined &&
+      this.ruleRepository !== undefined &&
+      this.merchantRepository !== undefined &&
+      this.clock !== undefined &&
+      this.ids !== undefined
+    ) {
+      const now = parseUtcTimestamp(this.clock.now().toISOString());
+      const operationId = parseOperationId(this.ids.generate());
+      const transactionOperation = planBulkTransactionEdit(
+        await this.ledgerRepository.list(),
+        input.transactionIds,
+        edit,
+        operationId,
+        now,
+      );
+      const changes: LearningOperationChange[] = transactionOperation.changes.map(
+        ({ transactionId, before, after }) => ({
+          store: "transactions",
+          id: transactionId,
+          before: transactionToCanonical(before),
+          after: transactionToCanonical(after),
+        }),
+      );
+      let createdRuleId: RuleId | undefined;
+      if (input.createRule !== undefined) {
+        const rule = createClassificationRule({
+          id: parseRuleId(this.ids.generate()),
+          name: input.createRule.name,
+          ...(input.createRule.priority === undefined
+            ? {}
+            : { priority: input.createRule.priority }),
+          conditions: input.createRule.conditions,
+          actions: input.createRule.actions,
+          now,
+        });
+        if ((await this.ruleRepository.findById(rule.id)) !== undefined) {
+          throw new Error("Generated rule ID already exists");
+        }
+        assertNoDefiniteRuleConflict(rule, await this.ruleRepository.list());
+        changes.push({ store: "classificationRules", id: rule.id, after: rule });
+        createdRuleId = rule.id;
+      }
+      if (input.createMerchantAlias !== undefined) {
+        const existing = await this.merchantRepository.findById(
+          input.createMerchantAlias.merchantId,
+        );
+        if (existing === undefined) throw new Error("Merchant was not found");
+        const alias = createMerchantAlias({
+          id: parseAliasId(this.ids.generate()),
+          pattern: input.createMerchantAlias.pattern,
+          matchMode: input.createMerchantAlias.matchMode,
+          now,
+        });
+        const updated = addAliasToMerchant(existing, alias, now);
+        changes.push({ store: "merchants", id: existing.id, before: existing, after: updated });
+      }
+      const expectedRevision = await this.atomicRepository.revision();
+      await this.atomicRepository.apply({
+        id: operationId,
+        kind: "review-correction",
+        inputDigest: `correction-v1:${operationId}`,
+        expectedRevision,
+        changes,
+        createdAt: now,
+      });
+      return {
+        operationId,
+        updatedCount: transactionOperation.changes.length,
+        ...(createdRuleId === undefined ? {} : { createdRuleId }),
+      };
+    }
 
     const operation = await this.applyBulkEdit.execute(
       input.transactionIds as unknown as string[],

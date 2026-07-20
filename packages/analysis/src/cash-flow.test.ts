@@ -6,6 +6,7 @@ import {
   parseCategoryId,
   parseDateOnly,
   parseImportId,
+  parseMerchantId,
   parseTransactionId,
   parseUtcTimestamp,
   type Category,
@@ -45,6 +46,8 @@ function transaction(
     description: string;
     status: "pending" | "posted" | "void";
     reviewState: "unreviewed" | "needsReview" | "reviewed";
+    merchantId: ReturnType<typeof parseMerchantId>;
+    tags: readonly string[];
   }> = {},
 ): Transaction {
   return createTransaction({
@@ -57,6 +60,8 @@ function transaction(
     ...(override.categoryId === undefined ? {} : { categoryId: override.categoryId }),
     ...(override.status === undefined ? {} : { status: override.status }),
     ...(override.reviewState === undefined ? {} : { reviewState: override.reviewState }),
+    ...(override.merchantId === undefined ? {} : { merchantId: override.merchantId }),
+    ...(override.tags === undefined ? {} : { tags: override.tags }),
     provenance: {
       parserId: "csv",
       parserVersion: "1",
@@ -167,6 +172,30 @@ describe("cash-flow analysis", () => {
     expect(report.currencies[0]?.categories[0]?.transactionIds).toEqual([records[0]?.id]);
   });
 
+  it("applies merchant, tag, and review filters through the shared contract", () => {
+    const merchantId = parseMerchantId("018f6b80-0d62-7d2c-9a5c-7f5f59cda299");
+    const included = transaction(11, "-10", "2026-06-01", {
+      merchantId,
+      tags: ["family"],
+      reviewState: "reviewed",
+    });
+    const records = [
+      included,
+      transaction(12, "-20", "2026-06-02", { merchantId, tags: ["work"] }),
+      transaction(13, "-30", "2026-06-03", { tags: ["family"], reviewState: "reviewed" }),
+    ];
+    const filter = {
+      merchantIds: [merchantId],
+      tags: ["family"],
+      reviewStates: ["reviewed"] as const,
+    };
+    expect(filterCashFlowTransactions(records, filter).map(({ id }) => id)).toEqual([included.id]);
+    expect(
+      analyzeCashFlow({ transactions: records, categories: [], filter, asOfDate: "2026-07-19" })
+        .currencies[0]?.transactionIds,
+    ).toEqual([included.id]);
+  });
+
   it("rejects invalid ranges instead of silently changing them", () => {
     expect(() =>
       analyzeCashFlow({
@@ -178,21 +207,24 @@ describe("cash-flow analysis", () => {
     ).toThrow(/start date/u);
   });
 
-  it("keeps a typical 50,000-record aggregation under the dashboard target", () => {
-    const base = transaction(1, "-0.01", "2026-06-01", { categoryId: groceries.id });
-    const records = Array.from({ length: 50_000 }, (_, index) => ({
-      ...base,
-      id: parseTransactionId(`018f6b80-0d62-7d2c-9a5c-${String(index).padStart(12, "0")}`),
-    }));
-    const startedAt = Date.now();
-    const report = analyzeCashFlow({
-      transactions: records,
-      categories: [groceries],
-      asOfDate: "2026-07-19",
-    });
-    expect(report.currencies[0]?.spending).toBe("500");
-    expect(Date.now() - startedAt).toBeLessThan(5_000);
-  });
+  it.each([10_000, 50_000])(
+    "keeps a typical %i-record aggregation under the dashboard target",
+    (recordCount) => {
+      const base = transaction(1, "-0.01", "2026-06-01", { categoryId: groceries.id });
+      const records = Array.from({ length: recordCount }, (_, index) => ({
+        ...base,
+        id: parseTransactionId(`018f6b80-0d62-7d2c-9a5c-${String(index).padStart(12, "0")}`),
+      }));
+      const startedAt = Date.now();
+      const report = analyzeCashFlow({
+        transactions: records,
+        categories: [groceries],
+        asOfDate: "2026-07-19",
+      });
+      expect(report.currencies[0]?.spending).toBe(String(recordCount / 100));
+      expect(Date.now() - startedAt).toBeLessThan(5_000);
+    },
+  );
 });
 
 describe("filtered transaction CSV export", () => {

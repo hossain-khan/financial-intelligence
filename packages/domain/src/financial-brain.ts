@@ -21,8 +21,12 @@ export interface RecurringDecisionRecord {
   readonly signature: string;
   readonly name?: string;
   readonly merchantId?: MerchantId;
-  readonly status: "confirmed" | "dismissed" | "muted";
+  readonly status: "confirmed" | "dismissed" | "muted" | "superseded" | "invalidated";
   readonly cadence?: "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly" | "irregular";
+  readonly toleranceDays?: number;
+  readonly memberTransactionIds?: readonly string[];
+  readonly detectorVersion?: string;
+  readonly supersedesIds?: readonly string[];
   readonly updatedAt: UtcTimestamp;
 }
 

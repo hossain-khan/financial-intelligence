@@ -107,6 +107,11 @@ Changing endpoint origin, disclosure template, or task scope invalidates prior c
 - Provider request/response bodies are not logged by default.
 - Model artifacts are removable independently.
 - Financial Brain export contains reusable knowledge only; backup contains selected workspace data.
+- Learning and decision journals contain sensitive before/after state. They remain local, use
+  bounded records (1,000 per operation journal), are included only in encrypted full backup, and
+  never enter Financial Brain.
+- Preview digests and source revisions are opaque concurrency controls. Do not expose their input
+  material, transaction text, or exact financial values in URLs, logs, or errors.
 
 ## Backup and recovery
 

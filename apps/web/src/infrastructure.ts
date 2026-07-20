@@ -35,26 +35,36 @@ import {
   ConfirmRecurringProposalUseCase,
   ConfirmTransferProposalUseCase,
   DismissRecurringProposalUseCase,
+  EditRecurringDecisionUseCase,
   ExportFinancialBrainUseCase,
   FindRecurringProposalsUseCase,
   FindTransferProposalsUseCase,
   MuteRecurringProposalUseCase,
+  MergeRecurringDecisionsUseCase,
+  ReconcileRecurringDecisionsUseCase,
+  SplitRecurringDecisionUseCase,
   PreviewFinancialBrainImportUseCase,
   QueryMerchantRankingUseCase,
+  QueryDashboardUseCase,
   QueryMoneyFlowUseCase,
   QueryRecurringSummaryUseCase,
   QuerySavingsRateUseCase,
   RejectTransferProposalUseCase,
   UndoBulkTransactionEdit,
+  UndoTransferDecisionUseCase,
+  UndoRecurringDecisionUseCase,
   UndoDuplicateResolution,
   UnlinkTransferUseCase,
+  UndoLearningOperationUseCase,
 } from "@financial-intelligence/application";
 import { validateFinancialBrain } from "@financial-intelligence/schemas";
 import {
   FinancialDatabase,
   IndexedDbAccountRepository,
+  IndexedDbAtomicLearningRepository,
   IndexedDbCategoryRepository,
   IndexedDbDuplicateResolutionRepository,
+  IndexedDbDashboardSnapshotRepository,
   IndexedDbImportCommitRepository,
   IndexedDbMerchantRepository,
   IndexedDbRecurringDecisionRepository,
@@ -105,24 +115,32 @@ export interface ApplicationServices {
   readonly exportFinancialBrainUseCase: ExportFinancialBrainUseCase;
   readonly previewFinancialBrainImportUseCase: PreviewFinancialBrainImportUseCase;
   readonly applyFinancialBrainImportUseCase: ApplyFinancialBrainImportUseCase;
+  readonly undoLearningOperationUseCase: UndoLearningOperationUseCase;
 
   // Transfer proposal services
   readonly findTransferProposalsUseCase: FindTransferProposalsUseCase;
   readonly confirmTransferProposalUseCase: ConfirmTransferProposalUseCase;
   readonly rejectTransferProposalUseCase: RejectTransferProposalUseCase;
   readonly unlinkTransferUseCase: UnlinkTransferUseCase;
+  readonly undoTransferDecisionUseCase: UndoTransferDecisionUseCase;
 
   // Recurring series proposal services
   readonly findRecurringProposalsUseCase: FindRecurringProposalsUseCase;
   readonly confirmRecurringProposalUseCase: ConfirmRecurringProposalUseCase;
   readonly dismissRecurringProposalUseCase: DismissRecurringProposalUseCase;
   readonly muteRecurringProposalUseCase: MuteRecurringProposalUseCase;
+  readonly editRecurringDecisionUseCase: EditRecurringDecisionUseCase;
+  readonly mergeRecurringDecisionsUseCase: MergeRecurringDecisionsUseCase;
+  readonly splitRecurringDecisionUseCase: SplitRecurringDecisionUseCase;
+  readonly reconcileRecurringDecisionsUseCase: ReconcileRecurringDecisionsUseCase;
+  readonly undoRecurringDecisionUseCase: UndoRecurringDecisionUseCase;
 
   // Dashboard query services
   readonly queryMerchantRankingUseCase: QueryMerchantRankingUseCase;
   readonly querySavingsRateUseCase: QuerySavingsRateUseCase;
   readonly queryRecurringSummaryUseCase: QueryRecurringSummaryUseCase;
   readonly queryMoneyFlowUseCase: QueryMoneyFlowUseCase;
+  readonly queryDashboardUseCase: QueryDashboardUseCase;
 }
 
 const database = new FinancialDatabase();
@@ -137,6 +155,8 @@ const duplicateResolutionRepository = new IndexedDbDuplicateResolutionRepository
 const backupRepository = new IndexedDbWorkspaceBackupRepository(database);
 const transferDecisionRepository = new IndexedDbTransferDecisionRepository(database);
 const recurringDecisionRepository = new IndexedDbRecurringDecisionRepository(database);
+const dashboardSnapshotRepository = new IndexedDbDashboardSnapshotRepository(database);
+const atomicLearningRepository = new IndexedDbAtomicLearningRepository(database);
 const clock = { now: () => new Date() };
 const ids = { generate: () => crypto.randomUUID() };
 const digest = {
@@ -209,6 +229,12 @@ export const applicationServices: ApplicationServices = {
     applyBulkTransactionEdit,
     createRuleUseCase,
     addMerchantAliasUseCase,
+    atomicLearningRepository,
+    ledgerRepository,
+    ruleRepository,
+    merchantRepository,
+    clock,
+    ids,
   ),
   exportFinancialBrainUseCase: new ExportFinancialBrainUseCase(
     categoryRepository,
@@ -225,6 +251,8 @@ export const applicationServices: ApplicationServices = {
     ruleRepository,
     validateFinancialBrain,
     recurringDecisionRepository,
+    atomicLearningRepository,
+    digest,
   ),
   applyFinancialBrainImportUseCase: new ApplyFinancialBrainImportUseCase(
     categoryRepository,
@@ -233,7 +261,11 @@ export const applicationServices: ApplicationServices = {
     ids,
     validateFinancialBrain,
     recurringDecisionRepository,
+    atomicLearningRepository,
+    digest,
+    clock,
   ),
+  undoLearningOperationUseCase: new UndoLearningOperationUseCase(atomicLearningRepository, clock),
   findTransferProposalsUseCase: new FindTransferProposalsUseCase(
     ledgerRepository,
     accountRepository,
@@ -250,7 +282,12 @@ export const applicationServices: ApplicationServices = {
     clock,
     ids,
   ),
-  unlinkTransferUseCase: new UnlinkTransferUseCase(transferDecisionRepository, clock),
+  unlinkTransferUseCase: new UnlinkTransferUseCase(transferDecisionRepository, clock, ids),
+  undoTransferDecisionUseCase: new UndoTransferDecisionUseCase(
+    transferDecisionRepository,
+    clock,
+    ids,
+  ),
   findRecurringProposalsUseCase: new FindRecurringProposalsUseCase(
     ledgerRepository,
     recurringDecisionRepository,
@@ -267,6 +304,32 @@ export const applicationServices: ApplicationServices = {
     ids,
   ),
   muteRecurringProposalUseCase: new MuteRecurringProposalUseCase(
+    recurringDecisionRepository,
+    clock,
+    ids,
+  ),
+  editRecurringDecisionUseCase: new EditRecurringDecisionUseCase(
+    recurringDecisionRepository,
+    clock,
+    ids,
+  ),
+  mergeRecurringDecisionsUseCase: new MergeRecurringDecisionsUseCase(
+    recurringDecisionRepository,
+    clock,
+    ids,
+  ),
+  splitRecurringDecisionUseCase: new SplitRecurringDecisionUseCase(
+    recurringDecisionRepository,
+    clock,
+    ids,
+  ),
+  reconcileRecurringDecisionsUseCase: new ReconcileRecurringDecisionsUseCase(
+    ledgerRepository,
+    recurringDecisionRepository,
+    clock,
+    ids,
+  ),
+  undoRecurringDecisionUseCase: new UndoRecurringDecisionUseCase(
     recurringDecisionRepository,
     clock,
     ids,
@@ -294,4 +357,5 @@ export const applicationServices: ApplicationServices = {
     categoryRepository,
     transferDecisionRepository,
   ),
+  queryDashboardUseCase: new QueryDashboardUseCase(dashboardSnapshotRepository, clock),
 };
