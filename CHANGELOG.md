@@ -6,6 +6,8 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Added
 
+- Mandatory documentation impact audits and a pull-request checklist that make each implementation
+  PR account for specifications, schemas, ADRs, changelog, roadmap, and compatibility evidence.
 - Technology stack plan, engineering guidelines, and ADR-004.
 - Initial pnpm workspace and offline React application foundation.
 - Initial product, architecture, AI, learning, import, privacy, UX, plugin, and roadmap specifications.

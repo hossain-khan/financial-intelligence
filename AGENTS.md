@@ -53,7 +53,9 @@ Before coding:
 1. Confirm the issue, milestone, acceptance criteria, and dependency state.
 2. Inspect the current branch, working tree, recent changes, relevant tests, specifications, and
    ADRs. Preserve unrelated work; never overwrite or discard changes you do not own.
-3. Identify privacy, security, compatibility, schema, migration, accessibility, and browser impact.
+3. Write a change-impact map covering product/specification, architecture/ADR, portable schema,
+   persistence/migration, security/privacy, accessibility, changelog/README, and roadmap/issue
+   state. For every category, name the files that must change or record why no update applies.
 4. Make a small implementation plan and call out work that is blocked or intentionally deferred.
 5. Ask for clarification only when an undiscoverable choice would materially change behavior or
    authority. Otherwise, make a conservative, documented assumption and proceed.
@@ -88,6 +90,8 @@ including documentation, dependency, workflow, schema, and emergency changes.**
    - accessibility and UI impact, with screenshots when useful;
    - tests and commands run;
    - known limitations, risks, and follow-up work.
+   Complete every section of `.github/pull_request_template.md`; do not delete an impact section or
+   use a bare "N/A" without a concrete reason.
 7. Wait for every required CI job. Inspect failing logs, fix the cause, rerun relevant local checks,
    push the fix, and wait again. Never hide a failure by weakening, skipping, or deleting a gate.
 8. Do not merge or bypass branch protection unless the maintainer explicitly asks. After a
@@ -151,6 +155,38 @@ packages or broad scaffolding.
 ## Documentation and decision discipline
 
 Documentation is part of the implementation, not optional cleanup.
+
+### Mandatory documentation impact audit
+
+Every feature, fix, schema, storage, UI, workflow, or architectural PR must complete this audit.
+The implementing agent owns the documentation for its own slice; do not assume a later agent, epic
+cleanup PR, or maintainer will add it. Documentation changes belong in the same PR as the behavior.
+
+| Change made | Required artifact review |
+| --- | --- |
+| User-visible behavior, acceptance criteria, workflow, or limitation | Applicable numbered specification under `docs/`; `README.md` when project capabilities/status change |
+| Added, removed, or materially changed capability | `CHANGELOG.md` under `Unreleased` |
+| Epic or milestone progress, exit evidence, sequencing, or deferral | `docs/15-ROADMAP.md` and the GitHub issue/milestone state |
+| Domain entity, canonical field, persisted record, relationship, or invariant | `docs/09-DATA-MODEL.md`; architecture or feature-specific guide when applicable |
+| Portable/public JSON shape or validation behavior | Normative file in `schemas/`, generated type, synthetic example, compatibility/round-trip tests, and version/migration notes |
+| IndexedDB store, index, version, transaction boundary, migration, or recovery behavior | `docs/07-SYSTEM-ARCHITECTURE.md`, data-model/storage guidance, migration tests, and an ADR when the decision is durable |
+| Privacy, security, network, cryptography, AI disclosure, or plugin permission boundary | `docs/12-SECURITY-AND-PRIVACY.md` and usually an ADR |
+| Durable architectural or technology choice, including a rejected alternative with long-term consequences | New ADR plus `docs/adr/README.md` index entry |
+| Developer workflow, quality gate, or agent operating rule | `AGENTS.md`, `CONTRIBUTING.md`, quality documentation, and PR template as applicable |
+
+Before declaring implementation complete:
+
+1. Compare the final diff with the impact map; revise both when implementation scope changed.
+2. Confirm at least one applicable numbered specification was updated for a feature or behavior
+   change. If none applies, explain precisely in the PR which documents were reviewed and why the
+   existing text remains accurate.
+3. Confirm schemas, generated types, examples, and compatibility tests changed together whenever a
+   portable contract changed. A runtime type alone is not the portable contract.
+4. Confirm a durable decision has either an ADR and index update or a concrete explanation of why
+   it follows an existing accepted decision.
+5. Confirm `CHANGELOG.md`, roadmap wording, and issue/milestone state do not overclaim completion.
+6. Include the completed audit in the PR description. Missing documentation is an incomplete
+   implementation, not optional follow-up work.
 
 Update the relevant artifacts in the same PR when behavior changes:
 
@@ -260,6 +296,8 @@ Work is complete only when:
   to risk;
 - schemas, examples, guides, ADR index, changelog, roadmap, and issue/milestone state are updated as
   applicable;
+- the final diff was reconciled against a completed documentation impact audit, with concrete
+  reasons recorded for every intentionally unchanged artifact category;
 - no real or sensitive data, secrets, unexplained network access, or unrelated changes are present;
 - all local CI-equivalent checks pass, the branch is pushed, a focused PR links the issue, and every
   required remote CI job is green;
