@@ -10,6 +10,7 @@ export type ImportId = OpaqueIdentifier<"ImportId">;
 export type TransactionId = OpaqueIdentifier<"TransactionId">;
 export type CategoryId = OpaqueIdentifier<"CategoryId">;
 export type MerchantId = OpaqueIdentifier<"MerchantId">;
+export type AliasId = OpaqueIdentifier<"AliasId">;
 export type OperationId = OpaqueIdentifier<"OperationId">;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -30,5 +31,6 @@ export const parseTransactionId = (value: string): TransactionId =>
   parseIdentifier(value, "TransactionId");
 export const parseCategoryId = (value: string): CategoryId => parseIdentifier(value, "CategoryId");
 export const parseMerchantId = (value: string): MerchantId => parseIdentifier(value, "MerchantId");
+export const parseAliasId = (value: string): AliasId => parseIdentifier(value, "AliasId");
 export const parseOperationId = (value: string): OperationId =>
   parseIdentifier(value, "OperationId");

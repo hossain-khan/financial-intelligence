@@ -11,6 +11,7 @@ export type { Account, AccountField, AccountType, CreateAccountInput } from "./a
 export { CurrencyMismatchError, Money } from "./money";
 export {
   parseAccountId,
+  parseAliasId,
   parseCategoryId,
   parseImportId,
   parseMerchantId,
@@ -20,6 +21,7 @@ export {
 } from "./identifiers";
 export type {
   AccountId,
+  AliasId,
   CategoryId,
   ImportId,
   MerchantId,
@@ -27,6 +29,17 @@ export type {
   TransactionId,
   WorkspaceId,
 } from "./identifiers";
+export {
+  NORMALIZER_VERSION,
+  addAliasToMerchant,
+  createMerchant,
+  createMerchantAlias,
+  matchDescriptionToMerchants,
+  mergeMerchants,
+  normalizeMerchantDescription,
+  unmergeMerchant,
+} from "./merchant";
+export type { MatchMode, Merchant, MerchantAlias, MerchantAliasMatch } from "./merchant";
 export { parseDateOnly, parseUtcTimestamp } from "./temporal";
 export type { DateOnly, UtcTimestamp } from "./temporal";
 export { createWorkspace } from "./workspace";

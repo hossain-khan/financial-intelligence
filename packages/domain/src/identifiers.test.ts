@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   parseAccountId,
+  parseAliasId,
   parseCategoryId,
   parseImportId,
   parseMerchantId,
@@ -20,6 +21,7 @@ describe("opaque identifiers", () => {
     parseTransactionId,
     parseCategoryId,
     parseMerchantId,
+    parseAliasId,
     parseOperationId,
   ])("accepts and round-trips a UUID", (parse) => {
     expect(parse(UUID)).toBe(UUID);
