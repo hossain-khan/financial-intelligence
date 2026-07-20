@@ -60,6 +60,8 @@ export { ExportFilteredTransactions, QueryCashFlowSummary } from "./summaries";
 export type { CashFlowFilter, CashFlowReport, TransactionCsvExport } from "./summaries";
 export { ListCategories, RenameCategory, SetCategoryArchived } from "./categories";
 export type { CategoryRepository } from "./categories";
+export { CreateEncryptedWorkspaceBackup, PreviewEncryptedWorkspaceBackup } from "./backups";
+export type { EncryptedWorkspaceBackup, WorkspaceBackupRepository } from "./backups";
 export type {
   BulkEditPreview,
   BulkTransactionChange,

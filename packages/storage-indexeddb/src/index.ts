@@ -6,6 +6,7 @@ export {
   IndexedDbImportCommitRepository,
   IndexedDbTransactionLedgerRepository,
   IndexedDbWorkspaceRepository,
+  IndexedDbWorkspaceBackupRepository,
   openFinancialDatabase,
 } from "./database";
 export type { OpenDatabaseOptions } from "./database";

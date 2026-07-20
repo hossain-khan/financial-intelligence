@@ -1,5 +1,5 @@
 {
-  "name": "@financial-intelligence/storage-indexeddb",
+  "name": "@financial-intelligence/backup",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,9 +10,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@financial-intelligence/application": "workspace:*",
-    "@financial-intelligence/backup": "workspace:*",
     "@financial-intelligence/domain": "workspace:*",
-    "dexie": "4.4.4"
+    "hash-wasm": "4.12.0"
   }
 }

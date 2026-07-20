@@ -29,6 +29,7 @@ import {
   IndexedDbImportCommitRepository,
   IndexedDbTransactionLedgerRepository,
   IndexedDbWorkspaceRepository,
+  IndexedDbWorkspaceBackupRepository,
 } from "./database";
 
 const databases: FinancialDatabase[] = [];
@@ -63,6 +64,69 @@ describe("IndexedDbCategoryRepository", () => {
       )?.name,
     ).toBe("Food at home");
     reopened.close();
+  });
+});
+
+describe("IndexedDbWorkspaceBackupRepository", () => {
+  it("captures one workspace consistently without mutating IndexedDB", async () => {
+    const database = new FinancialDatabase(`test-${crypto.randomUUID()}`);
+    databases.push(database);
+    const workspaces = new IndexedDbWorkspaceRepository(database);
+    const accounts = new IndexedDbAccountRepository(database);
+    const now = parseUtcTimestamp("2026-07-20T12:00:00.000Z");
+    const target = createWorkspace({
+      id: parseWorkspaceId("019829f0-4da4-7ae0-8a9c-383af22d7da1"),
+      name: "Target",
+      now,
+    });
+    const other = createWorkspace({
+      id: parseWorkspaceId("019829f0-4da4-7ae0-8a9c-383af22d7da2"),
+      name: "Other",
+      now,
+    });
+    await workspaces.save(target);
+    await workspaces.save(other);
+    await accounts.save(
+      createAccount({
+        id: parseAccountId("019829f0-4da4-7ae0-8a9c-383af22d7db1"),
+        workspaceId: target.id,
+        name: "Chequing",
+        type: "checking",
+        currency: "CAD",
+        now,
+      }),
+    );
+    await accounts.save(
+      createAccount({
+        id: parseAccountId("019829f0-4da4-7ae0-8a9c-383af22d7db2"),
+        workspaceId: other.id,
+        name: "Excluded",
+        type: "checking",
+        currency: "CAD",
+        now,
+      }),
+    );
+    const before = await Promise.all([
+      database.workspaces.count(),
+      database.accounts.count(),
+      database.transactions.count(),
+    ]);
+
+    const snapshot = await new IndexedDbWorkspaceBackupRepository(database).readSnapshot(
+      target.id,
+      "2026-07-20T13:00:00.000Z",
+    );
+
+    expect(snapshot.workspace).toEqual(target);
+    expect(snapshot.accounts.map((account) => account.name)).toEqual(["Chequing"]);
+    expect(snapshot.exportedAt).toBe("2026-07-20T13:00:00.000Z");
+    expect(
+      await Promise.all([
+        database.workspaces.count(),
+        database.accounts.count(),
+        database.transactions.count(),
+      ]),
+    ).toEqual(before);
   });
 });
 

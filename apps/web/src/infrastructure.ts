@@ -3,6 +3,7 @@ import {
   CreateAccount,
   CreateWorkspace,
   CommitAcceptedImport,
+  CreateEncryptedWorkspaceBackup,
   FindDuplicateCandidates,
   ExportFilteredTransactions,
   ListAccounts,
@@ -13,6 +14,7 @@ import {
   ListTransactions,
   ListWorkspaces,
   PreviewBulkTransactionEdit,
+  PreviewEncryptedWorkspaceBackup,
   QueryTransactionLedger,
   QueryCashFlowSummary,
   RenameAccount,
@@ -32,6 +34,7 @@ import {
   IndexedDbImportCommitRepository,
   IndexedDbTransactionLedgerRepository,
   IndexedDbWorkspaceRepository,
+  IndexedDbWorkspaceBackupRepository,
 } from "@financial-intelligence/storage-indexeddb";
 
 export interface ApplicationServices {
@@ -59,6 +62,8 @@ export interface ApplicationServices {
   readonly resolveDuplicate: ResolveDuplicate;
   readonly undoDuplicateResolution: UndoDuplicateResolution;
   readonly listDuplicateResolutions: ListDuplicateResolutions;
+  readonly createEncryptedWorkspaceBackup: CreateEncryptedWorkspaceBackup;
+  readonly previewEncryptedWorkspaceBackup: PreviewEncryptedWorkspaceBackup;
 }
 
 const database = new FinancialDatabase();
@@ -68,6 +73,7 @@ const importRepository = new IndexedDbImportCommitRepository(database);
 const categoryRepository = new IndexedDbCategoryRepository(database);
 const ledgerRepository = new IndexedDbTransactionLedgerRepository(database);
 const duplicateResolutionRepository = new IndexedDbDuplicateResolutionRepository(database);
+const backupRepository = new IndexedDbWorkspaceBackupRepository(database);
 const clock = { now: () => new Date() };
 const ids = { generate: () => crypto.randomUUID() };
 const digest = {
@@ -115,4 +121,6 @@ export const applicationServices: ApplicationServices = {
   resolveDuplicate: new ResolveDuplicate(duplicateResolutionRepository, clock, ids),
   undoDuplicateResolution: new UndoDuplicateResolution(duplicateResolutionRepository, clock, ids),
   listDuplicateResolutions: new ListDuplicateResolutions(duplicateResolutionRepository),
+  createEncryptedWorkspaceBackup: new CreateEncryptedWorkspaceBackup(backupRepository, clock),
+  previewEncryptedWorkspaceBackup: new PreviewEncryptedWorkspaceBackup(),
 };
