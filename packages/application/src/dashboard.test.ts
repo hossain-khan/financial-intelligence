@@ -23,6 +23,7 @@ import type { RecurringDecisionRepository } from "./recurring";
 import type { RecurringDecisionRecord } from "@financial-intelligence/domain";
 import { FindRecurringProposalsUseCase } from "./recurring";
 import {
+  QueryDashboardUseCase,
   QueryMerchantRankingUseCase,
   QueryMoneyFlowUseCase,
   QueryRecurringSummaryUseCase,
@@ -189,20 +190,19 @@ describe("Dashboard application use cases", () => {
     const ledger = new InMemoryLedger([txOutflow, txInflow]);
     const merchantRepo = new InMemoryMerchantRepo([]);
     const categoryRepo = new InMemoryCategoryRepo([]);
+    const confirmedTransfer = {
+      id: parseTransferLinkId("018f6b80-0d62-7d2c-9a5c-7f5f59cda555"),
+      signature: "sig-1",
+      outflowTransactionId: txOutflow.id,
+      inflowTransactionId: txInflow.id,
+      status: "confirmed" as const,
+      score: 100,
+      evidence: [],
+      createdAt: NOW,
+      updatedAt: NOW,
+    };
     const transferDecisionRepo = {
-      list: async () => [
-        {
-          id: parseTransferLinkId("018f6b80-0d62-7d2c-9a5c-7f5f59cda555"),
-          signature: "sig-1",
-          outflowTransactionId: txOutflow.id,
-          inflowTransactionId: txInflow.id,
-          status: "confirmed" as const,
-          score: 100,
-          evidence: [],
-          createdAt: NOW,
-          updatedAt: NOW,
-        },
-      ],
+      list: async () => [confirmedTransfer],
       save: async () => {},
       findById: async () => undefined,
       findBySignature: async () => undefined,
@@ -228,5 +228,46 @@ describe("Dashboard application use cases", () => {
 
     const flow = await queryMoneyFlow.execute();
     expect(flow.currencies).toHaveLength(1);
+
+    const dashboard = new QueryDashboardUseCase(
+      {
+        read: async () => ({
+          sourceRevision: "revision-7",
+          transactions: [txOutflow, txInflow],
+          categories: [],
+          merchants: [],
+          transferDecisions: [
+            confirmedTransfer,
+            {
+              ...confirmedTransfer,
+              id: parseTransferLinkId("018f6b80-0d62-7d2c-9a5c-7f5f59cda556"),
+              status: "rejected" as const,
+            },
+          ],
+          recurringDecisions: [
+            {
+              id: "recurring-confirmed",
+              signature: "not-a-detected-proposal",
+              status: "confirmed" as const,
+              memberTransactionIds: [txOutflow.id],
+              updatedAt: NOW,
+            },
+          ],
+        }),
+      },
+      { now: () => new Date("2026-07-20T10:00:00Z") },
+    );
+    const bundle = await dashboard.execute();
+    expect(bundle.sourceRevision).toBe("revision-7");
+    expect(bundle.filter).toEqual({});
+
+    const emptyStatusBundle = await dashboard.execute({ recurringStatuses: [] });
+    expect(emptyStatusBundle.filter.recurringStatuses).toEqual([]);
+
+    const confirmedBundle = await dashboard.execute({
+      recurringStatuses: ["confirmed"],
+      transactionIds: [txOutflow.id, txInflow.id],
+    });
+    expect(confirmedBundle.filter.transactionIds).toEqual([txOutflow.id]);
   });
 });
