@@ -27,13 +27,17 @@ Every change, including documentation, dependency, workflow, and schema changes,
 focused branch and merged through a pull request. Direct commits and pushes to `main` are prohibited.
 
 1. Create a focused branch.
-2. Update the relevant specification before or with implementation.
+2. Complete the documentation impact audit in [`AGENTS.md`](AGENTS.md), and update the relevant
+   specification, changelog, schema/example, roadmap, and ADR/index in the same PR as applicable.
 3. Add tests covering success, malformed input, duplicates, cancellation, and recovery where applicable.
 4. Run the complete CI-equivalent gate documented in [`AGENTS.md`](AGENTS.md), including formatting,
    linting, schema validation, type checking, tests, production build, security headers, dependency
    audit, and browser tests.
 5. Ensure every required pull-request CI job passes; do not weaken or skip a gate to obtain a green build.
 6. Describe privacy impact, data-model impact, migration behavior, and screenshots for UI changes in the pull request.
+7. Complete every section of the pull-request template with changed files or a concrete reason that
+   the category does not apply. Each implementation PR owns its documentation; do not defer it to a
+   later epic cleanup task.
 
 ## Commit and pull-request guidance
 
