@@ -75,6 +75,7 @@ export interface AnalyzeCashFlowInput {
   readonly transactions: readonly Transaction[];
   readonly categories: readonly Category[];
   readonly filter?: CashFlowFilter;
+  readonly confirmedTransferTransactionIds?: ReadonlySet<string>;
   /** Explicit to keep incomplete-period results deterministic in tests and exports. */
   readonly asOfDate: string;
 }
@@ -106,6 +107,7 @@ export function analyzeCashFlow(input: AnalyzeCashFlowInput): CashFlowReport {
         categoryById,
         normalized,
         asOfDate,
+        input.confirmedTransferTransactionIds,
       ),
     ),
   };
@@ -145,6 +147,7 @@ function analyzeCurrency(
   categoryById: ReadonlyMap<CategoryId, Category>,
   filter: NormalizedFilter,
   asOfDate: DateOnly,
+  confirmedTransferTransactionIds?: ReadonlySet<string>,
 ): CashFlowCurrencyReport {
   const included = transactions.filter((transaction) => transaction.status !== "void");
   const excludedVoidCount = allTransactions.filter(
@@ -153,21 +156,25 @@ function analyzeCurrency(
       transaction.status === "void" &&
       matchesNormalizedFilter(transaction, filter),
   ).length;
-  const totals = accumulate(included, categoryById, currency);
+  const totals = accumulate(included, categoryById, currency, confirmedTransferTransactionIds);
   const transferTransactions = included.filter((transaction) =>
-    isTransfer(transaction, categoryById),
+    isTransfer(transaction, categoryById, confirmedTransferTransactionIds),
   );
   const incomeTransactions = included.filter(
-    (transaction) => !isTransfer(transaction, categoryById) && transaction.money.isInflow(),
+    (transaction) =>
+      !isTransfer(transaction, categoryById, confirmedTransferTransactionIds) &&
+      transaction.money.isInflow(),
   );
   const spendingTransactions = included.filter(
-    (transaction) => !isTransfer(transaction, categoryById) && transaction.money.isOutflow(),
+    (transaction) =>
+      !isTransfer(transaction, categoryById, confirmedTransferTransactionIds) &&
+      transaction.money.isOutflow(),
   );
   const monthBuckets = groupBy(included, (transaction) => transaction.postedDate.slice(0, 7));
   const months = [...monthBuckets.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([month, values]) => {
-      const aggregate = accumulate(values, categoryById, currency);
+      const aggregate = accumulate(values, categoryById, currency, confirmedTransferTransactionIds);
       return {
         month,
         ...aggregate.amounts,
@@ -180,12 +187,16 @@ function analyzeCurrency(
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([accountId, values]) => ({
       accountId,
-      ...accumulate(values, categoryById, currency).amounts,
+      ...accumulate(values, categoryById, currency, confirmedTransferTransactionIds).amounts,
       transactionIds: values.map(({ id }) => id),
     }));
   const categoryBuckets = new Map<string, Transaction[]>();
   for (const transaction of included) {
-    if (!transaction.money.isOutflow() || isTransfer(transaction, categoryById)) continue;
+    if (
+      !transaction.money.isOutflow() ||
+      isTransfer(transaction, categoryById, confirmedTransferTransactionIds)
+    )
+      continue;
     const key = transaction.categoryId ?? "uncategorized";
     const values = categoryBuckets.get(key);
     if (values === undefined) categoryBuckets.set(key, [transaction]);
@@ -206,9 +217,16 @@ function analyzeCurrency(
       };
     })
     .sort((left, right) => compareDecimal(right.spending, left.spending));
+  const incomeIds = incomeTransactions.map(({ id }) => id);
+  const spendingIds = spendingTransactions.map(({ id }) => id);
+  const transferIds = transferTransactions.map(({ id }) => id);
+  const cashFlowTransactionIds = [...incomeIds, ...spendingIds];
   return {
     currency,
-    ...totals.amounts,
+    income: totals.amounts.income,
+    spending: totals.amounts.spending,
+    transfers: totals.amounts.transfers,
+    netCashFlow: totals.amounts.netCashFlow,
     unresolvedReviewCount: included.filter(
       (transaction) => transaction.reviewState === "needsReview",
     ).length,
@@ -217,10 +235,10 @@ function analyzeCurrency(
     accounts,
     categories,
     transactionIds: included.map(({ id }) => id),
-    incomeTransactionIds: incomeTransactions.map(({ id }) => id),
-    spendingTransactionIds: spendingTransactions.map(({ id }) => id),
-    transferTransactionIds: transferTransactions.map(({ id }) => id),
-    cashFlowTransactionIds: [...incomeTransactions, ...spendingTransactions].map(({ id }) => id),
+    incomeTransactionIds: incomeIds,
+    spendingTransactionIds: spendingIds,
+    transferTransactionIds: transferIds,
+    cashFlowTransactionIds,
     takeaway: takeaway(currency, totals.amounts.netCashFlow),
   };
 }
@@ -229,20 +247,21 @@ function accumulate(
   transactions: readonly Transaction[],
   categories: ReadonlyMap<CategoryId, Category>,
   currency: string,
+  confirmedTransferTransactionIds?: ReadonlySet<string>,
 ): {
-  readonly amounts: Pick<
-    CashFlowCurrencyReport,
-    "income" | "spending" | "transfers" | "netCashFlow"
-  >;
+  readonly amounts: {
+    readonly income: string;
+    readonly spending: string;
+    readonly transfers: string;
+    readonly netCashFlow: string;
+  };
 } {
   let income = Money.zero(currency);
   let spending = Money.zero(currency);
   let transfers = Money.zero(currency);
   for (const transaction of transactions) {
-    if (isTransfer(transaction, categories)) {
-      transfers = transfers.add(
-        transaction.money.isOutflow() ? transaction.money.negate() : transaction.money,
-      );
+    if (isTransfer(transaction, categories, confirmedTransferTransactionIds)) {
+      transfers = transfers.add(transaction.money.abs());
     } else if (transaction.money.isInflow()) {
       income = income.add(transaction.money);
     } else if (transaction.money.isOutflow()) {
@@ -262,7 +281,14 @@ function accumulate(
 function isTransfer(
   transaction: Transaction,
   categories: ReadonlyMap<CategoryId, Category>,
+  confirmedTransferTransactionIds?: ReadonlySet<string>,
 ): boolean {
+  if (
+    confirmedTransferTransactionIds !== undefined &&
+    confirmedTransferTransactionIds.has(transaction.id)
+  ) {
+    return true;
+  }
   return (
     transaction.categoryId !== undefined &&
     categories.get(transaction.categoryId)?.kind === "transfer"

@@ -92,6 +92,13 @@ export {
   ExportFinancialBrainUseCase,
   PreviewFinancialBrainImportUseCase,
 } from "./financial-brain";
+export {
+  ConfirmTransferProposalUseCase,
+  FindTransferProposalsUseCase,
+  RejectTransferProposalUseCase,
+  UnlinkTransferUseCase,
+} from "./transfers";
+export type { TransferDecisionRepository } from "./transfers";
 export type {
   BulkEditPreview,
   BulkTransactionChange,

@@ -7,11 +7,12 @@ export {
   IndexedDbMerchantRepository,
   IndexedDbRuleRepository,
   IndexedDbTransactionLedgerRepository,
+  IndexedDbTransferDecisionRepository,
   IndexedDbWorkspaceRepository,
   IndexedDbWorkspaceBackupRepository,
   openFinancialDatabase,
 } from "./database";
-export type { OpenDatabaseOptions } from "./database";
+export type { OpenDatabaseOptions, TransferDecisionRecord } from "./database";
 export type { ImportCommitStage, IndexedDbImportCommitHooks } from "./database";
 export { normalizeStorageError, StorageError } from "./errors";
 export type { StorageErrorCode } from "./errors";

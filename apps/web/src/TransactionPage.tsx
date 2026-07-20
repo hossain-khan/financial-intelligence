@@ -28,6 +28,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 
 import type { ApplicationServices } from "./infrastructure";
 import { BrainManagementView } from "./BrainManagementView";
+import { TransferReviewSection } from "./TransferReviewSection";
+import type { TransferProposal } from "@financial-intelligence/domain";
 
 const EMPTY_PAGE: TransactionLedgerPage = { items: [], total: 0, offset: 0, limit: 50 };
 const EMPTY_SUMMARY: CashFlowReport = {
@@ -61,6 +63,7 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
   const [decisions, setDecisions] = useState<ReadonlyMap<string, DuplicateDecision>>(new Map());
   const [allTransactions, setAllTransactions] = useState<readonly Transaction[]>([]);
   const [summary, setSummary] = useState<CashFlowReport>(EMPTY_SUMMARY);
+  const [proposals, setProposals] = useState<readonly TransferProposal[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "saving" | "error">("loading");
   const [message, setMessage] = useState<string>();
   const accountInitialized = useRef(false);
@@ -90,28 +93,30 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
       fromDate,
       toDate,
     );
-    const [loadedPage, loadedSummary, transactionGroups, loadedDecisions] = await Promise.all([
-      services.queryTransactionLedger.execute({
-        filter: {
-          ...sharedFilter,
-          ...(search.trim() === "" ? {} : { search }),
-          ...(reviewState === ""
-            ? {}
-            : { reviewStates: [reviewState as "unreviewed" | "needsReview" | "reviewed"] }),
-          ...(direction === "" ? {} : { directions: [direction] }),
-        },
-        sort: { field: sortField, direction: sortDirection },
-        offset: pageIndex * 50,
-        limit: 50,
-      }),
-      services.queryCashFlowSummary.execute(sharedFilter),
-      Promise.all(
-        activeAccounts
-          .filter((account) => nextAccountId === "" || account.id === nextAccountId)
-          .map((account) => services.listTransactions.execute(account.id)),
-      ),
-      services.listDuplicateResolutions.execute(),
-    ]);
+    const [loadedPage, loadedSummary, transactionGroups, loadedDecisions, loadedProposals] =
+      await Promise.all([
+        services.queryTransactionLedger.execute({
+          filter: {
+            ...sharedFilter,
+            ...(search.trim() === "" ? {} : { search }),
+            ...(reviewState === ""
+              ? {}
+              : { reviewStates: [reviewState as "unreviewed" | "needsReview" | "reviewed"] }),
+            ...(direction === "" ? {} : { directions: [direction] }),
+          },
+          sort: { field: sortField, direction: sortDirection },
+          offset: pageIndex * 50,
+          limit: 50,
+        }),
+        services.queryCashFlowSummary.execute(sharedFilter),
+        Promise.all(
+          activeAccounts
+            .filter((account) => nextAccountId === "" || account.id === nextAccountId)
+            .map((account) => services.listTransactions.execute(account.id)),
+        ),
+        services.listDuplicateResolutions.execute(),
+        services.findTransferProposalsUseCase.execute(),
+      ]);
     const transactions = transactionGroups.flat();
     const latestCreatedAt = transactions.reduce(
       (latest, transaction) => (transaction.createdAt > latest ? transaction.createdAt : latest),
@@ -133,6 +138,7 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
     setAllTransactions(transactions);
     setDuplicates(candidates);
     setDecisions(loadedDecisions);
+    setProposals(loadedProposals);
     accountInitialized.current = true;
     setStatus("ready");
   }, [
@@ -317,6 +323,19 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
           Filters, categories, duplicate decisions, and undo remain entirely on this device.
         </p>
       </section>
+
+      <TransferReviewSection
+        proposals={proposals}
+        accounts={accounts}
+        onConfirm={async (proposal) => {
+          await services.confirmTransferProposalUseCase.execute(proposal);
+          await refresh();
+        }}
+        onReject={async (proposal) => {
+          await services.rejectTransferProposalUseCase.execute(proposal);
+          await refresh();
+        }}
+      />
 
       <section className="import-panel" aria-labelledby="global-filters-title">
         <div className="section-heading">
