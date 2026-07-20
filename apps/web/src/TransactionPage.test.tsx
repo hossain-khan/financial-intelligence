@@ -289,5 +289,17 @@ function fixtureServices(
     unlinkTransferUseCase: {
       execute: vi.fn(async () => undefined),
     },
+    findRecurringProposalsUseCase: {
+      execute: vi.fn(async () => []),
+    },
+    confirmRecurringProposalUseCase: {
+      execute: vi.fn(async () => ({ status: "confirmed" })),
+    },
+    dismissRecurringProposalUseCase: {
+      execute: vi.fn(async () => ({ status: "dismissed" })),
+    },
+    muteRecurringProposalUseCase: {
+      execute: vi.fn(async () => ({ status: "muted" })),
+    },
   } as unknown as ApplicationServices;
 }

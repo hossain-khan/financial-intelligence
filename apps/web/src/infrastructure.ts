@@ -32,9 +32,13 @@ import {
   SetAccountArchived,
   SetCategoryArchived,
   ApplyFinancialBrainImportUseCase,
+  ConfirmRecurringProposalUseCase,
   ConfirmTransferProposalUseCase,
+  DismissRecurringProposalUseCase,
   ExportFinancialBrainUseCase,
+  FindRecurringProposalsUseCase,
   FindTransferProposalsUseCase,
+  MuteRecurringProposalUseCase,
   PreviewFinancialBrainImportUseCase,
   RejectTransferProposalUseCase,
   UndoBulkTransactionEdit,
@@ -49,6 +53,7 @@ import {
   IndexedDbDuplicateResolutionRepository,
   IndexedDbImportCommitRepository,
   IndexedDbMerchantRepository,
+  IndexedDbRecurringDecisionRepository,
   IndexedDbRuleRepository,
   IndexedDbTransactionLedgerRepository,
   IndexedDbTransferDecisionRepository,
@@ -102,6 +107,12 @@ export interface ApplicationServices {
   readonly confirmTransferProposalUseCase: ConfirmTransferProposalUseCase;
   readonly rejectTransferProposalUseCase: RejectTransferProposalUseCase;
   readonly unlinkTransferUseCase: UnlinkTransferUseCase;
+
+  // Recurring series proposal services
+  readonly findRecurringProposalsUseCase: FindRecurringProposalsUseCase;
+  readonly confirmRecurringProposalUseCase: ConfirmRecurringProposalUseCase;
+  readonly dismissRecurringProposalUseCase: DismissRecurringProposalUseCase;
+  readonly muteRecurringProposalUseCase: MuteRecurringProposalUseCase;
 }
 
 const database = new FinancialDatabase();
@@ -115,6 +126,7 @@ const ruleRepository = new IndexedDbRuleRepository(database);
 const duplicateResolutionRepository = new IndexedDbDuplicateResolutionRepository(database);
 const backupRepository = new IndexedDbWorkspaceBackupRepository(database);
 const transferDecisionRepository = new IndexedDbTransferDecisionRepository(database);
+const recurringDecisionRepository = new IndexedDbRecurringDecisionRepository(database);
 const clock = { now: () => new Date() };
 const ids = { generate: () => crypto.randomUUID() };
 const digest = {
@@ -217,4 +229,24 @@ export const applicationServices: ApplicationServices = {
     ids,
   ),
   unlinkTransferUseCase: new UnlinkTransferUseCase(transferDecisionRepository, clock),
+  findRecurringProposalsUseCase: new FindRecurringProposalsUseCase(
+    ledgerRepository,
+    recurringDecisionRepository,
+    transferDecisionRepository,
+  ),
+  confirmRecurringProposalUseCase: new ConfirmRecurringProposalUseCase(
+    recurringDecisionRepository,
+    clock,
+    ids,
+  ),
+  dismissRecurringProposalUseCase: new DismissRecurringProposalUseCase(
+    recurringDecisionRepository,
+    clock,
+    ids,
+  ),
+  muteRecurringProposalUseCase: new MuteRecurringProposalUseCase(
+    recurringDecisionRepository,
+    clock,
+    ids,
+  ),
 };

@@ -19,6 +19,7 @@ export interface FinancialBrainPreferences {
 export interface RecurringDecisionRecord {
   readonly id: string;
   readonly signature: string;
+  readonly name?: string;
   readonly merchantId?: MerchantId;
   readonly status: "confirmed" | "dismissed" | "muted";
   readonly cadence?: "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly" | "irregular";

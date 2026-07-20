@@ -28,6 +28,7 @@ const DUPLICATE_RESOLUTION_SCHEMA = "&id, type, candidateId, occurredAt";
 const MERCHANT_SCHEMA = "&id, name, archived, updatedAt";
 const CLASSIFICATION_RULE_SCHEMA = "&id, priority, enabled, name, updatedAt";
 const TRANSFER_DECISION_SCHEMA = "&id, signature, status, updatedAt";
+const RECURRING_DECISION_SCHEMA = "&id, signature, status, updatedAt";
 
 export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
   {
@@ -114,10 +115,28 @@ export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
       transferDecisions: TRANSFER_DECISION_SCHEMA,
     },
   },
+  {
+    version: 8,
+    description: "Add recurring decisions store",
+    stores: {
+      workspaces: WORKSPACE_SCHEMA,
+      migrationJournal: MIGRATION_JOURNAL_SCHEMA,
+      accounts: ACCOUNT_SCHEMA,
+      imports: IMPORT_SCHEMA,
+      transactions: REVIEWABLE_TRANSACTION_SCHEMA,
+      transactionFingerprints: TRANSACTION_FINGERPRINT_SCHEMA,
+      categories: CATEGORY_SCHEMA,
+      transactionOperations: TRANSACTION_OPERATION_SCHEMA,
+      duplicateResolutionEvents: DUPLICATE_RESOLUTION_SCHEMA,
+      merchants: MERCHANT_SCHEMA,
+      classificationRules: CLASSIFICATION_RULE_SCHEMA,
+      transferDecisions: TRANSFER_DECISION_SCHEMA,
+      recurringDecisions: RECURRING_DECISION_SCHEMA,
+    },
+  },
 ];
 
-export const CURRENT_DATABASE_VERSION =
-  DATABASE_MIGRATIONS[DATABASE_MIGRATIONS.length - 1]?.version ?? 0;
+export const CURRENT_DATABASE_VERSION = 8;
 
 export function registerDatabaseMigrations(
   database: Dexie,

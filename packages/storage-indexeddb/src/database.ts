@@ -37,6 +37,7 @@ import {
   type ImportId,
   type Merchant,
   type MerchantId,
+  type RecurringDecisionRecord,
   type RuleId,
   type StatementImport,
   type StatementImportDocument,
@@ -93,6 +94,7 @@ export class FinancialDatabase extends Dexie {
   public merchants!: EntityTable<MerchantRecord, "id">;
   public classificationRules!: EntityTable<ClassificationRuleRecord, "id">;
   public transferDecisions!: EntityTable<TransferDecisionRecord, "id">;
+  public recurringDecisions!: EntityTable<RecurringDecisionRecord, "id">;
   public transactionOperations!: EntityTable<TransactionOperationRecord, "id">;
   public duplicateResolutionEvents!: EntityTable<DuplicateResolutionEventRecord, "id">;
   public migrationJournal!: EntityTable<MigrationJournalRecord, "id">;
@@ -920,6 +922,37 @@ export class IndexedDbTransferDecisionRepository {
     try {
       await openFinancialDatabase(this.database);
       await this.database.transferDecisions.put(record);
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+}
+
+export class IndexedDbRecurringDecisionRepository {
+  public constructor(private readonly database: FinancialDatabase) {}
+
+  public async list(): Promise<readonly RecurringDecisionRecord[]> {
+    try {
+      await openFinancialDatabase(this.database);
+      return await this.database.recurringDecisions.toArray();
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  public async findBySignature(signature: string): Promise<RecurringDecisionRecord | undefined> {
+    try {
+      await openFinancialDatabase(this.database);
+      return await this.database.recurringDecisions.where("signature").equals(signature).first();
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  public async save(record: RecurringDecisionRecord): Promise<void> {
+    try {
+      await openFinancialDatabase(this.database);
+      await this.database.recurringDecisions.put(record);
     } catch (error) {
       throw normalizeStorageError(error);
     }
