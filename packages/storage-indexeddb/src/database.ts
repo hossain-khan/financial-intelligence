@@ -11,7 +11,13 @@ import type {
   DuplicateResolutionRepository,
   TransactionLedgerRepository,
   CategoryRepository,
+  WorkspaceBackupRepository,
 } from "@financial-intelligence/application";
+import {
+  WORKSPACE_BACKUP_FORMAT,
+  WORKSPACE_BACKUP_VERSION,
+  type WorkspaceBackupSnapshot,
+} from "@financial-intelligence/backup";
 import {
   importFromCanonical,
   importToCanonical,
@@ -234,6 +240,78 @@ export class IndexedDbWorkspaceRepository implements WorkspaceRepository {
     try {
       await openFinancialDatabase(this.database);
       return await this.database.workspaces.get(id);
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+}
+
+export class IndexedDbWorkspaceBackupRepository implements WorkspaceBackupRepository {
+  public constructor(private readonly database: FinancialDatabase) {}
+
+  public async readSnapshot(
+    workspaceId: WorkspaceId,
+    exportedAt: string,
+  ): Promise<WorkspaceBackupSnapshot> {
+    try {
+      await openFinancialDatabase(this.database);
+      return await this.database.transaction(
+        "r",
+        [
+          this.database.workspaces,
+          this.database.accounts,
+          this.database.imports,
+          this.database.transactions,
+          this.database.categories,
+          this.database.transactionOperations,
+          this.database.duplicateResolutionEvents,
+        ],
+        async () => {
+          const workspace = await this.database.workspaces.get(workspaceId);
+          if (workspace === undefined) throw new StorageError("STORAGE_FAILURE");
+          const accounts = await this.database.accounts
+            .where("workspaceId")
+            .equals(workspaceId)
+            .sortBy("createdAt");
+          const accountIds = new Set(accounts.map((account) => account.id as string));
+          const imports = (await this.database.imports.toArray()).filter((item) =>
+            accountIds.has(item.accountId),
+          );
+          const transactions = (await this.database.transactions.toArray()).filter((item) =>
+            accountIds.has(item.accountId),
+          );
+          const transactionIds = new Set(transactions.map((item) => item.id));
+          const transactionOperations = (await this.database.transactionOperations.toArray())
+            .filter((item) =>
+              item.changes.some((change) => transactionIds.has(change.transactionId)),
+            )
+            .map((item) => ({ ...item, changes: item.changes.map((change) => ({ ...change })) }));
+          const allEvents = await this.database.duplicateResolutionEvents.toArray();
+          const decisions = allEvents.filter(
+            (event) =>
+              event.type === "decision" && candidateIdBelongsTo(event.candidateId, transactionIds),
+          );
+          const decisionIds = new Set(decisions.map((event) => event.id));
+          const duplicateResolutionEvents = allEvents.filter((event) =>
+            event.type === "decision"
+              ? decisionIds.has(event.id)
+              : decisionIds.has(event.decisionId),
+          );
+          return {
+            format: WORKSPACE_BACKUP_FORMAT,
+            version: WORKSPACE_BACKUP_VERSION,
+            exportedAt,
+            databaseVersion: this.database.declaredVersion,
+            workspace,
+            accounts,
+            imports,
+            transactions,
+            categories: await this.database.categories.orderBy("order").toArray(),
+            transactionOperations,
+            duplicateResolutionEvents,
+          };
+        },
+      );
     } catch (error) {
       throw normalizeStorageError(error);
     }
@@ -711,4 +789,13 @@ function resolutionDocuments(
 
 function throwIfCancelled(signal: CancellationSignal | undefined): void {
   if (signal?.aborted === true) throw new StorageError("STORAGE_FAILURE");
+}
+
+function candidateIdBelongsTo(candidateId: string, transactionIds: ReadonlySet<string>): boolean {
+  const separator = candidateId.indexOf(":");
+  if (separator < 1) return false;
+  return (
+    transactionIds.has(candidateId.slice(0, separator)) &&
+    transactionIds.has(candidateId.slice(separator + 1))
+  );
 }

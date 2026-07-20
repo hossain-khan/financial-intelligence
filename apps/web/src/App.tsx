@@ -1,5 +1,6 @@
 import {
   AccountValidationError,
+  parseWorkspaceId,
   type Account,
   type Workspace,
 } from "@financial-intelligence/domain";
@@ -55,7 +56,7 @@ export function App({ services }: AppProperties) {
                 </Suspense>
               }
             />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings" element={<SettingsPage services={services} />} />
           </Routes>
         </main>
         <UpdateBanner />
@@ -594,14 +595,104 @@ function FoundationCard({ number, title, copy }: { number: string; title: string
   );
 }
 
-function SettingsPage() {
+function SettingsPage({ services }: AppProperties) {
+  const [workspaces, setWorkspaces] = useState<readonly Workspace[]>([]);
+  const [workspaceId, setWorkspaceId] = useState("");
+  const [backupPassphrase, setBackupPassphrase] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [previewFile, setPreviewFile] = useState<File>();
+  const [previewPassphrase, setPreviewPassphrase] = useState("");
+  const [status, setStatus] = useState<string>();
+  const [preview, setPreview] =
+    useState<
+      Awaited<ReturnType<ApplicationServices["previewEncryptedWorkspaceBackup"]["execute"]>>
+    >();
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void services.listWorkspaces
+      .execute()
+      .then((items) => {
+        if (!active) return;
+        setWorkspaces(items);
+        setWorkspaceId((current) => current || items[0]?.id || "");
+      })
+      .catch(() => setStatus("Local workspaces could not be opened. No data was changed."));
+    return () => {
+      active = false;
+    };
+  }, [services]);
+
+  const createBackup = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setPreview(undefined);
+    if (
+      workspaceId.length === 0 ||
+      backupPassphrase.length < 12 ||
+      backupPassphrase !== confirmation
+    ) {
+      setStatus("Choose a workspace and enter matching passphrases of at least 12 characters.");
+      return;
+    }
+    setBusy(true);
+    setStatus("Encrypting locally…");
+    try {
+      const result = await services.createEncryptedWorkspaceBackup.execute(
+        parseWorkspaceId(workspaceId),
+        backupPassphrase,
+      );
+      const url = URL.createObjectURL(new Blob([result.content], { type: result.mediaType }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = result.fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+      setBackupPassphrase("");
+      setConfirmation("");
+      setStatus("Encrypted backup created. Store it and its passphrase separately.");
+    } catch {
+      setStatus("The encrypted backup could not be created. Your local data was not changed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const inspectBackup = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setPreview(undefined);
+    if (previewFile === undefined || previewPassphrase.length < 12) {
+      setStatus("Choose a backup and enter its passphrase.");
+      return;
+    }
+    if (previewFile.size > 128 * 1024 * 1024) {
+      setStatus("That file exceeds the 128 MiB encrypted-backup limit.");
+      return;
+    }
+    setBusy(true);
+    setStatus("Decrypting and validating in memory…");
+    try {
+      const result = await services.previewEncryptedWorkspaceBackup.execute(
+        await previewFile.text(),
+        previewPassphrase,
+      );
+      setPreview(result);
+      setPreviewPassphrase("");
+      setStatus("Backup integrity and structure verified. Nothing was restored or changed.");
+    } catch {
+      setStatus("The backup could not be verified. The passphrase or file may be incorrect.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="settings-page">
       <p className="eyebrow">Device settings</p>
       <h1>Privacy and storage</h1>
       <p className="hero-copy">
-        Workspaces and account labels are stored only on this device. Statement imports, encrypted
-        backups, and optional AI providers will be added behind explicit review and consent flows.
+        Workspaces, imports, and analysis stay on this device. Encrypted backup is an experimental
+        local-browser spike; keep your original data because restore is preview-only in this phase.
       </p>
       <dl className="settings-list">
         <div>
@@ -618,9 +709,109 @@ function SettingsPage() {
         </div>
         <div>
           <dt>Backup</dt>
-          <dd>Not configured</dd>
+          <dd>Encrypted export and restore preview</dd>
         </div>
       </dl>
+      <section className="backup-grid" aria-labelledby="backup-heading">
+        <div className="backup-panel">
+          <h2 id="backup-heading">Create encrypted backup</h2>
+          <p>
+            No password recovery is possible. The passphrase and plaintext never leave this page.
+          </p>
+          <form onSubmit={(event) => void createBackup(event)}>
+            <label htmlFor="backup-workspace">Workspace</label>
+            <select
+              id="backup-workspace"
+              value={workspaceId}
+              onChange={(event) => setWorkspaceId(event.target.value)}
+              disabled={busy}
+            >
+              {workspaces.map((workspace) => (
+                <option key={workspace.id} value={workspace.id}>
+                  {workspace.name}
+                </option>
+              ))}
+            </select>
+            <label htmlFor="backup-passphrase">Passphrase</label>
+            <input
+              id="backup-passphrase"
+              type="password"
+              autoComplete="new-password"
+              minLength={12}
+              value={backupPassphrase}
+              onChange={(event) => setBackupPassphrase(event.target.value)}
+              disabled={busy}
+            />
+            <label htmlFor="backup-confirmation">Confirm passphrase</label>
+            <input
+              id="backup-confirmation"
+              type="password"
+              autoComplete="new-password"
+              minLength={12}
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.target.value)}
+              disabled={busy}
+            />
+            <Button type="submit" isDisabled={busy || workspaces.length === 0}>
+              Create and download
+            </Button>
+          </form>
+        </div>
+        <div className="backup-panel">
+          <h2>Preview encrypted backup</h2>
+          <p>
+            Decrypts and validates in memory. It cannot merge, replace, or write workspace data.
+          </p>
+          <form onSubmit={(event) => void inspectBackup(event)}>
+            <label htmlFor="preview-file">Encrypted backup file</label>
+            <input
+              id="preview-file"
+              type="file"
+              accept=".fintbackup,application/vnd.financial-intelligence.encrypted-backup+json"
+              onChange={(event) => setPreviewFile(event.target.files?.[0])}
+              disabled={busy}
+            />
+            <label htmlFor="preview-passphrase">Passphrase</label>
+            <input
+              id="preview-passphrase"
+              type="password"
+              autoComplete="current-password"
+              minLength={12}
+              value={previewPassphrase}
+              onChange={(event) => setPreviewPassphrase(event.target.value)}
+              disabled={busy}
+            />
+            <Button type="submit" isDisabled={busy}>
+              Verify and preview
+            </Button>
+          </form>
+          {preview === undefined ? null : (
+            <dl className="backup-preview" aria-label="Verified backup preview">
+              <div>
+                <dt>Workspace</dt>
+                <dd>{preview.workspaceName}</dd>
+              </div>
+              <div>
+                <dt>Revision</dt>
+                <dd>{preview.revision}</dd>
+              </div>
+              <div>
+                <dt>Transactions</dt>
+                <dd>{preview.counts.transactions}</dd>
+              </div>
+              <div>
+                <dt>Accounts</dt>
+                <dd>{preview.counts.accounts}</dd>
+              </div>
+            </dl>
+          )}
+        </div>
+      </section>
+      {status === undefined ? null : (
+        <p className="backup-status" role="status">
+          {status}
+        </p>
+      )}
     </div>
   );
 }

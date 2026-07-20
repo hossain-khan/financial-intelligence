@@ -15,3 +15,4 @@ All notable changes to this project will be documented here. The format follows 
 - Accessible local transaction ledger with controlled filters, stable starter categories, provenance and edit-history drill-down, locked manual classifications, and reversible bulk edits.
 - Exact and likely duplicate review with deterministic evidence, visible keep/link decisions, durable undo, and four-month overlap coverage.
 - Decimal-safe cash-flow summaries grouped by currency, month, account, and category, with shared ledger filters, incomplete-period and unresolved-review disclosures, accessible fact tables, transaction drill-down, and spreadsheet-safe filtered CSV export.
+- Experimental versioned full-workspace backups with Argon2id-derived AES-GCM encryption, authenticated metadata, browser download, integrity-checked restore preview, adversarial tests, bounded benchmarks, and no restore mutation path.

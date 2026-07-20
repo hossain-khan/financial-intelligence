@@ -31,3 +31,4 @@ Status is one of `Proposed`, `Accepted`, `Deprecated`, or `Superseded by ADR-NNN
 - [ADR-004: TypeScript React PWA technology stack](ADR-004-Technology-Stack.md)
 - [ADR-005: CSV Parse for bounded delimited-text intake](ADR-005-CSV-Parser.md)
 - [ADR-006: TypeScript 7 native compiler with a TypeScript 6 compatibility API](ADR-006-TypeScript-7-Toolchain.md)
+- [ADR-007: Versioned encrypted workspace backup](ADR-007-Encrypted-Workspace-Backup.md)
