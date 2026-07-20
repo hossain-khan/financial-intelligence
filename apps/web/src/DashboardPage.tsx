@@ -1,524 +1,645 @@
-import React, { useEffect, useState } from "react";
-import type {
-  CashFlowFilter,
-  MerchantRankingReport,
-  MoneyFlowReport,
-  RecurringSummaryReport,
-  SavingsRateReport,
-} from "@financial-intelligence/analysis";
-import type { Account } from "@financial-intelligence/domain";
+import type { CashFlowFilter } from "@financial-intelligence/analysis";
+import type { Account, Merchant, TransactionReviewState } from "@financial-intelligence/domain";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import type { ApplicationServices } from "./infrastructure";
 
+export interface DashboardFilterState {
+  readonly accountId: string;
+  readonly currency: string;
+  readonly merchantId: string;
+  readonly tag: string;
+  readonly reviewState: "" | TransactionReviewState;
+  readonly recurringStatus: "" | "confirmed" | "proposed" | "dismissed" | "muted";
+  readonly fromDate: string;
+  readonly toDate: string;
+}
+
+const EMPTY_FILTERS: DashboardFilterState = {
+  accountId: "",
+  currency: "",
+  merchantId: "",
+  tag: "",
+  reviewState: "",
+  recurringStatus: "",
+  fromDate: "",
+  toDate: "",
+};
+
 export interface DashboardPageProps {
   readonly services: ApplicationServices;
+  readonly initialFilters?: DashboardFilterState;
+  readonly onFiltersChange?: (filters: DashboardFilterState) => void;
   readonly onNavigateToLedger?: (transactionIds: readonly string[]) => void;
 }
 
-export const DashboardPage: React.FC<DashboardPageProps> = ({ services, onNavigateToLedger }) => {
+export function DashboardPage({
+  services,
+  initialFilters = EMPTY_FILTERS,
+  onFiltersChange,
+  onNavigateToLedger,
+}: DashboardPageProps) {
+  const [filters, setFilters] = useState(initialFilters);
   const [accounts, setAccounts] = useState<readonly Account[]>([]);
-  const [accountId, setAccountId] = useState<string>("");
-  const [currency, setCurrency] = useState<string>("");
-  const [fromDate, setFromDate] = useState<string>("");
-  const [toDate, setToDate] = useState<string>("");
-
-  const [refreshKey, setRefreshKey] = useState<number>(0);
-
-  const [savingsReport, setSavingsReport] = useState<SavingsRateReport>();
-  const [merchantReport, setMerchantReport] = useState<MerchantRankingReport>();
-  const [recurringReport, setRecurringReport] = useState<RecurringSummaryReport>();
-  const [moneyFlowReport, setMoneyFlowReport] = useState<MoneyFlowReport>();
-
+  const [merchants, setMerchants] = useState<readonly Merchant[]>([]);
+  const [report, setReport] =
+    useState<Awaited<ReturnType<ApplicationServices["queryDashboardUseCase"]["execute"]>>>();
+  const [refreshKey, setRefreshKey] = useState(0);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [errorMessage, setErrorMessage] = useState<string>();
 
+  const initialFilterKey = JSON.stringify(initialFilters);
   useEffect(() => {
-    let cancelled = false;
+    const timer = window.setTimeout(() => setFilters(initialFilters), 0);
+    return () => window.clearTimeout(timer);
+    // The serialized key changes only when URL/back-navigation state changes. Deferring avoids a
+    // synchronous effect update while still reconciling browser history into local form state.
+  }, [initialFilterKey, initialFilters]);
 
-    async function run() {
-      try {
-        const workspaces = await services.listWorkspaces.execute();
+  const queryFilter = useMemo<CashFlowFilter>(
+    () => ({
+      ...(filters.accountId ? { accountIds: [filters.accountId] } : {}),
+      ...(filters.currency ? { currencies: [filters.currency] } : {}),
+      ...(filters.merchantId ? { merchantIds: [filters.merchantId] } : {}),
+      ...(filters.tag.trim() ? { tags: [filters.tag.trim()] } : {}),
+      ...(filters.reviewState ? { reviewStates: [filters.reviewState] } : {}),
+      ...(filters.recurringStatus ? { recurringStatuses: [filters.recurringStatus] } : {}),
+      ...(filters.fromDate ? { fromDate: filters.fromDate } : {}),
+      ...(filters.toDate ? { toDate: filters.toDate } : {}),
+    }),
+    [filters],
+  );
+
+  useEffect(() => {
+    onFiltersChange?.(filters);
+  }, [filters, onFiltersChange]);
+
+  useEffect(() => {
+    let current = true;
+    void Promise.all([
+      services.listWorkspaces.execute(),
+      services.listMerchants.execute(),
+      services.queryDashboardUseCase.execute(queryFilter),
+    ])
+      .then(async ([workspaces, loadedMerchants, dashboard]) => {
         const workspace = workspaces[0];
         const loadedAccounts =
           workspace === undefined ? [] : await services.listAccounts.execute(workspace.id);
-        const activeAccounts = loadedAccounts.filter((a) => !a.archived);
-
-        const filter: CashFlowFilter = {
-          ...(accountId ? { accountIds: [accountId] } : {}),
-          ...(currency ? { currencies: [currency] } : {}),
-          ...(fromDate ? { fromDate } : {}),
-          ...(toDate ? { toDate } : {}),
-        };
-
-        const [savingsRes, merchantRes, recurringRes, moneyFlowRes] = await Promise.all([
-          services.querySavingsRateUseCase.execute(filter),
-          services.queryMerchantRankingUseCase.execute(filter),
-          services.queryRecurringSummaryUseCase.execute(),
-          services.queryMoneyFlowUseCase.execute(filter),
-        ]);
-
-        if (!cancelled) {
-          setAccounts(activeAccounts);
-          setSavingsReport(savingsRes);
-          setMerchantReport(merchantRes);
-          setRecurringReport(recurringRes);
-          setMoneyFlowReport(moneyFlowRes);
-          setStatus("ready");
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setErrorMessage((err as Error).message);
-          setStatus("error");
-        }
-      }
-    }
-
-    void run();
-
+        if (!current) return;
+        setAccounts(loadedAccounts.filter((account) => !account.archived));
+        setMerchants(loadedMerchants.filter((merchant) => !merchant.archived));
+        setReport(dashboard);
+        setStatus("ready");
+      })
+      .catch((error: unknown) => {
+        if (!current) return;
+        setErrorMessage(error instanceof Error ? error.message : "Dashboard data could not load.");
+        setStatus("error");
+      });
     return () => {
-      cancelled = true;
+      current = false;
     };
-  }, [services, accountId, currency, fromDate, toDate, refreshKey]);
+  }, [queryFilter, refreshKey, services]);
 
-  const handleDrilldown = (transactionIds: readonly string[]) => {
-    if (onNavigateToLedger) {
-      onNavigateToLedger(transactionIds);
-    }
+  const currencies = [...new Set(accounts.map((account) => account.currency))].sort();
+  const recurringCurrencies = report?.recurring.currencies;
+
+  const updateFilter = <Key extends keyof DashboardFilterState>(
+    key: Key,
+    value: DashboardFilterState[Key],
+  ) => {
+    setStatus("loading");
+    setFilters((current) => ({ ...current, [key]: value }));
   };
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <header className="border-b border-slate-800 pb-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-              <span>📊 Intelligence Dashboards</span>
-            </h1>
-            <p className="text-sm text-slate-400 mt-1">
-              Reconciled spending analytics, savings rate trends, merchant rankings, and money-flow
-              breakdowns.
-            </p>
-          </div>
+    <div className="dashboard-page">
+      <header className="dashboard-hero">
+        <div>
+          <p className="eyebrow">Reconciled intelligence</p>
+          <h1>See how money moves through your life.</h1>
+          <p>
+            Every total is calculated locally and traces back to the exact ledger entries behind it.
+          </p>
+        </div>
+        <div className="dashboard-hero-actions">
+          {report && (
+            <span className="storage-chip">Revision {report.sourceRevision.slice(-8)}</span>
+          )}
           <button
             type="button"
-            onClick={() => setRefreshKey((k) => k + 1)}
-            className="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 rounded transition-colors self-start sm:self-auto"
+            className="secondary-button"
+            onClick={() => {
+              setStatus("loading");
+              setRefreshKey((v) => v + 1);
+            }}
           >
-            ↻ Refresh Analytics
+            Refresh reports
           </button>
         </div>
       </header>
 
-      {/* Filter Toolbar */}
-      <section aria-labelledby="dashboard-filters-title" className="card p-4">
-        <h2 id="dashboard-filters-title" className="sr-only">
-          Dashboard Filters
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <section className="dashboard-filter-panel" aria-labelledby="dashboard-filter-heading">
+        <div className="section-heading compact-heading">
           <div>
-            <label
-              htmlFor="filter-account"
-              className="block text-xs font-medium text-slate-400 mb-1"
-            >
-              Account
-            </label>
-            <select
-              id="filter-account"
-              value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded text-sm text-white p-2"
-            >
-              <option value="">All Accounts</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name} ({a.currency})
-                </option>
-              ))}
-            </select>
+            <p className="eyebrow">One filter, every report</p>
+            <h2 id="dashboard-filter-heading">Focus the dashboard</h2>
           </div>
-
-          <div>
-            <label
-              htmlFor="filter-currency"
-              className="block text-xs font-medium text-slate-400 mb-1"
-            >
-              Currency
-            </label>
-            <select
-              id="filter-currency"
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded text-sm text-white p-2"
-            >
-              <option value="">All Currencies</option>
-              <option value="CAD">CAD</option>
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="GBP">GBP</option>
-            </select>
-          </div>
-
-          <div>
-            <label
-              htmlFor="filter-from-date"
-              className="block text-xs font-medium text-slate-400 mb-1"
-            >
-              From Date
-            </label>
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => {
+              setStatus("loading");
+              setFilters(EMPTY_FILTERS);
+            }}
+          >
+            Clear filters
+          </button>
+        </div>
+        <div className="dashboard-filter-grid">
+          <DashboardSelect
+            label="Account"
+            value={filters.accountId}
+            onChange={(value) => updateFilter("accountId", value)}
+          >
+            <option value="">All accounts</option>
+            {accounts.map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.name} · {account.currency}
+              </option>
+            ))}
+          </DashboardSelect>
+          <DashboardSelect
+            label="Currency"
+            value={filters.currency}
+            onChange={(value) => updateFilter("currency", value)}
+          >
+            <option value="">All currencies</option>
+            {currencies.map((value) => (
+              <option key={value}>{value}</option>
+            ))}
+          </DashboardSelect>
+          <DashboardSelect
+            label="Merchant"
+            value={filters.merchantId}
+            onChange={(value) => updateFilter("merchantId", value)}
+          >
+            <option value="">All merchants</option>
+            {merchants.map((merchant) => (
+              <option key={merchant.id} value={merchant.id}>
+                {merchant.name}
+              </option>
+            ))}
+          </DashboardSelect>
+          <DashboardSelect
+            label="Review state"
+            value={filters.reviewState}
+            onChange={(value) =>
+              updateFilter("reviewState", value as DashboardFilterState["reviewState"])
+            }
+          >
+            <option value="">All review states</option>
+            <option value="unreviewed">Unreviewed</option>
+            <option value="needsReview">Needs review</option>
+            <option value="reviewed">Reviewed</option>
+          </DashboardSelect>
+          <label className="dashboard-field">
+            Tag
             <input
-              id="filter-from-date"
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded text-sm text-white p-2"
+              value={filters.tag}
+              maxLength={80}
+              onChange={(event) => updateFilter("tag", event.target.value)}
+              placeholder="e.g. family"
             />
-          </div>
-
-          <div>
-            <label
-              htmlFor="filter-to-date"
-              className="block text-xs font-medium text-slate-400 mb-1"
-            >
-              To Date
-            </label>
+          </label>
+          <label className="dashboard-field">
+            From
             <input
-              id="filter-to-date"
               type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded text-sm text-white p-2"
+              value={filters.fromDate}
+              onChange={(event) => updateFilter("fromDate", event.target.value)}
             />
-          </div>
+          </label>
+          <label className="dashboard-field">
+            To
+            <input
+              type="date"
+              value={filters.toDate}
+              onChange={(event) => updateFilter("toDate", event.target.value)}
+            />
+          </label>
+          <DashboardSelect
+            label="Recurring state"
+            value={filters.recurringStatus}
+            onChange={(value) =>
+              updateFilter("recurringStatus", value as DashboardFilterState["recurringStatus"])
+            }
+          >
+            <option value="">All series</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="proposed">Proposed</option>
+            <option value="dismissed">Dismissed</option>
+            <option value="muted">Muted</option>
+          </DashboardSelect>
         </div>
       </section>
 
-      {/* Loading / Error States */}
       {status === "loading" && (
-        <div className="card p-8 text-center text-slate-400">
-          <div className="animate-pulse flex flex-col items-center gap-2">
-            <span className="text-2xl">⏳</span>
-            <span>Calculating reconciled dashboard reports...</span>
-          </div>
+        <div className="dashboard-state" role="status">
+          Calculating reconciled reports…
         </div>
       )}
-
       {status === "error" && (
-        <div className="card border-l-4 border-l-rose-500 p-4 bg-rose-950/20 text-rose-300">
-          <h2 className="font-semibold">Error Loading Dashboard Data</h2>
-          <p className="text-sm mt-1">{errorMessage}</p>
+        <div className="dashboard-state error-message" role="alert">
+          <strong>Reports could not load.</strong>
+          <span>{errorMessage}</span>
         </div>
       )}
 
-      {status === "ready" && (
-        <div className="space-y-6">
-          {/* Section 1: Savings Rate & Cash Flow Overview */}
-          <section aria-labelledby="savings-overview-heading" className="card p-4">
-            <h2
-              id="savings-overview-heading"
-              className="text-lg font-semibold text-white mb-3 flex items-center gap-2"
-            >
-              <span>💰 Savings Rate & Cash Flow</span>
-            </h2>
-
-            {savingsReport?.currencies.map((curr) => {
-              const rateNum =
-                curr.savingsRate === "notApplicable" ? 0 : Number(curr.savingsRate) * 100;
-              const rateDisplay =
-                curr.savingsRate === "notApplicable" ? "N/A" : `${rateNum.toFixed(1)}%`;
-
-              return (
-                <div key={curr.currency} className="space-y-4 mb-6 last:mb-0">
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-slate-900/60 p-4 rounded-lg border border-slate-800">
-                    <div>
-                      <span className="text-xs text-slate-400 block">
-                        Total Income ({curr.currency})
-                      </span>
-                      <span className="text-xl font-bold text-emerald-400">
-                        {curr.currency} {curr.income}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-xs text-slate-400 block">Total Spending</span>
-                      <span className="text-xl font-bold text-rose-400">
-                        {curr.currency} {curr.spending}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-xs text-slate-400 block">Net Savings</span>
-                      <span className="text-xl font-bold text-cyan-400">
-                        {curr.currency} {curr.netSavings}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-xs text-slate-400 block">Savings Rate</span>
-                      <span className="text-xl font-bold text-amber-400 flex items-center gap-2">
-                        {rateDisplay}
-                        {curr.status === "incomplete" && (
-                          <span className="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                            Incomplete
-                          </span>
-                        )}
-                      </span>
-                    </div>
+      {status === "ready" && report && (
+        <div className="dashboard-sections">
+          <section className="dashboard-panel" aria-labelledby="savings-heading">
+            <PanelHeading eyebrow="Cash-flow health" title="Savings rate" id="savings-heading" />
+            {report.savings.currencies.length === 0 ? (
+              <EmptyReport />
+            ) : (
+              report.savings.currencies.map((currencyReport) => (
+                <div className="dashboard-currency" key={currencyReport.currency}>
+                  <div className="metric-grid">
+                    <Metric
+                      label="Income"
+                      value={`${currencyReport.currency} ${currencyReport.income}`}
+                      tone="positive"
+                    />
+                    <Metric
+                      label="Spending"
+                      value={`${currencyReport.currency} ${currencyReport.spending}`}
+                      tone="negative"
+                    />
+                    <Metric
+                      label="Net saved"
+                      value={`${currencyReport.currency} ${currencyReport.netSavings}`}
+                    />
+                    <Metric
+                      label="Savings rate"
+                      value={
+                        currencyReport.savingsRate === "notApplicable"
+                          ? "Not available"
+                          : `${(Number(currencyReport.savingsRate) * 100).toFixed(1)}%`
+                      }
+                    />
                   </div>
+                  <p className="dashboard-takeaway">{currencyReport.takeaway}</p>
+                  <div
+                    className="trend-chart"
+                    aria-label={`${currencyReport.currency} monthly income and spending chart`}
+                  >
+                    {currencyReport.months.map((month) => {
+                      const largest = Math.max(Number(month.income), Number(month.spending), 1);
+                      return (
+                        <div className="trend-column" key={month.month}>
+                          <span>{month.month}</span>
+                          <div className="trend-bars">
+                            <i
+                              className="income-bar"
+                              style={{
+                                height: `${Math.max(8, (Number(month.income) / largest) * 100)}%`,
+                              }}
+                              title={`Income ${month.income}`}
+                            />
+                            <i
+                              className="spending-bar"
+                              style={{
+                                height: `${Math.max(8, (Number(month.spending) / largest) * 100)}%`,
+                              }}
+                              title={`Spending ${month.spending}`}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <SavingsTable currency={currencyReport.currency} rows={currencyReport.months} />
+                </div>
+              ))
+            )}
+          </section>
 
-                  <p className="text-xs text-slate-400 bg-slate-900/40 p-2.5 rounded border border-slate-800">
-                    {curr.takeaway}
-                  </p>
-
-                  {/* Monthly Trend Table */}
-                  {curr.months.length > 0 && (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-sm text-slate-300 border-collapse">
+          <section className="dashboard-panel" aria-labelledby="merchant-heading">
+            <PanelHeading
+              eyebrow="Where spending lands"
+              title="Merchant ranking"
+              id="merchant-heading"
+            />
+            {report.merchant.currencies.length === 0 ? (
+              <EmptyReport />
+            ) : (
+              report.merchant.currencies.map((currencyReport) => {
+                const largest = Math.max(
+                  ...currencyReport.rows.map((row) => Number(row.totalSpending)),
+                  1,
+                );
+                return (
+                  <div className="dashboard-currency" key={currencyReport.currency}>
+                    <p className="dashboard-takeaway">{currencyReport.takeaway}</p>
+                    <div
+                      className="merchant-chart"
+                      aria-label={`${currencyReport.currency} merchant spending chart`}
+                    >
+                      {currencyReport.rows.slice(0, 8).map((row) => (
+                        <button
+                          type="button"
+                          key={row.merchantId ?? row.merchantName}
+                          onClick={() => onNavigateToLedger?.(row.transactionIds)}
+                        >
+                          <span>{row.merchantName}</span>
+                          <i
+                            style={{
+                              width: `${Math.max(3, (Number(row.totalSpending) / largest) * 100)}%`,
+                            }}
+                          />
+                          <strong>
+                            {currencyReport.currency} {row.totalSpending}
+                          </strong>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="dashboard-table-wrap">
+                      <table>
+                        <caption>
+                          Merchant totals; select a row to inspect exact transactions.
+                        </caption>
                         <thead>
-                          <tr className="border-b border-slate-800 text-xs text-slate-400 uppercase">
-                            <th className="py-2 px-3">Month</th>
-                            <th className="py-2 px-3">Income</th>
-                            <th className="py-2 px-3">Spending</th>
-                            <th className="py-2 px-3">Net Savings</th>
-                            <th className="py-2 px-3">Savings Rate</th>
+                          <tr>
+                            <th>Merchant</th>
+                            <th>Spend</th>
+                            <th>Transactions</th>
+                            <th>Ledger</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800/60">
-                          {curr.months.map((m) => (
-                            <tr key={m.month} className="hover:bg-slate-900/40">
-                              <td className="py-2 px-3 font-medium text-white flex items-center gap-2">
-                                {m.month}
-                                {m.incomplete && (
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">
-                                    Incomplete
-                                  </span>
-                                )}
+                        <tbody>
+                          {currencyReport.rows.map((row) => (
+                            <tr key={row.merchantId ?? row.merchantName}>
+                              <td>{row.merchantName}</td>
+                              <td>
+                                {currencyReport.currency} {row.totalSpending}
                               </td>
-                              <td className="py-2 px-3 text-emerald-400">
-                                {curr.currency} {m.income}
-                              </td>
-                              <td className="py-2 px-3 text-rose-400">
-                                {curr.currency} {m.spending}
-                              </td>
-                              <td className="py-2 px-3 text-cyan-400">
-                                {curr.currency} {m.netSavings}
-                              </td>
-                              <td className="py-2 px-3 font-semibold text-amber-400">
-                                {m.savingsRate === "notApplicable"
-                                  ? "N/A"
-                                  : `${(Number(m.savingsRate) * 100).toFixed(1)}%`}
+                              <td>{row.transactionCount}</td>
+                              <td>
+                                <button
+                                  type="button"
+                                  className="table-action"
+                                  onClick={() => onNavigateToLedger?.(row.transactionIds)}
+                                >
+                                  View {row.transactionCount}
+                                </button>
                               </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  </div>
+                );
+              })
+            )}
           </section>
 
-          {/* Section 2: Top Merchants Ranking */}
-          <section aria-labelledby="merchant-ranking-heading" className="card p-4">
-            <h2
-              id="merchant-ranking-heading"
-              className="text-lg font-semibold text-white mb-3 flex items-center gap-2"
-            >
-              <span>🛍️ Merchant Spend Ranking</span>
-            </h2>
-
-            {merchantReport?.currencies.map((curr) => (
-              <div key={curr.currency} className="space-y-3 mb-6 last:mb-0">
-                <div className="flex items-center justify-between text-xs text-slate-400 bg-slate-900/40 p-2.5 rounded border border-slate-800">
-                  <span>{curr.takeaway}</span>
-                  {curr.unresolvedCount > 0 && (
-                    <span className="text-amber-400 font-medium">
-                      ⚠️ {curr.unresolvedCount} unresolved transactions ({curr.currency}{" "}
-                      {curr.unresolvedSpending})
-                    </span>
-                  )}
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm text-slate-300 border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-800 text-xs text-slate-400 uppercase">
-                        <th className="py-2 px-3">#</th>
-                        <th className="py-2 px-3">Merchant</th>
-                        <th className="py-2 px-3">Total Spend</th>
-                        <th className="py-2 px-3">Transactions</th>
-                        <th className="py-2 px-3">Monthly Trend</th>
-                        <th className="py-2 px-3 text-right">Drilldown</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60">
-                      {curr.rows.map((row, idx) => (
-                        <tr key={row.merchantId ?? `row-${idx}`} className="hover:bg-slate-900/40">
-                          <td className="py-2 px-3 text-slate-500 font-mono text-xs">{idx + 1}</td>
-                          <td className="py-2 px-3 font-semibold text-white">{row.merchantName}</td>
-                          <td className="py-2 px-3 font-bold text-rose-400">
-                            {curr.currency} {row.totalSpending}
-                          </td>
-                          <td className="py-2 px-3 text-slate-300">{row.transactionCount}</td>
-                          <td className="py-2 px-3">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {row.monthlyTrend.slice(-4).map((t) => (
-                                <span
-                                  key={t.month}
-                                  className="text-[11px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300"
-                                >
-                                  {t.month}: {curr.currency} {t.spending}
-                                </span>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="py-2 px-3 text-right">
-                            <button
-                              type="button"
-                              onClick={() => handleDrilldown(row.transactionIds)}
-                              className="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 font-medium transition-colors"
-                            >
-                              View Txs ({row.transactionCount})
-                            </button>
-                          </td>
+          <section className="dashboard-panel" aria-labelledby="recurring-heading">
+            <PanelHeading
+              eyebrow="Commitments over time"
+              title="Recurring payments"
+              id="recurring-heading"
+            />
+            {recurringCurrencies?.length === 0 ? (
+              <EmptyReport />
+            ) : (
+              recurringCurrencies?.map((currencyReport) => (
+                <div className="dashboard-currency" key={currencyReport.currency}>
+                  <p className="dashboard-takeaway">{currencyReport.takeaway}</p>
+                  <div className="dashboard-table-wrap">
+                    <table>
+                      <caption>Detected recurring series and their review state.</caption>
+                      <thead>
+                        <tr>
+                          <th>Series</th>
+                          <th>Cadence</th>
+                          <th>Typical amount</th>
+                          <th>Next expected</th>
+                          <th>Status</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {currencyReport.rows.map((row) => (
+                          <tr key={row.id}>
+                            <td>{row.name}</td>
+                            <td>{row.cadence}</td>
+                            <td>
+                              {row.currency} {row.amountStats.median}
+                            </td>
+                            <td>{row.nextExpectedDate}</td>
+                            <td>
+                              <span className={`status-pill status-${row.status}`}>
+                                {row.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </section>
 
-          {/* Section 3: Recurring Payments & Subscriptions */}
-          <section aria-labelledby="recurring-summary-heading" className="card p-4">
-            <h2
-              id="recurring-summary-heading"
-              className="text-lg font-semibold text-white mb-3 flex items-center gap-2"
-            >
-              <span>↺ Recurring Subscriptions & Scheduled Payments</span>
-            </h2>
-
-            {recurringReport?.currencies.map((curr) => (
-              <div key={curr.currency} className="space-y-3 mb-6 last:mb-0">
-                <div className="flex items-center justify-between text-xs text-slate-400 bg-slate-900/40 p-2.5 rounded border border-slate-800">
-                  <span>{curr.takeaway}</span>
-                  <span className="text-cyan-400 font-medium">
-                    Total Confirmed: {curr.currency} {curr.totalConfirmedMonthlySpend} / occurrence
-                  </span>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm text-slate-300 border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-800 text-xs text-slate-400 uppercase">
-                        <th className="py-2 px-3">Series Name</th>
-                        <th className="py-2 px-3">Cadence</th>
-                        <th className="py-2 px-3">Amount</th>
-                        <th className="py-2 px-3">Next Expected</th>
-                        <th className="py-2 px-3">Occurrences</th>
-                        <th className="py-2 px-3">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60">
-                      {curr.rows.map((row) => (
-                        <tr key={row.id} className="hover:bg-slate-900/40">
-                          <td className="py-2 px-3 font-semibold text-white">{row.name}</td>
-                          <td className="py-2 px-3">
-                            <span className="capitalize text-xs px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                              {row.cadence}
-                            </span>
-                          </td>
-                          <td className="py-2 px-3 font-medium text-rose-400">
-                            {row.amountStats.isVariable
-                              ? `${row.currency} ${row.amountStats.min} – ${row.amountStats.max}`
-                              : `${row.currency} ${row.amountStats.median}`}
-                          </td>
-                          <td className="py-2 px-3 text-emerald-400 font-medium">
-                            {row.nextExpectedDate}
-                          </td>
-                          <td className="py-2 px-3 text-slate-300">{row.memberCount}</td>
-                          <td className="py-2 px-3">
-                            <span
-                              className={`text-xs px-2 py-0.5 rounded capitalize ${
-                                row.status === "confirmed"
-                                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                                  : row.status === "proposed"
-                                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                                    : "bg-slate-800 text-slate-400"
-                              }`}
-                            >
-                              {row.status}
-                            </span>
-                          </td>
+          <section className="dashboard-panel" aria-labelledby="flow-heading">
+            <PanelHeading eyebrow="Income to destinations" title="Money flow" id="flow-heading" />
+            {report.moneyFlow.currencies.length === 0 ? (
+              <EmptyReport />
+            ) : (
+              report.moneyFlow.currencies.map((currencyReport) => (
+                <div className="dashboard-currency" key={currencyReport.currency}>
+                  <p className="dashboard-takeaway">{currencyReport.takeaway}</p>
+                  <div
+                    className="flow-chart"
+                    aria-label={`${currencyReport.currency} money flow chart`}
+                  >
+                    {currencyReport.edges.map((edge) => (
+                      <button
+                        type="button"
+                        key={`${edge.sourceId}:${edge.targetId}`}
+                        onClick={() => onNavigateToLedger?.(edge.transactionIds)}
+                      >
+                        <span>{edge.sourceLabel}</span>
+                        <i aria-hidden="true" />
+                        <strong>
+                          {edge.targetLabel}
+                          <small>
+                            {currencyReport.currency} {edge.amount} · {edge.percentage}
+                          </small>
+                        </strong>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="dashboard-table-wrap">
+                    <table>
+                      <caption>Money-flow edges; chart and table use identical values.</caption>
+                      <thead>
+                        <tr>
+                          <th>Source</th>
+                          <th>Destination</th>
+                          <th>Amount</th>
+                          <th>Share</th>
+                          <th>Ledger</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {currencyReport.edges.map((edge) => (
+                          <tr key={`${edge.sourceId}:${edge.targetId}`}>
+                            <td>{edge.sourceLabel}</td>
+                            <td>{edge.targetLabel}</td>
+                            <td>
+                              {currencyReport.currency} {edge.amount}
+                            </td>
+                            <td>{edge.percentage}</td>
+                            <td>
+                              <button
+                                type="button"
+                                className="table-action"
+                                onClick={() => onNavigateToLedger?.(edge.transactionIds)}
+                              >
+                                View {edge.transactionIds.length}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </section>
-
-          {/* Section 4: Money Flow */}
-          <section aria-labelledby="money-flow-heading" className="card p-4">
-            <h2
-              id="money-flow-heading"
-              className="text-lg font-semibold text-white mb-3 flex items-center gap-2"
-            >
-              <span>🌊 Money Flow Breakdown</span>
-            </h2>
-
-            {moneyFlowReport?.currencies.map((curr) => (
-              <div key={curr.currency} className="space-y-3 mb-6 last:mb-0">
-                <p className="text-xs text-slate-400 bg-slate-900/40 p-2.5 rounded border border-slate-800">
-                  {curr.takeaway}
-                </p>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm text-slate-300 border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-800 text-xs text-slate-400 uppercase">
-                        <th className="py-2 px-3">Source</th>
-                        <th className="py-2 px-3">Destination</th>
-                        <th className="py-2 px-3">Flow Amount</th>
-                        <th className="py-2 px-3">% of Spending</th>
-                        <th className="py-2 px-3 text-right">Drilldown</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60">
-                      {curr.edges.map((edge, idx) => (
-                        <tr
-                          key={`${edge.sourceId}-${edge.targetId}-${idx}`}
-                          className="hover:bg-slate-900/40"
-                        >
-                          <td className="py-2 px-3 text-emerald-400 font-medium">
-                            {edge.sourceLabel}
-                          </td>
-                          <td className="py-2 px-3 font-semibold text-white">{edge.targetLabel}</td>
-                          <td className="py-2 px-3 font-bold text-rose-400">
-                            {curr.currency} {edge.amount}
-                          </td>
-                          <td className="py-2 px-3 font-medium text-amber-400">
-                            {edge.percentage}
-                          </td>
-                          <td className="py-2 px-3 text-right">
-                            <button
-                              type="button"
-                              onClick={() => handleDrilldown(edge.transactionIds)}
-                              className="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 font-medium transition-colors"
-                            >
-                              View Txs ({edge.transactionIds.length})
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </section>
         </div>
       )}
     </div>
   );
-};
+}
+
+function DashboardSelect({
+  label,
+  value,
+  onChange,
+  children,
+}: {
+  readonly label: string;
+  readonly value: string;
+  readonly onChange: (value: string) => void;
+  readonly children: ReactNode;
+}) {
+  return (
+    <label className="dashboard-field">
+      {label}
+      <select value={value} onChange={(event) => onChange(event.target.value)}>
+        {children}
+      </select>
+    </label>
+  );
+}
+
+function PanelHeading({
+  eyebrow,
+  title,
+  id,
+}: {
+  readonly eyebrow: string;
+  readonly title: string;
+  readonly id: string;
+}) {
+  return (
+    <div className="section-heading compact-heading">
+      <div>
+        <p className="eyebrow">{eyebrow}</p>
+        <h2 id={id}>{title}</h2>
+      </div>
+    </div>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  readonly label: string;
+  readonly value: string;
+  readonly tone?: "neutral" | "positive" | "negative";
+}) {
+  return (
+    <div className={`metric-card metric-${tone}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function EmptyReport() {
+  return <p className="dashboard-empty">No transactions match these filters yet.</p>;
+}
+
+function SavingsTable({
+  currency,
+  rows,
+}: {
+  readonly currency: string;
+  readonly rows: readonly {
+    readonly month: string;
+    readonly income: string;
+    readonly spending: string;
+    readonly netSavings: string;
+    readonly savingsRate: string;
+    readonly incomplete: boolean;
+  }[];
+}) {
+  return (
+    <div className="dashboard-table-wrap">
+      <table>
+        <caption>Monthly savings values represented by the chart.</caption>
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th>Income</th>
+            <th>Spending</th>
+            <th>Net saved</th>
+            <th>Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.month}>
+              <td>
+                {row.month}
+                {row.incomplete && <span className="status-pill status-proposed">Partial</span>}
+              </td>
+              <td>
+                {currency} {row.income}
+              </td>
+              <td>
+                {currency} {row.spending}
+              </td>
+              <td>
+                {currency} {row.netSavings}
+              </td>
+              <td>
+                {row.savingsRate === "notApplicable"
+                  ? "—"
+                  : `${(Number(row.savingsRate) * 100).toFixed(1)}%`}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}

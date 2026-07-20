@@ -37,7 +37,11 @@ export type {
   TransferLinkId,
   WorkspaceId,
 } from "./identifiers";
-export { calculateRecurringSignature, findRecurringProposals } from "./recurring-detection";
+export {
+  calculateRecurringSignature,
+  findRecurringProposals,
+  recomputeRecurringProposalsIncrementally,
+} from "./recurring-detection";
 export type {
   RecurringCadence,
   RecurringDetectionOptions,

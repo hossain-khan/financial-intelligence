@@ -23,6 +23,9 @@ All notable changes to this project will be documented here. The format follows 
 - Deterministic transfer and recurring-series proposals with explicit confirmation/dismissal, transfer-aware cash-flow analysis, and persistent local decisions.
 - Accessible merchant, recurring, savings-rate, and money-flow dashboards whose rows and edges drill down to the exact contributing ledger records.
 - Phase 2 knowledge stores in encrypted workspace snapshots with backward-compatible reads of pre-Phase-2 experimental snapshots.
+- Atomic, stale-safe correction and Financial Brain operations with local before/after journals and conflict-safe undo.
+- Transactional transfer confirmation and recurring edit/split/merge/supersession/invalidation history with recoverable undo.
+- Revision-consistent dashboard snapshots, shared merchant/tag/review/recurring filters, URL-preserved navigation, accessible charts, and exact ledger drilldown.
 
 ### Fixed
 
@@ -30,3 +33,4 @@ All notable changes to this project will be documented here. The format follows 
 - Keep confirmed and dismissed recurring decisions visible in recurring summaries.
 - Pass exact dashboard contribution IDs into ledger and cash-flow drilldown queries.
 - Align Financial Brain rule and recurring-decision runtime fields with the normative JSON Schema.
+- Make the dashboard responsive presentation use the application design system instead of an isolated dark HTML treatment.

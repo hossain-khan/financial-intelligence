@@ -96,23 +96,42 @@ export {
 export {
   ConfirmRecurringProposalUseCase,
   DismissRecurringProposalUseCase,
+  EditRecurringDecisionUseCase,
   FindRecurringProposalsUseCase,
   MuteRecurringProposalUseCase,
+  MergeRecurringDecisionsUseCase,
+  ReconcileRecurringDecisionsUseCase,
+  SplitRecurringDecisionUseCase,
+  UndoRecurringDecisionUseCase,
 } from "./recurring";
 export type { RecurringDecisionRepository } from "./recurring";
 export {
   QueryMerchantRankingUseCase,
+  QueryDashboardUseCase,
   QueryMoneyFlowUseCase,
   QueryRecurringSummaryUseCase,
   QuerySavingsRateUseCase,
+} from "./dashboard";
+export type {
+  DashboardReportBundle,
+  DashboardSnapshot,
+  DashboardSnapshotRepository,
 } from "./dashboard";
 export {
   ConfirmTransferProposalUseCase,
   FindTransferProposalsUseCase,
   RejectTransferProposalUseCase,
   UnlinkTransferUseCase,
+  UndoTransferDecisionUseCase,
 } from "./transfers";
 export type { TransferDecisionRepository } from "./transfers";
+export { ListLearningOperationsUseCase, UndoLearningOperationUseCase } from "./learning-operations";
+export type {
+  AtomicLearningRepository,
+  LearningOperation,
+  LearningOperationChange,
+  LearningStore,
+} from "./learning-operations";
 export type {
   BulkEditPreview,
   BulkTransactionChange,

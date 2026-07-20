@@ -31,9 +31,9 @@ categorize a matching transaction on a later import without an AI provider.
   default. Bulk transaction edits have an operation journal and existing undo path.
 - Reusable rules are explicit choices and definite conflicts fail before activation.
 
-Creating a reusable rule or alias alongside a correction is not yet one cross-store transaction.
-The atomic correction-and-learning journal is tracked as follow-up work and must land before the
-Phase 2 exit criteria are considered complete.
+Creating a reusable rule or alias alongside a correction now plans the canonical transaction,
+merchant/rule additions, expected revision, and before/after records before one IndexedDB commit.
+The `learningOperations` journal supports conflict-safe undo and leaves no partial state on failure.
 
 ### Financial Brain portability
 
@@ -46,9 +46,9 @@ Phase 2 exit criteria are considered complete.
 - Different stable IDs are never silently collapsed. Recurring decisions participate in preview,
   export, and apply.
 
-Import apply is still implemented through individual repositories and does not yet provide the
-single IndexedDB transaction, stale-preview digest/revision check, operation journal, or rollback
-required by the final portability contract. That recovery work remains a release blocker.
+Import preview returns the current learning revision and canonical input digest. Apply requires both,
+requires explicit acknowledgment of possible semantic duplicates, and commits selected stores plus
+the operation journal in one transaction. Undo refuses to erase a record changed after apply.
 
 ### Transfers and recurring series
 
@@ -59,9 +59,14 @@ required by the final portability contract. That recovery work remains a release
   status, account, date, and amount and rejects overlap with an existing confirmed link.
 - Recurring proposals exclude confirmed transfer members. Resolved recurring decisions are hidden
   from the active review queue but retained in dashboard summaries.
-
-The final transfer uniqueness guarantee still needs an atomic IndexedDB compare-and-write so two
-concurrent tabs cannot confirm overlapping proposals.
+- Transfer confirmation re-reads both evidence transactions and active links inside the same write
+  transaction, so overlapping concurrent confirmation fails closed. Confirm, reject, unlink, and
+  undo are journaled.
+- Recurring confirm/edit/dismiss/mute/split/merge/invalidate/undo commands retain member IDs,
+  detector version, tolerance, and supersession history. Missing or void evidence and detector
+  version changes move detector-owned decisions to explicit `invalidated` state.
+- Affected-group recurring recomputation replaces only groups touched by added, removed, voided, or
+  regrouped transaction IDs; parity tests compare the result with a clean full rebuild.
 
 ### Reconciled dashboards
 
@@ -70,11 +75,17 @@ concurrent tabs cannot confirm overlapping proposals.
 - Report rows and edges carry contributing transaction IDs. Dashboard drilldown passes that exact
   bounded ID set to the ledger, which applies it to both ledger and cash-flow queries.
 - Tables expose the same facts used by the visual presentation; model output performs no arithmetic.
+- One IndexedDB read transaction supplies transactions, categories, merchants, transfer links, and
+  recurring decisions plus an opaque source revision. Shared account/currency/merchant/tag/review/
+  recurring/date filters feed every report, chart, table, and exact ledger member set.
+- Merchant trend bars and the accessible money-flow presentation use the exact report rows/edges,
+  preserve URL filters across drilldown/back navigation, and use the application design system.
 
 ## Storage and backup compatibility
 
-Database version 8 contains merchants, classification rules, transfer decisions, and recurring
-decisions. Full-workspace backup snapshots now inventory those stores. The existing `1.0.0` backup
+Database version 9 adds learning-operation and transfer/recurring decision-event journals to the
+Phase 2 stores. Full-workspace backup snapshots inventory operational journals as optional additive
+fields. The existing `1.0.0` backup
 reader treats their absence as empty arrays so pre-Phase-2 experimental snapshots remain readable;
 new snapshots always write the fields and validate transfer references.
 
@@ -89,12 +100,14 @@ The maintained test suite covers:
 - canonical merchant classification round trips;
 - Brain schema/example synchronization and recurring-decision portability;
 - legacy backup compatibility and Phase 2 backup inventory;
-- ambiguous/stale transfer rejection and recurring resolved-state visibility;
-- exact dashboard-member filtering through analysis and ledger queries;
+- ambiguous/stale/overlapping transfer rejection, atomic decision history, recurring
+  merge/split/invalidation, and safe undo;
+- exact dashboard-member filtering, shared merchant/tag/review filters, snapshot revision, chart/
+  table parity, responsive semantics, and 50,000-row analysis bounds;
 - existing keyboard, responsive, offline, CSP, schema, migration, and browser gates.
 
-The milestone exits only after the remaining atomicity/recovery follow-ups pass interruption,
-multi-tab conflict, rollback, and browser end-to-end tests.
+The milestone exits only after CI and supported-browser end-to-end qualification pass for the
+combined hardening pull request.
 
 ## Related documents
 
@@ -105,7 +118,7 @@ multi-tab conflict, rollback, and browser end-to-end tests.
 - [Cash-flow and filtered export](18-CASH-FLOW-AND-FILTERED-EXPORT.md)
 - [Financial Brain schema](../schemas/financial-brain.schema.json)
 
-## Tracked release blockers
+## Completion issues
 
 - [#72: atomic, stale-safe, reversible learning operations](https://github.com/hossain-khan/financial-intelligence/issues/72)
 - [#73: complete transfer and recurring decision lifecycles](https://github.com/hossain-khan/financial-intelligence/issues/73)

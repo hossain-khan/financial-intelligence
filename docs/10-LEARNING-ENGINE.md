@@ -101,6 +101,16 @@ Rule create/edit/disable, merchant merge, normalizer upgrade, and classifier cha
 
 Brain-level objects have `createdAt`, `updatedAt`, and stable IDs. Local operation history stores before/after patches for a bounded retention period or count. Exported Brain snapshots declare creation time and application/schema version. Users may keep successive files; v1 does not implement a Git-like distributed history inside one Brain document.
 
+Financial Brain preview is bound to both an input digest and the current learning-store revision.
+Apply rejects a changed file, stale revision, unresolved conflict, or unacknowledged semantic
+duplicate before mutation. Categories, merchants, rules, recurring knowledge, and the operation
+journal then commit atomically. Undo restores additions and updates only when every current record
+still equals the recorded after-state.
+
+A correction that also creates a deterministic rule or merchant alias uses the same atomic port as
+the transaction correction. UI outcome messages contain object counts and safe conflict guidance,
+not transaction descriptions or amounts.
+
 ## Brain export
 
 Portable learning includes categories, merchants/aliases, rules, recurring decisions, and safe preferences. It deliberately excludes transaction overrides because they reference raw local records. Export validates against schema and summarizes contents.

@@ -3,19 +3,27 @@ import {
   parseAccountId,
   parseCategoryId,
   parseDateOnly,
+  parseMerchantId,
   parseTransactionId,
   type AccountId,
   type Category,
   type CategoryId,
   type DateOnly,
+  type MerchantId,
   type Transaction,
   type TransactionId,
+  type TransactionReviewState,
 } from "@financial-intelligence/domain";
 
 export interface CashFlowFilter {
   readonly transactionIds?: readonly string[];
   readonly accountIds?: readonly string[];
   readonly categoryIds?: readonly string[];
+  readonly merchantIds?: readonly string[];
+  readonly tags?: readonly string[];
+  readonly reviewStates?: readonly TransactionReviewState[];
+  /** Resolved by snapshot-aware callers because recurring state is derived knowledge. */
+  readonly recurringStatuses?: readonly ("confirmed" | "proposed" | "dismissed" | "muted")[];
   readonly currencies?: readonly string[];
   readonly fromDate?: string;
   readonly toDate?: string;
@@ -86,6 +94,9 @@ interface NormalizedFilter {
   readonly transactionIds?: ReadonlySet<TransactionId>;
   readonly accountIds?: ReadonlySet<AccountId>;
   readonly categoryIds?: ReadonlySet<CategoryId>;
+  readonly merchantIds?: ReadonlySet<MerchantId>;
+  readonly tags?: ReadonlySet<string>;
+  readonly reviewStates?: ReadonlySet<TransactionReviewState>;
   readonly currencies?: ReadonlySet<string>;
   readonly fromDate?: DateOnly;
   readonly toDate?: DateOnly;
@@ -136,6 +147,18 @@ export function filterCashFlowTransactions(
     if (
       normalized.currencies !== undefined &&
       !normalized.currencies.has(transaction.money.currency)
+    )
+      return false;
+    if (
+      normalized.merchantIds !== undefined &&
+      (transaction.merchantId === undefined || !normalized.merchantIds.has(transaction.merchantId))
+    )
+      return false;
+    if (normalized.tags !== undefined && !transaction.tags.some((tag) => normalized.tags?.has(tag)))
+      return false;
+    if (
+      normalized.reviewStates !== undefined &&
+      !normalized.reviewStates.has(transaction.reviewState)
     )
       return false;
     if (normalized.fromDate !== undefined && transaction.postedDate < normalized.fromDate)
@@ -316,6 +339,13 @@ function normalizeFilter(filter: CashFlowFilter): NormalizedFilter {
     ...(filter.categoryIds === undefined
       ? {}
       : { categoryIds: new Set(filter.categoryIds.map(parseCategoryId)) }),
+    ...(filter.merchantIds === undefined
+      ? {}
+      : { merchantIds: new Set(filter.merchantIds.map(parseMerchantId)) }),
+    ...(filter.tags === undefined ? {} : { tags: new Set(filter.tags.map(validateTag)) }),
+    ...(filter.reviewStates === undefined
+      ? {}
+      : { reviewStates: new Set(filter.reviewStates.map(validateReviewState)) }),
     ...(filter.currencies === undefined
       ? {}
       : { currencies: new Set(filter.currencies.map(validateCurrency)) }),
@@ -330,6 +360,10 @@ function matchesNormalizedFilter(transaction: Transaction, filter: NormalizedFil
     (filter.accountIds === undefined || filter.accountIds.has(transaction.accountId)) &&
     (filter.categoryIds === undefined ||
       (transaction.categoryId !== undefined && filter.categoryIds.has(transaction.categoryId))) &&
+    (filter.merchantIds === undefined ||
+      (transaction.merchantId !== undefined && filter.merchantIds.has(transaction.merchantId))) &&
+    (filter.tags === undefined || transaction.tags.some((tag) => filter.tags?.has(tag))) &&
+    (filter.reviewStates === undefined || filter.reviewStates.has(transaction.reviewState)) &&
     (filter.currencies === undefined || filter.currencies.has(transaction.money.currency)) &&
     (filter.fromDate === undefined || transaction.postedDate >= filter.fromDate) &&
     (filter.toDate === undefined || transaction.postedDate <= filter.toDate)
@@ -369,11 +403,30 @@ function describeFilter(filter: CashFlowFilter): string {
     filter.categoryIds === undefined
       ? "all categories"
       : `${filter.categoryIds.length} category(s)`,
+    filter.merchantIds === undefined ? "all merchants" : `${filter.merchantIds.length} merchant(s)`,
+    filter.tags === undefined ? "all tags" : `${filter.tags.length} tag(s)`,
+    filter.reviewStates === undefined ? "all review states" : filter.reviewStates.join(", "),
+    filter.recurringStatuses === undefined
+      ? "all recurring states"
+      : filter.recurringStatuses.join(", "),
   ].join(" · ");
 }
 
 function validateCurrency(value: string): string {
   if (!/^[A-Z]{3}$/u.test(value)) throw new TypeError(`Invalid currency filter: ${value}`);
+  return value;
+}
+
+function validateTag(value: string): string {
+  const tag = value.trim();
+  if (tag.length === 0 || tag.length > 80) throw new TypeError("Invalid tag filter");
+  return tag;
+}
+
+function validateReviewState(value: TransactionReviewState): TransactionReviewState {
+  if (!(["unreviewed", "needsReview", "reviewed"] as const).includes(value)) {
+    throw new TypeError(`Invalid review-state filter: ${value}`);
+  }
   return value;
 }
 

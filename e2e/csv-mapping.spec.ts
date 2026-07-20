@@ -90,6 +90,30 @@ test("atomically commits and reloads a bank-shaped CSV import without network ac
   await expect(page.getByRole("status")).toContainText("Updated 1 transaction");
   await expect(page.getByText("Source details").first()).toBeVisible();
 
+  await page.goto("/dashboard");
+  await expect(
+    page.getByRole("heading", { name: "See how money moves through your life." }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Savings rate" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Merchant ranking" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Recurring payments" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Money flow" })).toBeVisible();
+  await page.getByLabel("From").fill("2026-02-01");
+  await expect(page).toHaveURL(/from=2026-02-01/u);
+  const dashboardAxe = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+    .analyze();
+  expect(dashboardAxe.violations, JSON.stringify(dashboardAxe.violations, null, 2)).toEqual([]);
+  await page
+    .getByRole("table", { name: /Money-flow edges/u })
+    .getByRole("button", { name: /View 1/u })
+    .first()
+    .click();
+  await expect(page.getByRole("heading", { name: "Ledger", exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Return to the same dashboard view." }).click();
+  await expect(page).toHaveURL(/dashboard\?from=2026-02-01/u);
+  await expect(page.getByLabel("From")).toHaveValue("2026-02-01");
+
   await page.goto("/import");
   await expect(
     page.getByRole("heading", { name: "Map every transaction before it enters your ledger." }),

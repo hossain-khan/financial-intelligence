@@ -573,6 +573,7 @@ export interface RecurringDecision {
   merchantId?: Uuid;
   status: "confirmed" | "dismissed" | "muted";
   cadence?: "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly" | "irregular";
+  toleranceDays?: number;
   updatedAt: DateTime;
 }
 /**

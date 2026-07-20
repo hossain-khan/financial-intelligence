@@ -39,9 +39,10 @@ Sequence delivery by risk-reducing vertical slices. Dates are intentionally abse
 
 ## Phase 2 — Financial Brain and deterministic learning
 
-**Status:** Feature implementation merged; post-merge hardening is in progress. See
-[Phase 2 implementation and hardening](20-PHASE-2-IMPLEMENTATION.md). Atomic Financial Brain
-apply/rollback and cross-store correction journaling remain required exit evidence.
+**Status:** Follow-up hardening for atomic learning, decision lifecycle recovery, and
+revision-consistent dashboards is implemented on the Phase 2 completion branch. See
+[Phase 2 implementation and hardening](20-PHASE-2-IMPLEMENTATION.md). Final CI and supported-browser
+evidence remain required before the milestone exits.
 
 **Outcome:** Returning imports require materially fewer corrections.
 

@@ -9,12 +9,22 @@ import {
   lazy,
   useCallback,
   useEffect,
+  useMemo,
   useState,
   useSyncExternalStore,
   type FormEvent,
 } from "react";
 import { Button, FieldError, Form, Input, Label, TextField } from "react-aria-components";
-import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  NavLink,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
+import type { DashboardFilterState } from "./DashboardPage";
 
 import type { ApplicationServices } from "./infrastructure";
 import { getPendingApplicationUpdate, subscribeToApplicationUpdate } from "./pwa";
@@ -79,11 +89,26 @@ export function App({ services }: AppProperties) {
 
 function DashboardRoute({ services }: AppProperties) {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const serializedSearch = searchParams.toString();
+  const filters = useMemo(
+    () => dashboardFiltersFromSearch(new URLSearchParams(serializedSearch)),
+    [serializedSearch],
+  );
+  const handleFiltersChange = useCallback(
+    (next: DashboardFilterState) =>
+      setSearchParams(dashboardFiltersToSearch(next), { replace: true }),
+    [setSearchParams],
+  );
   return (
     <DashboardPage
       services={services}
+      initialFilters={filters}
+      onFiltersChange={handleFiltersChange}
       onNavigateToLedger={(transactionIds) =>
-        void navigate("/transactions", { state: { transactionIds } })
+        void navigate("/transactions", {
+          state: { transactionIds, returnToDashboard: `/dashboard?${searchParams.toString()}` },
+        })
       }
     />
   );
@@ -91,12 +116,58 @@ function DashboardRoute({ services }: AppProperties) {
 
 function TransactionRoute({ services }: AppProperties) {
   const location = useLocation();
+  const returnToDashboard = validatedReturnToDashboard(location.state);
   return (
     <TransactionPage
       services={services}
       initialTransactionIds={validatedDashboardTransactionIds(location.state)}
+      {...(returnToDashboard === undefined ? {} : { returnToDashboard })}
     />
   );
+}
+
+function dashboardFiltersFromSearch(params: URLSearchParams): DashboardFilterState {
+  const review = params.get("review");
+  const recurring = params.get("recurring");
+  return {
+    accountId: params.get("account") ?? "",
+    currency: params.get("currency") ?? "",
+    merchantId: params.get("merchant") ?? "",
+    tag: (params.get("tag") ?? "").slice(0, 80),
+    reviewState:
+      review === "unreviewed" || review === "needsReview" || review === "reviewed" ? review : "",
+    recurringStatus:
+      recurring === "confirmed" ||
+      recurring === "proposed" ||
+      recurring === "dismissed" ||
+      recurring === "muted"
+        ? recurring
+        : "",
+    fromDate: params.get("from") ?? "",
+    toDate: params.get("to") ?? "",
+  };
+}
+
+function dashboardFiltersToSearch(filters: DashboardFilterState): URLSearchParams {
+  const params = new URLSearchParams();
+  const values = {
+    account: filters.accountId,
+    currency: filters.currency,
+    merchant: filters.merchantId,
+    tag: filters.tag,
+    review: filters.reviewState,
+    recurring: filters.recurringStatus,
+    from: filters.fromDate,
+    to: filters.toDate,
+  };
+  for (const [key, value] of Object.entries(values)) if (value) params.set(key, value);
+  return params;
+}
+
+function validatedReturnToDashboard(state: unknown): string | undefined {
+  if (typeof state !== "object" || state === null || !("returnToDashboard" in state)) return;
+  const value = (state as { readonly returnToDashboard?: unknown }).returnToDashboard;
+  return typeof value === "string" && /^\/dashboard(?:\?[^#]*)?$/u.test(value) ? value : undefined;
 }
 
 function validatedDashboardTransactionIds(state: unknown): readonly string[] {

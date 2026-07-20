@@ -17,6 +17,7 @@ import {
   duplicateEvidenceSignature,
   parseAccountId,
   parseAliasId,
+  parseCategoryId,
   parseMerchantId,
   parseRuleId,
   parseUtcTimestamp,
@@ -26,11 +27,13 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   FinancialDatabase,
+  IndexedDbAtomicLearningRepository,
   IndexedDbAccountRepository,
   IndexedDbCategoryRepository,
   IndexedDbDuplicateResolutionRepository,
   IndexedDbImportCommitRepository,
   IndexedDbMerchantRepository,
+  IndexedDbRecurringDecisionRepository,
   IndexedDbRuleRepository,
   IndexedDbTransactionLedgerRepository,
   IndexedDbWorkspaceRepository,
@@ -45,6 +48,146 @@ afterEach(async () => {
       database.close();
       await database.delete();
     }),
+  );
+});
+
+describe("IndexedDbRecurringDecisionRepository", () => {
+  it("commits a supersession batch atomically and restores every record on undo", async () => {
+    const database = new FinancialDatabase(`test-${crypto.randomUUID()}`);
+    databases.push(database);
+    const repository = new IndexedDbRecurringDecisionRepository(database);
+    const now = parseUtcTimestamp("2026-07-20T20:00:00Z");
+    const source = {
+      id: "018f6b80-0d62-7d2c-9a5c-7f5f59cda920",
+      signature: "source",
+      name: "Source",
+      status: "confirmed",
+      memberTransactionIds: ["tx-1", "tx-2"],
+      detectorVersion: "recurring-v1",
+      updatedAt: now,
+    } as const;
+    await repository.save(source);
+    const child = {
+      ...source,
+      id: "018f6b80-0d62-7d2c-9a5c-7f5f59cda921",
+      signature: "child",
+      name: "Child",
+      detectorVersion: "user-split-v1",
+    } as const;
+    const superseded = { ...source, status: "superseded" as const };
+    await repository.saveManyWithEvent(
+      [child, superseded],
+      source.id,
+      "018f6b80-0d62-7d2c-9a5c-7f5f59cda922",
+      "split",
+    );
+    expect((await repository.findBySignature("source"))?.status).toBe("superseded");
+    expect(await repository.findBySignature("child")).toBeDefined();
+
+    await repository.undoLast(
+      source.id,
+      "018f6b80-0d62-7d2c-9a5c-7f5f59cda923",
+      "2026-07-20T20:01:00Z",
+    );
+    expect((await repository.findBySignature("source"))?.status).toBe("confirmed");
+    expect(await repository.findBySignature("child")).toBeUndefined();
+  });
+});
+
+describe("IndexedDbAtomicLearningRepository", () => {
+  it("applies all learning changes at one revision and safely undoes them", async () => {
+    const database = new FinancialDatabase(`test-${crypto.randomUUID()}`);
+    databases.push(database);
+    const repository = new IndexedDbAtomicLearningRepository(database);
+    const expectedRevision = await repository.revision();
+    const now = parseUtcTimestamp("2026-07-20T20:00:00Z");
+    const category = {
+      id: "3f791740-0a5b-52a6-9ae1-f46258c30b01",
+      name: "Home",
+      kind: "expense",
+      order: 1,
+      archived: false,
+      createdAt: now,
+      updatedAt: now,
+    } as const;
+
+    await repository.apply({
+      id: "018f6b80-0d62-7d2c-9a5c-7f5f59cda901",
+      kind: "brain-import",
+      inputDigest: "a".repeat(64),
+      expectedRevision,
+      changes: [{ store: "categories", id: category.id, after: category }],
+      createdAt: now,
+    });
+
+    expect(await database.categories.get(parseCategoryId(category.id))).toEqual(category);
+    await repository.undo("018f6b80-0d62-7d2c-9a5c-7f5f59cda901", now);
+    expect(await database.categories.get(parseCategoryId(category.id))).toBeUndefined();
+  });
+
+  it("rejects a stale learning revision without partial writes", async () => {
+    const database = new FinancialDatabase(`test-${crypto.randomUUID()}`);
+    databases.push(database);
+    const repository = new IndexedDbAtomicLearningRepository(database);
+    const now = parseUtcTimestamp("2026-07-20T20:00:00Z");
+
+    await expect(
+      repository.apply({
+        id: "018f6b80-0d62-7d2c-9a5c-7f5f59cda902",
+        kind: "brain-import",
+        inputDigest: "b".repeat(64),
+        expectedRevision: "stale",
+        changes: [
+          {
+            store: "categories",
+            id: "3f791740-0a5b-52a6-9ae1-f46258c30b02",
+            after: { id: "3f791740-0a5b-52a6-9ae1-f46258c30b02" },
+          },
+        ],
+        createdAt: now,
+      }),
+    ).rejects.toThrow();
+    expect(await database.categories.count()).toBe(0);
+    expect(await database.learningOperations.count()).toBe(0);
+  });
+
+  it.each(["categories", "merchants", "journal"] as const)(
+    "rolls back every learning store when failure occurs after %s",
+    async (failureStore) => {
+      const database = new FinancialDatabase(`test-${crypto.randomUUID()}`);
+      databases.push(database);
+      const repository = new IndexedDbAtomicLearningRepository(database, {
+        afterWrite: (store) => {
+          if (store === failureStore) throw new Error("injected interruption");
+        },
+      });
+      const expectedRevision = await repository.revision();
+      const now = parseUtcTimestamp("2026-07-20T20:00:00Z");
+      await expect(
+        repository.apply({
+          id: `018f6b80-0d62-7d2c-9a5c-7f5f59cda91${failureStore.length}`,
+          kind: "brain-import",
+          inputDigest: "c".repeat(64),
+          expectedRevision,
+          changes: [
+            {
+              store: "categories",
+              id: "3f791740-0a5b-52a6-9ae1-f46258c30b03",
+              after: { id: "3f791740-0a5b-52a6-9ae1-f46258c30b03", updatedAt: now },
+            },
+            {
+              store: "merchants",
+              id: "018f6b80-0d62-7d2c-9a5c-7f5f59cda904",
+              after: { id: "018f6b80-0d62-7d2c-9a5c-7f5f59cda904", updatedAt: now },
+            },
+          ],
+          createdAt: now,
+        }),
+      ).rejects.toThrow();
+      expect(await database.categories.count()).toBe(0);
+      expect(await database.merchants.count()).toBe(0);
+      expect(await database.learningOperations.count()).toBe(0);
+    },
   );
 });
 
@@ -274,6 +417,15 @@ describe("IndexedDbDuplicateResolutionRepository", () => {
       incoming: [incoming!],
       fingerprints,
     })[0]!;
+    await database.recurringDecisions.put({
+      id: "018f6b80-0d62-7d2c-9a5c-7f5f59cda2fd",
+      signature: "coffee:cad:monthly",
+      name: "Coffee",
+      status: "confirmed",
+      memberTransactionIds: [incoming!.id],
+      detectorVersion: "recurring-v1",
+      updatedAt: parseUtcTimestamp("2026-07-19T19:00:00.000Z"),
+    });
     const repository = new IndexedDbDuplicateResolutionRepository(database);
     const ids = ["018f6b80-0d62-7d2c-9a5c-7f5f59cda2fb", "018f6b80-0d62-7d2c-9a5c-7f5f59cda2fc"];
     const decision = await new ResolveDuplicate(
@@ -287,6 +439,12 @@ describe("IndexedDbDuplicateResolutionRepository", () => {
     });
 
     expect((await ledger.list()).find((value) => value.id === incoming?.id)?.status).toBe("void");
+    expect(
+      (await database.recurringDecisions.get("018f6b80-0d62-7d2c-9a5c-7f5f59cda2fd"))?.status,
+    ).toBe("invalidated");
+    expect(await database.decisionEvents.where("action").equals("invalidate-source").count()).toBe(
+      1,
+    );
     expect((await ledger.list()).find((value) => value.id === incoming?.id)?.provenance).toEqual(
       incoming?.provenance,
     );

@@ -127,6 +127,13 @@ Every surface defines loading/progress, empty, partial, error, offline, capabili
 
 Create tokens for color, type, space, elevation, motion, focus, chart palettes, and positive/negative/neutral semantics. Components must include form fields, data grid, filter bar, progress, inline validation, disclosure banner, confidence/evidence badge, chart shell, dialog, toast/live announcement, and command palette where useful.
 
+The dashboard uses the same paper/cream/forest/mint/gold tokens, typography, controls, focus rings,
+spacing, and responsive shell as the rest of the application. A shared filter bar covers account,
+currency, merchant, tag, review state, recurring state, and date. Non-sensitive filter IDs/dates are
+preserved in the dashboard URL; exact drilldown IDs travel in bounded navigation state. Charts use
+the report's rows without recalculation and always retain an adjacent semantic table. Superseded
+async results never replace a newer filter result.
+
 ## Usability validation
 
 Test first import, ambiguous CSV mapping, overlapping re-import, category correction/rule preview, transfer pairing, dashboard drill-down, remote consent, Brain export, backup restore, and deletion with diverse users and assistive technology. Measure completion, errors, interpretation accuracy, time, and confidence—not just preference.

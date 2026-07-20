@@ -142,7 +142,7 @@ export class UpdateRuleUseCase {
   }
 }
 
-function assertNoDefiniteRuleConflict(
+export function assertNoDefiniteRuleConflict(
   candidate: ClassificationRule,
   existingRules: readonly ClassificationRule[],
 ): void {

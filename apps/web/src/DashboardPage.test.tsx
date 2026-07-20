@@ -11,7 +11,7 @@ import { DashboardPage } from "./DashboardPage";
 afterEach(cleanup);
 
 function fixtureServices(): ApplicationServices {
-  return {
+  const services = {
     listWorkspaces: {
       execute: vi.fn(async () => [
         {
@@ -148,6 +148,20 @@ function fixtureServices(): ApplicationServices {
       })),
     },
   } as unknown as ApplicationServices;
+  return {
+    ...services,
+    listMerchants: { execute: vi.fn(async () => []) },
+    queryDashboardUseCase: {
+      execute: vi.fn(async (filter) => ({
+        sourceRevision: "dashboard-v1-test",
+        filter,
+        savings: await services.querySavingsRateUseCase.execute(filter),
+        merchant: await services.queryMerchantRankingUseCase.execute(filter),
+        recurring: await services.queryRecurringSummaryUseCase.execute(),
+        moneyFlow: await services.queryMoneyFlowUseCase.execute(filter),
+      })),
+    },
+  } as unknown as ApplicationServices;
 }
 
 describe("DashboardPage component", () => {
@@ -157,18 +171,18 @@ describe("DashboardPage component", () => {
     render(<DashboardPage services={services} onNavigateToLedger={onNavigateToLedger} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Intelligence Dashboards/i)).toBeInTheDocument();
+      expect(screen.getByText(/See how money moves/i)).toBeInTheDocument();
     });
 
-    expect(screen.getByText(/Savings Rate & Cash Flow/i)).toBeInTheDocument();
-    expect(screen.getByText(/Merchant Spend Ranking/i)).toBeInTheDocument();
-    expect(screen.getByText(/Recurring Subscriptions & Scheduled Payments/i)).toBeInTheDocument();
-    expect(screen.getByText(/Money Flow Breakdown/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Savings rate" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Merchant ranking" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Recurring payments" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Money flow" })).toBeInTheDocument();
 
-    expect(screen.getByText("Grocery Store")).toBeInTheDocument();
+    expect(screen.getAllByText("Grocery Store")).not.toHaveLength(0);
     expect(screen.getByText("NETFLIX")).toBeInTheDocument();
 
-    fireEvent.click(screen.getAllByRole("button", { name: /View Txs/ })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: /View 4/ })[0]!);
     expect(onNavigateToLedger).toHaveBeenCalledWith(["018f6b80-0d62-7d2c-9a5c-7f5f59cda101"]);
   });
 });

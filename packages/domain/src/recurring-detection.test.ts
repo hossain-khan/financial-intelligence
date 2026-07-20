@@ -4,7 +4,11 @@ import { parseAccountId, parseImportId, parseTransactionId } from "./identifiers
 import { Money } from "./money";
 import { parseDateOnly, parseUtcTimestamp } from "./temporal";
 import { createTransaction } from "./transaction";
-import { calculateRecurringSignature, findRecurringProposals } from "./recurring-detection";
+import {
+  calculateRecurringSignature,
+  findRecurringProposals,
+  recomputeRecurringProposalsIncrementally,
+} from "./recurring-detection";
 
 const NOW = parseUtcTimestamp("2026-07-20T10:00:00Z");
 const ACCOUNT_ID = parseAccountId("018f6b80-0d62-7d2c-9a5c-7f5f59cda111");
@@ -134,4 +138,46 @@ describe("recurring-detection domain module", () => {
     });
     expect(proposals).toHaveLength(0);
   });
+
+  it("keeps affected-group incremental recomputation equal to a clean full rebuild", () => {
+    const initial = [
+      recurringTransaction(11, "VIDEO SERVICE", "2026-05-15"),
+      recurringTransaction(12, "VIDEO SERVICE", "2026-06-15"),
+      recurringTransaction(13, "VIDEO SERVICE", "2026-07-15"),
+      recurringTransaction(21, "MUSIC SERVICE", "2026-05-10"),
+      recurringTransaction(22, "MUSIC SERVICE", "2026-06-10"),
+      recurringTransaction(23, "MUSIC SERVICE", "2026-07-10"),
+    ];
+    const previous = findRecurringProposals(initial);
+    const added = recurringTransaction(14, "VIDEO SERVICE", "2026-08-15");
+    const voided = { ...initial[3]!, status: "void" as const };
+    const current = initial.map((item) => (item.id === voided.id ? voided : item)).concat(added);
+    const incremental = recomputeRecurringProposalsIncrementally({
+      transactions: current,
+      previous,
+      affectedTransactionIds: new Set([voided.id, added.id]),
+    });
+    const summarize = (items: typeof incremental) =>
+      items.map((item) => ({ id: item.id, members: item.memberTransactions.map(({ id }) => id) }));
+    expect(summarize(incremental)).toEqual(summarize(findRecurringProposals(current)));
+  });
 });
+
+function recurringTransaction(sequence: number, description: string, postedDate: string) {
+  return createTransaction({
+    id: parseTransactionId(`018f6b80-0d62-7d2c-9a5c-7f5f59cd${String(sequence).padStart(4, "0")}`),
+    accountId: ACCOUNT_ID,
+    importId: IMPORT_ID,
+    postedDate: parseDateOnly(postedDate),
+    money: Money.from("-12.00", "CAD"),
+    description,
+    provenance: {
+      parserId: "csv",
+      parserVersion: "1.0.0",
+      sourceLocation: String(sequence),
+      original: {},
+      transformations: [],
+    },
+    now: NOW,
+  });
+}

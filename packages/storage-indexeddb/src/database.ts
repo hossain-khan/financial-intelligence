@@ -4,6 +4,7 @@ import type {
   ImportCommitRepository,
   TransactionFingerprint,
   AccountRepository,
+  AtomicLearningRepository,
   WorkspaceRepository,
   BulkTransactionOperation,
   DuplicateCandidateRepository,
@@ -11,9 +12,12 @@ import type {
   DuplicateResolutionRepository,
   TransactionLedgerRepository,
   CategoryRepository,
+  DashboardSnapshotRepository,
   MerchantRepository,
   RuleRepository,
   WorkspaceBackupRepository,
+  LearningOperation,
+  LearningOperationChange,
 } from "@financial-intelligence/application";
 import {
   WORKSPACE_BACKUP_FORMAT,
@@ -43,10 +47,11 @@ import {
   type StatementImportDocument,
   type Transaction as DomainTransaction,
   type TransferLink,
+  type TransferProposal,
   type Workspace,
   type WorkspaceId,
 } from "@financial-intelligence/domain";
-import Dexie, { type EntityTable } from "dexie";
+import Dexie, { type EntityTable, type Table } from "dexie";
 
 import { normalizeStorageError, StorageError } from "./errors";
 import type { MigrationJournalRecord } from "./migration-journal";
@@ -76,6 +81,19 @@ interface TransactionOperationRecord {
   readonly createdAt: string;
   readonly undoneAt?: string;
 }
+export type LearningOperationRecord = LearningOperation;
+export type LearningOperationChangeRecord = LearningOperationChange;
+
+export interface DecisionEventRecord {
+  readonly id: string;
+  readonly aggregateType: "transfer" | "recurring";
+  readonly aggregateId: string;
+  readonly action: string;
+  readonly before?: unknown;
+  readonly after?: unknown;
+  readonly occurredAt: string;
+  readonly undoneAt?: string;
+}
 type DuplicateResolutionEventRecord = DuplicateResolutionEvent & {
   readonly priorStates?: Readonly<
     Record<string, Pick<CanonicalTransactionDocument, "status" | "reviewState">>
@@ -95,6 +113,8 @@ export class FinancialDatabase extends Dexie {
   public classificationRules!: EntityTable<ClassificationRuleRecord, "id">;
   public transferDecisions!: EntityTable<TransferDecisionRecord, "id">;
   public recurringDecisions!: EntityTable<RecurringDecisionRecord, "id">;
+  public learningOperations!: EntityTable<LearningOperationRecord, "id">;
+  public decisionEvents!: EntityTable<DecisionEventRecord, "id">;
   public transactionOperations!: EntityTable<TransactionOperationRecord, "id">;
   public duplicateResolutionEvents!: EntityTable<DuplicateResolutionEventRecord, "id">;
   public migrationJournal!: EntityTable<MigrationJournalRecord, "id">;
@@ -282,6 +302,8 @@ export class IndexedDbWorkspaceBackupRepository implements WorkspaceBackupReposi
           this.database.classificationRules,
           this.database.transferDecisions,
           this.database.recurringDecisions,
+          this.database.learningOperations,
+          this.database.decisionEvents,
           this.database.transactionOperations,
           this.database.duplicateResolutionEvents,
         ],
@@ -338,6 +360,8 @@ export class IndexedDbWorkspaceBackupRepository implements WorkspaceBackupReposi
               .toArray(),
             transferDecisions,
             recurringDecisions: await this.database.recurringDecisions.toArray(),
+            learningOperations: await this.database.learningOperations.toArray(),
+            decisionEvents: await this.database.decisionEvents.toArray(),
             transactionOperations,
             duplicateResolutionEvents,
           };
@@ -663,7 +687,11 @@ export class IndexedDbDuplicateResolutionRepository implements DuplicateResoluti
         "rw",
         this.database.duplicateResolutionEvents,
         this.database.transactions,
+        this.database.transferDecisions,
+        this.database.recurringDecisions,
+        this.database.decisionEvents,
         async () => {
+          await makeJournalRoom(this.database.decisionEvents, "occurredAt");
           if ((await this.database.duplicateResolutionEvents.count()) !== expectedVersion) {
             throw new StorageError("CONCURRENT_MODIFICATION");
           }
@@ -685,6 +713,58 @@ export class IndexedDbDuplicateResolutionRepository implements DuplicateResoluti
               throw new StorageError("STORAGE_FAILURE");
             const updated = resolutionDocuments(existing, incoming, event.action);
             if (updated.length > 0) await this.database.transactions.bulkPut(updated);
+            const voidedIds = new Set(
+              updated.filter(({ status }) => status === "void").map(({ id }) => id),
+            );
+            if (voidedIds.size > 0) {
+              const transferLinks = await this.database.transferDecisions
+                .where("status")
+                .equals("confirmed")
+                .toArray();
+              for (const link of transferLinks) {
+                if (
+                  !voidedIds.has(link.outflowTransactionId) &&
+                  !voidedIds.has(link.inflowTransactionId)
+                )
+                  continue;
+                const after = { ...link, status: "unlinked" as const, updatedAt: event.occurredAt };
+                await this.database.transferDecisions.put(after);
+                await makeJournalRoom(this.database.decisionEvents, "occurredAt");
+                await this.database.decisionEvents.add({
+                  id: `${event.id}:transfer:${link.id}`,
+                  aggregateType: "transfer",
+                  aggregateId: link.signature,
+                  action: "invalidate-source",
+                  before: link,
+                  after,
+                  occurredAt: event.occurredAt,
+                });
+              }
+              const recurring = await this.database.recurringDecisions
+                .where("status")
+                .equals("confirmed")
+                .toArray();
+              for (const decision of recurring) {
+                if (!(decision.memberTransactionIds ?? []).some((id) => voidedIds.has(id)))
+                  continue;
+                const after = {
+                  ...decision,
+                  status: "invalidated" as const,
+                  updatedAt: event.occurredAt,
+                };
+                await this.database.recurringDecisions.put(after);
+                await makeJournalRoom(this.database.decisionEvents, "occurredAt");
+                await this.database.decisionEvents.add({
+                  id: `${event.id}:recurring:${decision.id}`,
+                  aggregateType: "recurring",
+                  aggregateId: decision.id,
+                  action: "invalidate-source",
+                  before: decision,
+                  after,
+                  occurredAt: event.occurredAt,
+                });
+              }
+            }
             await this.database.duplicateResolutionEvents.add({ ...event, priorStates });
           } else {
             const decision = await this.database.duplicateResolutionEvents.get(event.decisionId);
@@ -940,6 +1020,151 @@ export class IndexedDbTransferDecisionRepository {
       throw normalizeStorageError(error);
     }
   }
+
+  public async confirmAtomically(
+    proposal: TransferProposal,
+    record: TransferDecisionRecord,
+    eventId: string,
+  ): Promise<void> {
+    try {
+      await openFinancialDatabase(this.database);
+      await this.database.transaction(
+        "rw",
+        this.database.transactions,
+        this.database.transferDecisions,
+        this.database.decisionEvents,
+        async () => {
+          await makeJournalRoom(this.database.decisionEvents, "occurredAt");
+          const [outflow, inflow] = await this.database.transactions.bulkGet([
+            proposal.outflowTransaction.id,
+            proposal.inflowTransaction.id,
+          ]);
+          if (
+            outflow === undefined ||
+            inflow === undefined ||
+            !sameDocument(outflow, transactionToCanonical(proposal.outflowTransaction)) ||
+            !sameDocument(inflow, transactionToCanonical(proposal.inflowTransaction))
+          ) {
+            throw new StorageError("CONCURRENT_MODIFICATION");
+          }
+          const active = await this.database.transferDecisions
+            .where("status")
+            .equals("confirmed")
+            .toArray();
+          if (
+            active.some(
+              (link) =>
+                link.signature !== record.signature &&
+                (link.outflowTransactionId === record.outflowTransactionId ||
+                  link.inflowTransactionId === record.outflowTransactionId ||
+                  link.outflowTransactionId === record.inflowTransactionId ||
+                  link.inflowTransactionId === record.inflowTransactionId),
+            )
+          ) {
+            throw new StorageError("CONCURRENT_MODIFICATION");
+          }
+          const before = await this.database.transferDecisions
+            .where("signature")
+            .equals(record.signature)
+            .first();
+          await this.database.transferDecisions.put(record);
+          await this.database.decisionEvents.add({
+            id: eventId,
+            aggregateType: "transfer",
+            aggregateId: record.signature,
+            action: "confirm",
+            ...(before === undefined ? {} : { before }),
+            after: record,
+            occurredAt: record.updatedAt,
+          });
+        },
+      );
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  public async saveWithEvent(
+    record: TransferDecisionRecord,
+    eventId: string,
+    action: string,
+  ): Promise<void> {
+    try {
+      await openFinancialDatabase(this.database);
+      await this.database.transaction(
+        "rw",
+        this.database.transferDecisions,
+        this.database.decisionEvents,
+        async () => {
+          await makeJournalRoom(this.database.decisionEvents, "occurredAt");
+          const before = await this.database.transferDecisions
+            .where("signature")
+            .equals(record.signature)
+            .first();
+          await this.database.transferDecisions.put(record);
+          await this.database.decisionEvents.add({
+            id: eventId,
+            aggregateType: "transfer",
+            aggregateId: record.signature,
+            action,
+            ...(before === undefined ? {} : { before }),
+            after: record,
+            occurredAt: record.updatedAt,
+          });
+        },
+      );
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  public async undoLast(signature: string, eventId: string, occurredAt: string): Promise<void> {
+    try {
+      await openFinancialDatabase(this.database);
+      await this.database.transaction(
+        "rw",
+        this.database.transferDecisions,
+        this.database.decisionEvents,
+        async () => {
+          await makeJournalRoom(this.database.decisionEvents, "occurredAt");
+          const events = await this.database.decisionEvents
+            .where("aggregateId")
+            .equals(signature)
+            .filter((event) => event.aggregateType === "transfer" && event.undoneAt === undefined)
+            .toArray();
+          const latest = events.sort((left, right) =>
+            right.occurredAt.localeCompare(left.occurredAt),
+          )[0];
+          if (latest === undefined || latest.after === undefined) {
+            throw new StorageError("CONCURRENT_MODIFICATION");
+          }
+          const current = await this.database.transferDecisions
+            .where("signature")
+            .equals(signature)
+            .first();
+          if (!sameUnknown(current, latest.after))
+            throw new StorageError("CONCURRENT_MODIFICATION");
+          if (latest.before === undefined) {
+            if (current !== undefined) await this.database.transferDecisions.delete(current.id);
+          } else {
+            await this.database.transferDecisions.put(latest.before as TransferDecisionRecord);
+          }
+          await this.database.decisionEvents.put({ ...latest, undoneAt: occurredAt });
+          await this.database.decisionEvents.add({
+            id: eventId,
+            aggregateType: "transfer",
+            aggregateId: signature,
+            action: "undo",
+            before: latest.after,
+            after: latest.before,
+            occurredAt,
+          });
+        },
+      );
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
 }
 
 export class IndexedDbRecurringDecisionRepository {
@@ -971,4 +1196,349 @@ export class IndexedDbRecurringDecisionRepository {
       throw normalizeStorageError(error);
     }
   }
+
+  public async saveWithEvent(
+    record: RecurringDecisionRecord,
+    eventId: string,
+    action: string,
+  ): Promise<void> {
+    try {
+      await openFinancialDatabase(this.database);
+      await this.database.transaction(
+        "rw",
+        this.database.recurringDecisions,
+        this.database.decisionEvents,
+        async () => {
+          await makeJournalRoom(this.database.decisionEvents, "occurredAt");
+          const before = await this.database.recurringDecisions.get(record.id);
+          await this.database.recurringDecisions.put(record);
+          await this.database.decisionEvents.add({
+            id: eventId,
+            aggregateType: "recurring",
+            aggregateId: record.id,
+            action,
+            ...(before === undefined ? {} : { before }),
+            after: record,
+            occurredAt: record.updatedAt,
+          });
+        },
+      );
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  public async saveManyWithEvent(
+    records: readonly RecurringDecisionRecord[],
+    aggregateId: string,
+    eventId: string,
+    action: string,
+  ): Promise<void> {
+    try {
+      await openFinancialDatabase(this.database);
+      await this.database.transaction(
+        "rw",
+        this.database.recurringDecisions,
+        this.database.decisionEvents,
+        async () => {
+          await makeJournalRoom(this.database.decisionEvents, "occurredAt");
+          if (
+            records.length === 0 ||
+            new Set(records.map(({ id }) => id)).size !== records.length
+          ) {
+            throw new StorageError("CONCURRENT_MODIFICATION");
+          }
+          const before = await this.database.recurringDecisions.bulkGet(
+            records.map(({ id }) => id),
+          );
+          await this.database.recurringDecisions.bulkPut([...records]);
+          await this.database.decisionEvents.add({
+            id: eventId,
+            aggregateType: "recurring",
+            aggregateId,
+            action,
+            before,
+            after: records,
+            occurredAt: records[0]!.updatedAt,
+          });
+        },
+      );
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  public async undoLast(id: string, eventId: string, occurredAt: string): Promise<void> {
+    try {
+      await openFinancialDatabase(this.database);
+      await this.database.transaction(
+        "rw",
+        this.database.recurringDecisions,
+        this.database.decisionEvents,
+        async () => {
+          await makeJournalRoom(this.database.decisionEvents, "occurredAt");
+          const events = await this.database.decisionEvents
+            .where("aggregateId")
+            .equals(id)
+            .filter((event) => event.aggregateType === "recurring" && event.undoneAt === undefined)
+            .toArray();
+          const latest = events.sort((left, right) =>
+            right.occurredAt.localeCompare(left.occurredAt),
+          )[0];
+          if (latest === undefined || latest.after === undefined)
+            throw new StorageError("CONCURRENT_MODIFICATION");
+          if (Array.isArray(latest.after)) {
+            const after = latest.after as RecurringDecisionRecord[];
+            const before = latest.before as (RecurringDecisionRecord | undefined)[];
+            const current = await this.database.recurringDecisions.bulkGet(
+              after.map(({ id: recordId }) => recordId),
+            );
+            if (!sameUnknown(current, after)) throw new StorageError("CONCURRENT_MODIFICATION");
+            for (let index = 0; index < after.length; index++) {
+              const prior = before[index];
+              if (prior === undefined)
+                await this.database.recurringDecisions.delete(after[index]!.id);
+              else await this.database.recurringDecisions.put(prior);
+            }
+          } else {
+            const current = await this.database.recurringDecisions.get(id);
+            if (!sameUnknown(current, latest.after))
+              throw new StorageError("CONCURRENT_MODIFICATION");
+            if (latest.before === undefined) await this.database.recurringDecisions.delete(id);
+            else
+              await this.database.recurringDecisions.put(latest.before as RecurringDecisionRecord);
+          }
+          await this.database.decisionEvents.put({ ...latest, undoneAt: occurredAt });
+          await this.database.decisionEvents.add({
+            id: eventId,
+            aggregateType: "recurring",
+            aggregateId: id,
+            action: "undo",
+            before: latest.after,
+            after: latest.before,
+            occurredAt,
+          });
+        },
+      );
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+}
+
+export class IndexedDbDashboardSnapshotRepository implements DashboardSnapshotRepository {
+  public constructor(private readonly database: FinancialDatabase) {}
+
+  public async read() {
+    try {
+      await openFinancialDatabase(this.database);
+      return await this.database.transaction(
+        "r",
+        this.database.transactions,
+        this.database.categories,
+        this.database.merchants,
+        this.database.transferDecisions,
+        this.database.recurringDecisions,
+        async () => {
+          const [
+            transactionDocuments,
+            categories,
+            merchants,
+            transferDecisions,
+            recurringDecisions,
+          ] = await Promise.all([
+            this.database.transactions.toArray(),
+            this.database.categories.toArray(),
+            this.database.merchants.toArray(),
+            this.database.transferDecisions.toArray(),
+            this.database.recurringDecisions.toArray(),
+          ]);
+          const revisionBasis = [
+            ...transactionDocuments.map((item) => `t:${item.id}:${item.updatedAt}`),
+            ...categories.map((item) => `c:${item.id}:${item.updatedAt}`),
+            ...merchants.map((item) => `m:${item.id}:${item.updatedAt}`),
+            ...transferDecisions.map((item) => `x:${item.id}:${item.updatedAt}:${item.status}`),
+            ...recurringDecisions.map((item) => `r:${item.id}:${item.updatedAt}:${item.status}`),
+          ].sort();
+          return {
+            sourceRevision: stableRevision(revisionBasis),
+            transactions: transactionDocuments.map(transactionFromCanonical),
+            categories,
+            merchants,
+            transferDecisions,
+            recurringDecisions,
+          };
+        },
+      );
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+}
+
+export class IndexedDbAtomicLearningRepository implements AtomicLearningRepository {
+  public constructor(
+    private readonly database: FinancialDatabase,
+    private readonly hooks: {
+      readonly afterWrite?: (
+        store: LearningOperationChange["store"] | "journal",
+        index: number,
+      ) => void;
+    } = {},
+  ) {}
+
+  public async revision(): Promise<string> {
+    try {
+      await openFinancialDatabase(this.database);
+      return await this.database.transaction(
+        "r",
+        this.database.transactions,
+        this.database.categories,
+        this.database.merchants,
+        this.database.classificationRules,
+        this.database.recurringDecisions,
+        () => learningRevision(this.database),
+      );
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  public async apply(operation: LearningOperation): Promise<void> {
+    try {
+      await openFinancialDatabase(this.database);
+      await this.database.transaction(
+        "rw",
+        [
+          this.database.transactions,
+          this.database.categories,
+          this.database.merchants,
+          this.database.classificationRules,
+          this.database.recurringDecisions,
+          this.database.learningOperations,
+        ],
+        async () => {
+          await makeJournalRoom(this.database.learningOperations, "createdAt");
+          if ((await learningRevision(this.database)) !== operation.expectedRevision) {
+            throw new StorageError("CONCURRENT_MODIFICATION");
+          }
+          if ((await this.database.learningOperations.get(operation.id)) !== undefined) {
+            throw new StorageError("CONCURRENT_MODIFICATION");
+          }
+          for (const change of operation.changes) {
+            const table = learningTable(this.database, change.store);
+            const current = await table.get(change.id);
+            if (
+              (change.before === undefined && current !== undefined) ||
+              (change.before !== undefined && !sameUnknown(current, change.before))
+            ) {
+              throw new StorageError("CONCURRENT_MODIFICATION");
+            }
+          }
+          for (const [index, change] of operation.changes.entries()) {
+            await learningTable(this.database, change.store).put(change.after, change.id);
+            this.hooks.afterWrite?.(change.store, index);
+          }
+          await this.database.learningOperations.add(operation);
+          this.hooks.afterWrite?.("journal", operation.changes.length);
+        },
+      );
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  public async undo(operationId: string, undoneAt: DomainTransaction["updatedAt"]): Promise<void> {
+    try {
+      await openFinancialDatabase(this.database);
+      await this.database.transaction(
+        "rw",
+        [
+          this.database.transactions,
+          this.database.categories,
+          this.database.merchants,
+          this.database.classificationRules,
+          this.database.recurringDecisions,
+          this.database.learningOperations,
+        ],
+        async () => {
+          const operation = await this.database.learningOperations.get(operationId);
+          if (operation === undefined || operation.undoneAt !== undefined) {
+            throw new StorageError("CONCURRENT_MODIFICATION");
+          }
+          for (const change of operation.changes) {
+            const current = await learningTable(this.database, change.store).get(change.id);
+            if (!sameUnknown(current, change.after)) {
+              throw new StorageError("CONCURRENT_MODIFICATION");
+            }
+          }
+          for (const change of [...operation.changes].reverse()) {
+            const table = learningTable(this.database, change.store);
+            if (change.before === undefined) await table.delete(change.id);
+            else await table.put(change.before, change.id);
+          }
+          await this.database.learningOperations.put({ ...operation, undoneAt });
+        },
+      );
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  public async list(): Promise<readonly LearningOperation[]> {
+    try {
+      await openFinancialDatabase(this.database);
+      return await this.database.learningOperations.orderBy("createdAt").reverse().toArray();
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+}
+
+function learningTable(
+  database: FinancialDatabase,
+  store: LearningOperationChange["store"],
+): Table<unknown, string> {
+  return database[store] as Table<unknown, string>;
+}
+
+async function learningRevision(database: FinancialDatabase): Promise<string> {
+  const values: string[] = [];
+  for (const [store, table] of [
+    ["transactions", database.transactions],
+    ["categories", database.categories],
+    ["merchants", database.merchants],
+    ["classificationRules", database.classificationRules],
+    ["recurringDecisions", database.recurringDecisions],
+  ] as const) {
+    for (const value of await table.toArray()) {
+      const record = value as { readonly id: string; readonly updatedAt?: string };
+      values.push(`${store}:${record.id}:${record.updatedAt ?? ""}:${JSON.stringify(value)}`);
+    }
+  }
+  return stableRevision(values.sort());
+}
+
+function sameUnknown(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function stableRevision(values: readonly string[]): string {
+  let hash = 2_166_136_261;
+  for (const value of values) {
+    for (let index = 0; index < value.length; index++) {
+      hash ^= value.charCodeAt(index);
+      hash = Math.imul(hash, 16_777_619);
+    }
+  }
+  return `dashboard-v1-${values.length}-${(hash >>> 0).toString(16).padStart(8, "0")}`;
+}
+
+const MAX_OPERATION_JOURNAL_RECORDS = 1_000;
+
+async function makeJournalRoom(table: Table<unknown, string>, chronologicalIndex: string) {
+  const excess = (await table.count()) - MAX_OPERATION_JOURNAL_RECORDS + 1;
+  if (excess <= 0) return;
+  const oldest = (await table.orderBy(chronologicalIndex).limit(excess).primaryKeys()) as string[];
+  await table.bulkDelete(oldest);
 }

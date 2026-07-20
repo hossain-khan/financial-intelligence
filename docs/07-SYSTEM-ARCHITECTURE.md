@@ -181,6 +181,21 @@ Operational state is local and redacted:
 | Migration interruption | Reopen previous valid version or resume journaled migration |
 | Service-worker update | Keep current app operational until coordinated reload |
 
+## Phase 2 atomic commands and snapshots
+
+Database version 9 adds `learningOperations` and `decisionEvents`. Cross-store learning changes,
+transfer confirmation, and recurring supersession write canonical records and their bounded journal
+inside one IndexedDB transaction. Commands compare an expected revision or exact before-state; undo
+compares the journaled after-state and refuses to overwrite a later edit.
+
+Each operation journal retains at most 1,000 records during ordinary command writes; older entries
+are pruned chronologically inside the same transaction. Full backup captures the retained window.
+
+Dashboard queries use one read transaction across transactions, categories, merchants, transfer
+links, and recurring decisions. The adapter returns an opaque deterministic source revision. The UI
+cancels superseded requests and renders charts and tables from one returned report bundle. See
+[ADR-008](adr/ADR-008-Atomic-Operation-Journals-And-Revision-Snapshots.md).
+
 ## Open questions
 
 - Choose the framework/build tooling only when implementation begins and record an ADR.
