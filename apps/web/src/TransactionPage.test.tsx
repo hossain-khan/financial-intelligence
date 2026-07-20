@@ -277,5 +277,17 @@ function fixtureServices(
     applyFinancialBrainImportUseCase: {
       execute: vi.fn(async () => ({ operationId: "op-1", appliedCount: 0 })),
     },
+    findTransferProposalsUseCase: {
+      execute: vi.fn(async () => []),
+    },
+    confirmTransferProposalUseCase: {
+      execute: vi.fn(async () => ({ status: "confirmed" })),
+    },
+    rejectTransferProposalUseCase: {
+      execute: vi.fn(async () => ({ status: "rejected" })),
+    },
+    unlinkTransferUseCase: {
+      execute: vi.fn(async () => undefined),
+    },
   } as unknown as ApplicationServices;
 }

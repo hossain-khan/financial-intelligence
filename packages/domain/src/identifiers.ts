@@ -14,6 +14,7 @@ export type AliasId = OpaqueIdentifier<"AliasId">;
 export type RuleId = OpaqueIdentifier<"RuleId">;
 export type OperationId = OpaqueIdentifier<"OperationId">;
 export type BrainId = OpaqueIdentifier<"BrainId">;
+export type TransferLinkId = OpaqueIdentifier<"TransferLinkId">;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -38,3 +39,5 @@ export const parseRuleId = (value: string): RuleId => parseIdentifier(value, "Ru
 export const parseOperationId = (value: string): OperationId =>
   parseIdentifier(value, "OperationId");
 export const parseBrainId = (value: string): BrainId => parseIdentifier(value, "BrainId");
+export const parseTransferLinkId = (value: string): TransferLinkId =>
+  parseIdentifier(value, "TransferLinkId");

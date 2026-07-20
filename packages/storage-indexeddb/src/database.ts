@@ -41,6 +41,7 @@ import {
   type StatementImport,
   type StatementImportDocument,
   type Transaction as DomainTransaction,
+  type TransferLink,
   type Workspace,
   type WorkspaceId,
 } from "@financial-intelligence/domain";
@@ -62,6 +63,7 @@ type TransactionFingerprintRecord = TransactionFingerprint;
 type CategoryRecord = Category;
 type MerchantRecord = Merchant;
 type ClassificationRuleRecord = ClassificationRule;
+export type TransferDecisionRecord = TransferLink;
 interface TransactionOperationRecord {
   readonly id: string;
   readonly kind: "manual-transaction-edit";
@@ -90,6 +92,7 @@ export class FinancialDatabase extends Dexie {
   public categories!: EntityTable<CategoryRecord, "id">;
   public merchants!: EntityTable<MerchantRecord, "id">;
   public classificationRules!: EntityTable<ClassificationRuleRecord, "id">;
+  public transferDecisions!: EntityTable<TransferDecisionRecord, "id">;
   public transactionOperations!: EntityTable<TransactionOperationRecord, "id">;
   public duplicateResolutionEvents!: EntityTable<DuplicateResolutionEventRecord, "id">;
   public migrationJournal!: EntityTable<MigrationJournalRecord, "id">;
@@ -886,6 +889,37 @@ export class IndexedDbRuleRepository implements RuleRepository {
     try {
       await openFinancialDatabase(this.database);
       await this.database.classificationRules.delete(id);
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+}
+
+export class IndexedDbTransferDecisionRepository {
+  public constructor(private readonly database: FinancialDatabase) {}
+
+  public async list(): Promise<readonly TransferDecisionRecord[]> {
+    try {
+      await openFinancialDatabase(this.database);
+      return await this.database.transferDecisions.toArray();
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  public async findBySignature(signature: string): Promise<TransferDecisionRecord | undefined> {
+    try {
+      await openFinancialDatabase(this.database);
+      return await this.database.transferDecisions.where("signature").equals(signature).first();
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  public async save(record: TransferDecisionRecord): Promise<void> {
+    try {
+      await openFinancialDatabase(this.database);
+      await this.database.transferDecisions.put(record);
     } catch (error) {
       throw normalizeStorageError(error);
     }

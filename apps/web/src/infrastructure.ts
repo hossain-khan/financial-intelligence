@@ -32,10 +32,14 @@ import {
   SetAccountArchived,
   SetCategoryArchived,
   ApplyFinancialBrainImportUseCase,
+  ConfirmTransferProposalUseCase,
   ExportFinancialBrainUseCase,
+  FindTransferProposalsUseCase,
   PreviewFinancialBrainImportUseCase,
+  RejectTransferProposalUseCase,
   UndoBulkTransactionEdit,
   UndoDuplicateResolution,
+  UnlinkTransferUseCase,
 } from "@financial-intelligence/application";
 import { validateFinancialBrain } from "@financial-intelligence/schemas";
 import {
@@ -47,6 +51,7 @@ import {
   IndexedDbMerchantRepository,
   IndexedDbRuleRepository,
   IndexedDbTransactionLedgerRepository,
+  IndexedDbTransferDecisionRepository,
   IndexedDbWorkspaceRepository,
   IndexedDbWorkspaceBackupRepository,
 } from "@financial-intelligence/storage-indexeddb";
@@ -91,6 +96,12 @@ export interface ApplicationServices {
   readonly exportFinancialBrainUseCase: ExportFinancialBrainUseCase;
   readonly previewFinancialBrainImportUseCase: PreviewFinancialBrainImportUseCase;
   readonly applyFinancialBrainImportUseCase: ApplyFinancialBrainImportUseCase;
+
+  // Transfer proposal services
+  readonly findTransferProposalsUseCase: FindTransferProposalsUseCase;
+  readonly confirmTransferProposalUseCase: ConfirmTransferProposalUseCase;
+  readonly rejectTransferProposalUseCase: RejectTransferProposalUseCase;
+  readonly unlinkTransferUseCase: UnlinkTransferUseCase;
 }
 
 const database = new FinancialDatabase();
@@ -103,6 +114,7 @@ const merchantRepository = new IndexedDbMerchantRepository(database);
 const ruleRepository = new IndexedDbRuleRepository(database);
 const duplicateResolutionRepository = new IndexedDbDuplicateResolutionRepository(database);
 const backupRepository = new IndexedDbWorkspaceBackupRepository(database);
+const transferDecisionRepository = new IndexedDbTransferDecisionRepository(database);
 const clock = { now: () => new Date() };
 const ids = { generate: () => crypto.randomUUID() };
 const digest = {
@@ -189,4 +201,20 @@ export const applicationServices: ApplicationServices = {
     ids,
     validateFinancialBrain,
   ),
+  findTransferProposalsUseCase: new FindTransferProposalsUseCase(
+    ledgerRepository,
+    accountRepository,
+    transferDecisionRepository,
+  ),
+  confirmTransferProposalUseCase: new ConfirmTransferProposalUseCase(
+    transferDecisionRepository,
+    clock,
+    ids,
+  ),
+  rejectTransferProposalUseCase: new RejectTransferProposalUseCase(
+    transferDecisionRepository,
+    clock,
+    ids,
+  ),
+  unlinkTransferUseCase: new UnlinkTransferUseCase(transferDecisionRepository, clock),
 };

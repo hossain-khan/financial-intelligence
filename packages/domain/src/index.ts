@@ -19,6 +19,7 @@ export {
   parseOperationId,
   parseRuleId,
   parseTransactionId,
+  parseTransferLinkId,
   parseWorkspaceId,
 } from "./identifiers";
 export type {
@@ -31,8 +32,17 @@ export type {
   OperationId,
   RuleId,
   TransactionId,
+  TransferLinkId,
   WorkspaceId,
 } from "./identifiers";
+export { calculateTransferSignature, findTransferProposals } from "./transfer-matching";
+export type {
+  TransferEvidence,
+  TransferLink,
+  TransferMatchingOptions,
+  TransferProposal,
+  TransferStatus,
+} from "./transfer-matching";
 export {
   FINANCIAL_BRAIN_SCHEMA_VERSION,
   MAX_BRAIN_FILE_BYTES,
