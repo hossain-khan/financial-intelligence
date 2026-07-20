@@ -6,6 +6,8 @@ Thank you for helping build Financial Intelligence. The project handles unusuall
 
 1. AI coding agents must read and follow the repository-wide [`AGENTS.md`](AGENTS.md) operating contract.
 2. Read the [vision](docs/00-VISION.md), [design principles](docs/01-DESIGN-PRINCIPLES.md), and [glossary](docs/02-GLOSSARY.md).
+   For visible UI changes, also read the [UX guidelines](docs/13-UX-GUIDELINES.md) and
+   [design system](docs/21-DESIGN-SYSTEM.md).
 3. Check the [product requirements](docs/03-PRODUCT-REQUIREMENTS.md) and [roadmap](docs/15-ROADMAP.md) for scope.
 4. Open an issue before a large change or any change to public schemas, persistence, security boundaries, AI data disclosure, or plugin permissions.
 5. Record decisions with long-lived architectural consequences as an ADR using the conventions in `docs/adr/`.

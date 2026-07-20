@@ -140,6 +140,7 @@ Test first import, ambiguous CSV mapping, overlapping re-import, category correc
 
 ## Related documents
 
+- [Design system](21-DESIGN-SYSTEM.md)
 - [User stories](04-USER-STORIES.md)
 - [Non-functional requirements](06-NON-FUNCTIONAL-REQUIREMENTS.md)
 - [Security and privacy](12-SECURITY-AND-PRIVACY.md)

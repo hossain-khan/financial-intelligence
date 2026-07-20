@@ -35,7 +35,8 @@ Read these before making substantive changes:
 9. [`docs/15-ROADMAP.md`](docs/15-ROADMAP.md)
 10. [`docs/16-TECHNOLOGY-STACK.md`](docs/16-TECHNOLOGY-STACK.md)
 11. [`docs/17-QUALITY-BASELINE.md`](docs/17-QUALITY-BASELINE.md)
-12. [`docs/adr/README.md`](docs/adr/README.md) and applicable accepted ADRs
+12. [`docs/21-DESIGN-SYSTEM.md`](docs/21-DESIGN-SYSTEM.md) for every user-interface change
+13. [`docs/adr/README.md`](docs/adr/README.md) and applicable accepted ADRs
 
 ## Source of truth and planning
 
@@ -211,6 +212,29 @@ technology selection. Follow `docs/adr/README.md`:
 
 When an issue reveals a reusable operational rule, update this file or the appropriate guide so the
 next agent does not have to rediscover it.
+
+## User-interface and design-system discipline
+
+For every visible UI change, read [`docs/13-UX-GUIDELINES.md`](docs/13-UX-GUIDELINES.md) and
+[`docs/21-DESIGN-SYSTEM.md`](docs/21-DESIGN-SYSTEM.md) before implementation. Treat the design
+system as a product contract, not optional visual guidance.
+
+- Search for and reuse the closest existing shell, component, token, state, and responsive pattern
+  before creating a variant.
+- Use the project-owned CSS tokens and shared component layer. Do not introduce an unsupported
+  utility-CSS dialect, a page-specific theme, arbitrary literal colors, or unexplained inline styles.
+- A new reusable pattern must define default, hover, focus, disabled, loading, error, narrow,
+  reduced-motion, and forced-colors behavior as applicable, and must be documented in the design
+  system in the same PR.
+- Preserve the calm paper/cream/forest/mint/gold visual language, editorial display headings,
+  sans-serif working text, spacing rhythm, radii, elevation, and visible focus treatment.
+- Implement loading, empty, partial, error, offline, unavailable, permission-denied, and stale
+  states where applicable. Visual polish must not replace semantic HTML or accessible interaction.
+- UI PRs must include before/after screenshots when an existing surface changes, or expanded and
+  compact screenshots when a new surface is introduced. Record keyboard, 320 CSS pixel reflow,
+  200% zoom, reduced-motion, and forced-colors validation in the PR.
+- Do not approve a visual change based only on a screenshot. Test roles, names, keyboard behavior,
+  focus, status announcements, responsive behavior, and supported browsers.
 
 ## Testing and mandatory quality gates
 

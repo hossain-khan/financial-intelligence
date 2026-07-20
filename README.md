@@ -87,6 +87,9 @@ pnpm browser:test:chromium
 
 See the [quality baseline](docs/17-QUALITY-BASELINE.md) for supported browsers, Playwright setup,
 manual accessibility checks, and dependency-review expectations.
+Visible product work must follow the [design system](docs/21-DESIGN-SYSTEM.md) and
+[UX guidelines](docs/13-UX-GUIDELINES.md) so new surfaces reuse the established visual language,
+responsive patterns, and accessible interaction contracts.
 
 Workspace packages follow the dependency direction documented in the [technology stack](docs/16-TECHNOLOGY-STACK.md). New functionality should begin as a thin vertical slice through domain, application, adapter, and UI boundaries.
 
