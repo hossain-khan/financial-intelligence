@@ -1,5 +1,11 @@
-import type { AccountId, CategoryId, ImportId, TransactionId } from "./identifiers";
-import { parseAccountId, parseCategoryId, parseImportId, parseTransactionId } from "./identifiers";
+import type { AccountId, CategoryId, ImportId, MerchantId, TransactionId } from "./identifiers";
+import {
+  parseAccountId,
+  parseCategoryId,
+  parseImportId,
+  parseMerchantId,
+  parseTransactionId,
+} from "./identifiers";
 import { Money } from "./money";
 import type { DateOnly, UtcTimestamp } from "./temporal";
 import { parseDateOnly, parseUtcTimestamp } from "./temporal";
@@ -37,12 +43,14 @@ export interface Transaction {
   readonly money: Money;
   readonly description: string;
   readonly sourceTransactionId?: string;
+  readonly merchantId?: MerchantId;
   readonly categoryId?: CategoryId;
   readonly notes?: string;
   readonly status: TransactionStatus;
   readonly reviewState: TransactionReviewState;
   readonly tags: readonly string[];
   readonly classifications: {
+    readonly merchant?: TransactionClassification;
     readonly category?: TransactionClassification;
   };
   readonly provenance: TransactionProvenance;
@@ -59,12 +67,14 @@ export interface CreateTransactionInput {
   readonly money: Money;
   readonly description: string;
   readonly sourceTransactionId?: string;
+  readonly merchantId?: MerchantId;
   readonly categoryId?: CategoryId;
   readonly notes?: string;
   readonly status?: TransactionStatus;
   readonly reviewState?: TransactionReviewState;
   readonly tags?: readonly string[];
   readonly classifications?: {
+    readonly merchant?: TransactionClassification;
     readonly category?: TransactionClassification;
   };
   readonly provenance: TransactionProvenance;
@@ -82,12 +92,14 @@ export interface CanonicalTransactionDocument {
   readonly currency: string;
   readonly description: string;
   readonly sourceTransactionId?: string;
+  readonly merchantId?: string;
   readonly categoryId?: string;
   readonly notes?: string;
   readonly tags: readonly string[];
   readonly status: TransactionStatus;
   readonly reviewState: TransactionReviewState;
   readonly classifications: {
+    readonly merchant?: TransactionClassification;
     readonly category?: TransactionClassification;
   };
   readonly provenance: {
@@ -135,6 +147,7 @@ export function createTransaction(input: CreateTransactionInput): Transaction {
     money: input.money,
     description,
     ...(sourceTransactionId === undefined ? {} : { sourceTransactionId }),
+    ...(input.merchantId === undefined ? {} : { merchantId: input.merchantId }),
     ...(input.categoryId === undefined ? {} : { categoryId: input.categoryId }),
     ...(notes === undefined ? {} : { notes }),
     status,
@@ -164,6 +177,7 @@ export function transactionToCanonical(transaction: Transaction): CanonicalTrans
     ...(transaction.sourceTransactionId === undefined
       ? {}
       : { sourceTransactionId: transaction.sourceTransactionId }),
+    ...(transaction.merchantId === undefined ? {} : { merchantId: transaction.merchantId }),
     ...(transaction.categoryId === undefined ? {} : { categoryId: transaction.categoryId }),
     ...(transaction.notes === undefined ? {} : { notes: transaction.notes }),
     tags: [...transaction.tags],
@@ -199,6 +213,9 @@ export function transactionFromCanonical(document: CanonicalTransactionDocument)
     ...(document.sourceTransactionId === undefined
       ? {}
       : { sourceTransactionId: document.sourceTransactionId }),
+    ...(document.merchantId === undefined
+      ? {}
+      : { merchantId: parseMerchantId(document.merchantId) }),
     ...(document.categoryId === undefined
       ? {}
       : { categoryId: parseCategoryId(document.categoryId) }),
@@ -216,8 +233,20 @@ export function transactionFromCanonical(document: CanonicalTransactionDocument)
 function validateClassifications(
   classifications: CreateTransactionInput["classifications"],
 ): Transaction["classifications"] {
-  if (classifications?.category === undefined) return {};
-  const classification = classifications.category;
+  if (classifications === undefined) return {};
+  return {
+    ...(classifications.merchant === undefined
+      ? {}
+      : { merchant: validateClassification(classifications.merchant) }),
+    ...(classifications.category === undefined
+      ? {}
+      : { category: validateClassification(classifications.category) }),
+  };
+}
+
+function validateClassification(
+  classification: TransactionClassification,
+): TransactionClassification {
   if (
     !(
       ["user", "imported", "rule", "merchantMapping", "heuristic", "localAi", "remoteAi"] as const
@@ -237,17 +266,15 @@ function validateClassifications(
     throw new RangeError("Classification evidence exceeds 20 entries");
   }
   return {
-    category: {
-      method: classification.method,
-      classifierId: requiredText(classification.classifierId, 100, "Classifier ID"),
-      classifierVersion: requiredText(classification.classifierVersion, 40, "Classifier version"),
-      ...(confidence === undefined ? {} : { confidence }),
-      evidence: classification.evidence.map((value) =>
-        requiredText(value, 160, "Classification evidence"),
-      ),
-      locked: classification.locked,
-      decidedAt: parseUtcTimestamp(classification.decidedAt),
-    },
+    method: classification.method,
+    classifierId: requiredText(classification.classifierId, 100, "Classifier ID"),
+    classifierVersion: requiredText(classification.classifierVersion, 40, "Classifier version"),
+    ...(confidence === undefined ? {} : { confidence }),
+    evidence: classification.evidence.map((value) =>
+      requiredText(value, 160, "Classification evidence"),
+    ),
+    locked: classification.locked,
+    decidedAt: parseUtcTimestamp(classification.decidedAt),
   };
 }
 

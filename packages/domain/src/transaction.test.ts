@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseAccountId, parseImportId, parseTransactionId } from "./identifiers";
+import { parseAccountId, parseImportId, parseMerchantId, parseTransactionId } from "./identifiers";
 import { Money } from "./money";
 import { parseDateOnly, parseUtcTimestamp } from "./temporal";
 import { createTransaction, transactionFromCanonical, transactionToCanonical } from "./transaction";
@@ -16,6 +16,17 @@ describe("canonical transaction", () => {
       money: Money.from("-4.25", "CAD"),
       description: "  Coffee\nshop  ",
       sourceTransactionId: "source-1",
+      merchantId: parseMerchantId("018f6b80-0d62-7d2c-9a5c-7f5f59cda2f5"),
+      classifications: {
+        merchant: {
+          method: "merchantMapping",
+          classifierId: "alias:coffee",
+          classifierVersion: "1",
+          evidence: ["matched-alias"],
+          locked: false,
+          decidedAt: parseUtcTimestamp("2026-07-19T20:00:00.000Z"),
+        },
+      },
       provenance: {
         parserId: "financial-intelligence/csv",
         parserVersion: "1.0.0",

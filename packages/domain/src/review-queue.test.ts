@@ -21,6 +21,7 @@ const ACCOUNT_ID = parseAccountId("018f6b80-0d62-7d2c-9a5c-7f5f59cda210");
 const IMPORT_ID = parseImportId("018f6b80-0d62-7d2c-9a5c-7f5f59cda220");
 const CATEGORY_ID_FOOD = parseCategoryId("3f791740-0a5b-52a6-9ae1-f46258c30b03");
 const CATEGORY_ID_COFFEE = parseCategoryId("3f791740-0a5b-52a6-9ae1-f46258c30b04");
+const MERCHANT_ID = parseMerchantId("018f6b80-0d62-7d2c-9a5c-7f5f59cda230");
 
 describe("deriveReviewQueueItem", () => {
   it("projects 'unclassified' when transaction has no category and is unlocked", () => {
@@ -44,6 +45,43 @@ describe("deriveReviewQueueItem", () => {
     const item = deriveReviewQueueItem(transaction);
     expect(item).toBeDefined();
     expect(item?.reason).toBe("unclassified");
+  });
+
+  it("preserves the canonical merchant and merchant lock in the projection", () => {
+    const transaction = createTransaction({
+      id: parseTransactionId("018f6b80-0d62-7d2c-9a5c-7f5f59cda231"),
+      accountId: ACCOUNT_ID,
+      importId: IMPORT_ID,
+      postedDate: parseDateOnly("2026-07-20"),
+      money: Money.from("-12.50", "CAD"),
+      description: "KNOWN COFFEE SHOP",
+      merchantId: MERCHANT_ID,
+      classifications: {
+        merchant: {
+          method: "user",
+          classifierId: "user",
+          classifierVersion: "1.0.0",
+          evidence: [],
+          locked: true,
+          decidedAt: NOW,
+        },
+      },
+      provenance: {
+        parserId: "csv",
+        parserVersion: "1.0.0",
+        sourceLocation: "line:1",
+        original: {},
+        transformations: [],
+      },
+      now: NOW,
+    });
+
+    const item = deriveReviewQueueItem(transaction);
+    expect(item).toMatchObject({
+      reason: "unclassified",
+      currentMerchantId: MERCHANT_ID,
+      isLockedMerchant: true,
+    });
   });
 
   it("projects 'rule-conflict' when classification rules conflict", () => {

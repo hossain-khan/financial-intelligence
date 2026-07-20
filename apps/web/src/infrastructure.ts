@@ -166,6 +166,8 @@ export const applicationServices: ApplicationServices = {
     ids,
     digest,
     ledgerRepository,
+    ruleRepository,
+    merchantRepository,
   ),
   listImportHistory: new ListImportHistory(importRepository),
   listTransactions: new ListTransactions(importRepository),
@@ -197,7 +199,12 @@ export const applicationServices: ApplicationServices = {
   listRules: new ListRules(ruleRepository),
   createRuleUseCase,
   previewRuleImpactUseCase: new PreviewRuleImpactUseCase(ruleRepository),
-  queryReviewQueue: new QueryReviewQueue(ledgerRepository, ruleRepository, merchantRepository),
+  queryReviewQueue: new QueryReviewQueue(
+    ledgerRepository,
+    ruleRepository,
+    merchantRepository,
+    accountRepository,
+  ),
   applyReviewCorrectionUseCase: new ApplyReviewCorrectionUseCase(
     applyBulkTransactionEdit,
     createRuleUseCase,
@@ -209,12 +216,15 @@ export const applicationServices: ApplicationServices = {
     ruleRepository,
     clock,
     ids,
+    recurringDecisionRepository,
+    validateFinancialBrain,
   ),
   previewFinancialBrainImportUseCase: new PreviewFinancialBrainImportUseCase(
     categoryRepository,
     merchantRepository,
     ruleRepository,
     validateFinancialBrain,
+    recurringDecisionRepository,
   ),
   applyFinancialBrainImportUseCase: new ApplyFinancialBrainImportUseCase(
     categoryRepository,
@@ -222,6 +232,7 @@ export const applicationServices: ApplicationServices = {
     ruleRepository,
     ids,
     validateFinancialBrain,
+    recurringDecisionRepository,
   ),
   findTransferProposalsUseCase: new FindTransferProposalsUseCase(
     ledgerRepository,
@@ -232,6 +243,7 @@ export const applicationServices: ApplicationServices = {
     transferDecisionRepository,
     clock,
     ids,
+    ledgerRepository,
   ),
   rejectTransferProposalUseCase: new RejectTransferProposalUseCase(
     transferDecisionRepository,

@@ -14,7 +14,7 @@ import {
   type FormEvent,
 } from "react";
 import { Button, FieldError, Form, Input, Label, TextField } from "react-aria-components";
-import { BrowserRouter, NavLink, Route, Routes } from "react-router-dom";
+import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import type { ApplicationServices } from "./infrastructure";
 import { getPendingApplicationUpdate, subscribeToApplicationUpdate } from "./pwa";
@@ -48,7 +48,7 @@ export function App({ services }: AppProperties) {
               path="/dashboard"
               element={
                 <Suspense fallback={<p role="status">Opening intelligence dashboards…</p>}>
-                  <DashboardPage services={services} />
+                  <DashboardRoute services={services} />
                 </Suspense>
               }
             />
@@ -64,7 +64,7 @@ export function App({ services }: AppProperties) {
               path="/transactions"
               element={
                 <Suspense fallback={<p role="status">Opening the local transaction ledger…</p>}>
-                  <TransactionPage services={services} />
+                  <TransactionRoute services={services} />
                 </Suspense>
               }
             />
@@ -74,6 +74,39 @@ export function App({ services }: AppProperties) {
         <UpdateBanner />
       </div>
     </BrowserRouter>
+  );
+}
+
+function DashboardRoute({ services }: AppProperties) {
+  const navigate = useNavigate();
+  return (
+    <DashboardPage
+      services={services}
+      onNavigateToLedger={(transactionIds) =>
+        void navigate("/transactions", { state: { transactionIds } })
+      }
+    />
+  );
+}
+
+function TransactionRoute({ services }: AppProperties) {
+  const location = useLocation();
+  return (
+    <TransactionPage
+      services={services}
+      initialTransactionIds={validatedDashboardTransactionIds(location.state)}
+    />
+  );
+}
+
+function validatedDashboardTransactionIds(state: unknown): readonly string[] {
+  if (typeof state !== "object" || state === null || !("transactionIds" in state)) return [];
+  const value = (state as { readonly transactionIds?: unknown }).transactionIds;
+  if (!Array.isArray(value) || value.length > 1_000) return [];
+  return value.filter(
+    (item): item is string =>
+      typeof item === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(item),
   );
 }
 

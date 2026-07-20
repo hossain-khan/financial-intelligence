@@ -95,7 +95,7 @@ export class QueryRecurringSummaryUseCase {
 
   public async execute(): Promise<RecurringSummaryReport> {
     const [proposals, decisions] = await Promise.all([
-      this.findRecurringProposalsUseCase.execute(),
+      this.findRecurringProposalsUseCase.execute({ includeResolved: true }),
       this.decisionRepository.list(),
     ]);
 

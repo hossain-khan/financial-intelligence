@@ -28,13 +28,10 @@ export interface SavingsRateReport {
 }
 
 function calculateRateString(incomeMoney: Money, spendingMoney: Money): string {
-  const incomeVal = Number(incomeMoney.toJSON().amount);
-  if (incomeVal <= 0) {
+  if (incomeMoney.isZero() || !incomeMoney.isInflow()) {
     return "notApplicable";
   }
-  const netVal = incomeVal - Number(spendingMoney.toJSON().amount);
-  const rate = netVal / incomeVal;
-  return rate.toFixed(4);
+  return incomeMoney.subtract(spendingMoney).ratioTo(incomeMoney, 4);
 }
 
 export function analyzeSavingsRate(cashFlowReport: CashFlowReport): SavingsRateReport {

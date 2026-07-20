@@ -28,6 +28,10 @@ const validSnapshot: WorkspaceBackupSnapshot = {
   imports: [],
   transactions: [],
   categories: [],
+  merchants: [],
+  classificationRules: [],
+  transferDecisions: [],
+  recurringDecisions: [],
   transactionOperations: [],
   duplicateResolutionEvents: [],
 };
@@ -41,6 +45,27 @@ describe("WorkspaceBackupSnapshot serialization & validation", () => {
     const bytes = serializeSnapshot(validSnapshot);
     const restored = parseSnapshot(bytes);
     expect(restored.workspace.name).toBe("Valid Workspace");
+  });
+
+  it("reads pre-Phase-2 snapshots by defaulting additive knowledge stores", () => {
+    const legacy = { ...validSnapshot } as Record<string, unknown>;
+    delete legacy.merchants;
+    delete legacy.classificationRules;
+    delete legacy.transferDecisions;
+    delete legacy.recurringDecisions;
+    const restored = parseSnapshot(toUint8Array(JSON.stringify(legacy)));
+    expect(restored).toMatchObject({
+      merchants: [],
+      classificationRules: [],
+      transferDecisions: [],
+      recurringDecisions: [],
+    });
+  });
+
+  it("rejects a present but invalid Phase 2 collection", () => {
+    const invalid = JSON.stringify({ ...validSnapshot, merchants: "not-an-array" });
+
+    expect(() => parseSnapshot(toUint8Array(invalid))).toThrow(BackupValidationError);
   });
 
   it("throws BackupValidationError on invalid format or payload", () => {

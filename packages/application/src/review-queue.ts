@@ -1,5 +1,6 @@
 import {
   deriveReviewQueueItem,
+  type AccountType,
   type AccountId,
   type CategoryId,
   type MatchMode,
@@ -11,6 +12,7 @@ import {
 } from "@financial-intelligence/domain";
 
 import type { MerchantRepository } from "./merchants";
+import type { AccountRepository } from "./accounts";
 import type { AddMerchantAliasUseCase } from "./merchants";
 import type { CreateRuleUseCase, RuleRepository } from "./rules";
 import type { ApplyBulkTransactionEdit } from "./transaction-ledger";
@@ -32,6 +34,7 @@ export class QueryReviewQueue {
     private readonly ledgerRepository: TransactionLedgerRepository,
     private readonly ruleRepository: RuleRepository,
     private readonly merchantRepository: MerchantRepository,
+    private readonly accountRepository?: AccountRepository,
   ) {}
 
   public async execute(input: QueryReviewQueueInput = {}): Promise<ReviewQueueQueryResult> {
@@ -42,6 +45,15 @@ export class QueryReviewQueue {
     ]);
 
     const items: ReviewQueueItem[] = [];
+    const accountTypes = new Map<string, AccountType>();
+    if (this.accountRepository !== undefined) {
+      await Promise.all(
+        [...new Set(transactions.map(({ accountId }) => accountId))].map(async (accountId) => {
+          const account = await this.accountRepository?.findById(accountId);
+          if (account !== undefined) accountTypes.set(accountId, account.type);
+        }),
+      );
+    }
     const countsByReason: Record<ReviewReason, number> = {
       unclassified: 0,
       "rule-conflict": 0,
@@ -55,7 +67,7 @@ export class QueryReviewQueue {
         continue;
       }
 
-      const item = deriveReviewQueueItem(tx, rules, merchants);
+      const item = deriveReviewQueueItem(tx, rules, merchants, accountTypes.get(tx.accountId));
       if (item !== undefined) {
         countsByReason[item.reason]++;
 
@@ -92,7 +104,9 @@ export interface ApplyReviewCorrectionInput {
       readonly field:
         | "normalizedDescription"
         | "merchantId"
+        | "accountId"
         | "accountType"
+        | "postedDate"
         | "direction"
         | "amount"
         | "categoryId"
@@ -132,6 +146,7 @@ export class ApplyReviewCorrectionUseCase {
     }
 
     const edit = {
+      ...(input.merchantId === undefined ? {} : { merchant: input.merchantId }),
       ...(input.categoryId === undefined ? {} : { category: input.categoryId }),
     };
 

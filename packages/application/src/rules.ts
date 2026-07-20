@@ -31,6 +31,13 @@ export interface RuleImpactPreview {
   readonly sampleEvaluations: readonly TransactionRuleEvaluation[];
 }
 
+export class RuleActivationConflictError extends Error {
+  public constructor(public readonly conflictingRuleIds: readonly RuleId[]) {
+    super(`Rule conflicts with active rule(s): ${conflictingRuleIds.join(", ")}`);
+    this.name = "RuleActivationConflictError";
+  }
+}
+
 export class ListRules {
   public constructor(private readonly repository: RuleRepository) {}
 
@@ -80,6 +87,7 @@ export class CreateRuleUseCase {
       now,
     });
 
+    assertNoDefiniteRuleConflict(rule, await this.repository.list());
     await this.repository.save(rule);
     return rule;
   }
@@ -125,9 +133,57 @@ export class UpdateRuleUseCase {
       now,
     });
 
+    assertNoDefiniteRuleConflict(
+      updated,
+      (await this.repository.list()).filter((rule) => rule.id !== updated.id),
+    );
     await this.repository.save(updated);
     return updated;
   }
+}
+
+function assertNoDefiniteRuleConflict(
+  candidate: ClassificationRule,
+  existingRules: readonly ClassificationRule[],
+): void {
+  if (!candidate.enabled) return;
+  const candidateConditions = canonicalConditions(candidate);
+  const conflicts = existingRules.filter(
+    (existing) =>
+      existing.enabled &&
+      existing.priority === candidate.priority &&
+      canonicalConditions(existing) === candidateConditions &&
+      hasIncompatibleAssignment(existing, candidate),
+  );
+  if (conflicts.length > 0) {
+    throw new RuleActivationConflictError(conflicts.map(({ id }) => id).sort());
+  }
+}
+
+function canonicalConditions(rule: ClassificationRule): string {
+  return JSON.stringify(
+    [...rule.conditions].sort((left, right) =>
+      JSON.stringify(left).localeCompare(JSON.stringify(right)),
+    ),
+  );
+}
+
+function hasIncompatibleAssignment(left: ClassificationRule, right: ClassificationRule): boolean {
+  for (const actionType of ["setMerchant", "setCategory"] as const) {
+    const leftValues = new Set(
+      left.actions.filter((action) => action.type === actionType).map((action) => action.value),
+    );
+    const rightValues = new Set(
+      right.actions.filter((action) => action.type === actionType).map((action) => action.value),
+    );
+    if (
+      leftValues.size > 0 &&
+      rightValues.size > 0 &&
+      [...leftValues].some((value) => !rightValues.has(value))
+    )
+      return true;
+  }
+  return false;
 }
 
 export class DeleteRuleUseCase {

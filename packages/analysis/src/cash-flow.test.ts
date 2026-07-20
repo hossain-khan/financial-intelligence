@@ -69,6 +69,19 @@ function transaction(
 }
 
 describe("cash-flow analysis", () => {
+  it("reconciles an exact dashboard transaction selection", () => {
+    const included = transaction(1, "-12.34", "2026-06-01", { categoryId: groceries.id });
+    const excluded = transaction(2, "-99.99", "2026-06-02", { categoryId: groceries.id });
+    const report = analyzeCashFlow({
+      transactions: [included, excluded],
+      categories: [groceries],
+      filter: { transactionIds: [included.id] },
+      asOfDate: "2026-07-19",
+    });
+    expect(report.currencies[0]?.spending).toBe("12.34");
+    expect(report.currencies[0]?.transactionIds).toEqual([included.id]);
+  });
+
   it("uses decimal-safe arithmetic and keeps transfers out of cash-flow totals", () => {
     const report = analyzeCashFlow({
       transactions: [

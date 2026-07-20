@@ -23,7 +23,9 @@ export class FindRecurringProposalsUseCase {
     private readonly transferDecisionRepository?: TransferDecisionRepository,
   ) {}
 
-  public async execute(): Promise<readonly RecurringProposal[]> {
+  public async execute(
+    options: { readonly includeResolved?: boolean } = {},
+  ): Promise<readonly RecurringProposal[]> {
     const transactions = await this.ledgerRepository.list();
     const decisions = await this.decisionRepository.list();
 
@@ -48,7 +50,9 @@ export class FindRecurringProposalsUseCase {
       ...(excludedTransactionIds === undefined ? {} : { excludedTransactionIds }),
     });
 
-    return proposals.filter((p) => !resolvedSignatures.has(p.id));
+    return options.includeResolved === true
+      ? proposals
+      : proposals.filter((p) => !resolvedSignatures.has(p.id));
   }
 }
 

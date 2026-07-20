@@ -63,6 +63,14 @@ describe("RuleCondition & RuleAction factories", () => {
         value: { minimum: "50.00", maximum: "10.00" },
       }),
     ).toThrow(RangeError);
+
+    expect(() =>
+      createRuleCondition({
+        field: "accountId",
+        operator: "contains",
+        value: ACCOUNT_ID,
+      }),
+    ).toThrow(TypeError);
   });
 
   it("validates action values and types", () => {

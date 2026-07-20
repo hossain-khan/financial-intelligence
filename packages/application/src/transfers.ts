@@ -47,9 +47,40 @@ export class ConfirmTransferProposalUseCase {
     private readonly decisionRepository: TransferDecisionRepository,
     private readonly clock: ApplicationClock,
     private readonly ids: IdGenerator,
+    private readonly ledgerRepository?: TransactionLedgerRepository,
   ) {}
 
   public async execute(proposal: TransferProposal): Promise<TransferLink> {
+    if (proposal.isAmbiguous) {
+      throw new Error("Ambiguous transfer proposals require resolution before confirmation");
+    }
+    const activeLinks = (await this.decisionRepository.list()).filter(
+      (link) => link.status === "confirmed" && link.signature !== proposal.id,
+    );
+    const proposalTransactionIds = new Set([
+      proposal.outflowTransaction.id,
+      proposal.inflowTransaction.id,
+    ]);
+    if (
+      activeLinks.some(
+        (link) =>
+          proposalTransactionIds.has(link.outflowTransactionId) ||
+          proposalTransactionIds.has(link.inflowTransactionId),
+      )
+    ) {
+      throw new Error("A transaction is already part of another confirmed transfer");
+    }
+    if (this.ledgerRepository !== undefined) {
+      const current = new Map((await this.ledgerRepository.list()).map((item) => [item.id, item]));
+      assertTransferSideUnchanged(
+        proposal.outflowTransaction,
+        current.get(proposal.outflowTransaction.id),
+      );
+      assertTransferSideUnchanged(
+        proposal.inflowTransaction,
+        current.get(proposal.inflowTransaction.id),
+      );
+    }
     const now = parseUtcTimestamp(this.clock.now().toISOString());
     const existing = await this.decisionRepository.findBySignature(proposal.id);
 
@@ -67,6 +98,21 @@ export class ConfirmTransferProposalUseCase {
 
     await this.decisionRepository.save(link);
     return link;
+  }
+}
+
+function assertTransferSideUnchanged(
+  proposed: TransferProposal["outflowTransaction"],
+  current: TransferProposal["outflowTransaction"] | undefined,
+): void {
+  if (
+    current === undefined ||
+    current.status !== "posted" ||
+    current.accountId !== proposed.accountId ||
+    current.postedDate !== proposed.postedDate ||
+    !current.money.equals(proposed.money)
+  ) {
+    throw new Error("Transfer proposal is stale and must be recomputed");
   }
 }
 

@@ -160,4 +160,5 @@ The system stores typed alias/rule objects, not the prose above.
 
 - [AI architecture](08-AI-ARCHITECTURE.md)
 - [Data model](09-DATA-MODEL.md)
+- [Phase 2 implementation and hardening](20-PHASE-2-IMPLEMENTATION.md)
 - [Financial Brain schema](../schemas/financial-brain.schema.json)

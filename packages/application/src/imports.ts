@@ -1,12 +1,18 @@
 import {
   Money,
+  applyAutomaticCategoryEdit,
+  applyAutomaticMerchantEdit,
   createCommittedImport,
   createTransaction,
   detectDuplicateCandidates,
+  evaluateClassificationRules,
   incrementWorkspaceRevision,
+  matchDescriptionToMerchants,
   parseAccountId,
+  parseCategoryId,
   parseDateOnly,
   parseImportId,
+  parseMerchantId,
   parseTransactionId,
   parseUtcTimestamp,
   parseWorkspaceId,
@@ -21,6 +27,8 @@ import {
 
 import { AccountNotFoundError, type AccountRepository } from "./accounts";
 import type { DuplicateCandidateRepository } from "./duplicate-review";
+import type { MerchantRepository } from "./merchants";
+import type { RuleRepository } from "./rules";
 import type { ApplicationClock, IdGenerator, WorkspaceRepository } from "./workspaces";
 
 export interface AcceptedImportSource {
@@ -131,6 +139,8 @@ export class CommitAcceptedImport {
     private readonly ids: IdGenerator,
     private readonly digest: Sha256Digest,
     private readonly duplicateCandidates?: DuplicateCandidateRepository,
+    private readonly rules?: RuleRepository,
+    private readonly merchants?: MerchantRepository,
   ) {}
 
   public async execute(command: CommitAcceptedImportCommand): Promise<CommitImportResult> {
@@ -198,6 +208,10 @@ export class CommitAcceptedImport {
       });
     });
 
+    const [classificationRules, knownMerchants] = await Promise.all([
+      this.rules?.list() ?? [],
+      this.merchants?.list() ?? [],
+    ]);
     const transactions: Transaction[] = [];
     const fingerprints: TransactionFingerprint[] = [];
     for (const candidate of command.candidates) {
@@ -205,29 +219,35 @@ export class CommitAcceptedImport {
       const importId = importIdByDigest.get(candidate.provenance.sourceFileSha256);
       if (importId === undefined)
         throw new ImportCommitValidationError("Candidate source is missing");
-      const transaction = createTransaction({
-        id: parseTransactionId(this.ids.generate()),
-        accountId: account.id,
-        importId,
-        postedDate: parseDateOnly(candidate.postedDate),
-        ...(candidate.transactionDate === undefined
-          ? {}
-          : { transactionDate: parseDateOnly(candidate.transactionDate) }),
-        money: Money.from(candidate.amount, candidate.currency),
-        description: candidate.description,
-        ...(candidate.sourceTransactionId === undefined
-          ? {}
-          : { sourceTransactionId: candidate.sourceTransactionId }),
-        ...(candidate.status === undefined ? {} : { status: candidate.status }),
-        provenance: {
-          parserId: candidate.provenance.parserId,
-          parserVersion: candidate.provenance.parserVersion,
-          sourceLocation: candidate.provenance.sourceLocation,
-          original: candidate.provenance.original,
-          transformations: [`mapping:${candidate.provenance.mappingVersion}`],
-        },
+      const transaction = classifyImportedTransaction(
+        createTransaction({
+          id: parseTransactionId(this.ids.generate()),
+          accountId: account.id,
+          importId,
+          postedDate: parseDateOnly(candidate.postedDate),
+          ...(candidate.transactionDate === undefined
+            ? {}
+            : { transactionDate: parseDateOnly(candidate.transactionDate) }),
+          money: Money.from(candidate.amount, candidate.currency),
+          description: candidate.description,
+          ...(candidate.sourceTransactionId === undefined
+            ? {}
+            : { sourceTransactionId: candidate.sourceTransactionId }),
+          ...(candidate.status === undefined ? {} : { status: candidate.status }),
+          provenance: {
+            parserId: candidate.provenance.parserId,
+            parserVersion: candidate.provenance.parserVersion,
+            sourceLocation: candidate.provenance.sourceLocation,
+            original: candidate.provenance.original,
+            transformations: [`mapping:${candidate.provenance.mappingVersion}`],
+          },
+          now,
+        }),
+        account.type,
+        classificationRules,
+        knownMerchants,
         now,
-      });
+      );
       transactions.push(transaction);
       fingerprints.push(await fingerprint(transaction, this.digest));
     }
@@ -290,6 +310,102 @@ export class CommitAcceptedImport {
       committedRevision: nextWorkspace.revision,
     };
   }
+}
+
+function classifyImportedTransaction(
+  transaction: Transaction,
+  accountType: Parameters<typeof evaluateClassificationRules>[0]["accountType"],
+  rules: Awaited<ReturnType<RuleRepository["list"]>>,
+  merchants: Awaited<ReturnType<MerchantRepository["list"]>>,
+  now: ReturnType<typeof parseUtcTimestamp>,
+): Transaction {
+  let classified = transaction;
+  const merchantMatches = matchDescriptionToMerchants(transaction.description, merchants);
+
+  if (merchantMatches.length === 1) {
+    const match = merchantMatches[0]!;
+    classified = applyAutomaticMerchantEdit(
+      classified,
+      {
+        merchant: match.merchantId,
+        classification: {
+          method: "merchantMapping",
+          classifierId: `merchant-alias:${match.aliasId}`,
+          classifierVersion: "1.0.0",
+          confidence: match.confidence,
+          evidence: [`matched-alias:${match.aliasId}`],
+          decidedAt: now,
+        },
+      },
+      now,
+    );
+  }
+
+  const evaluation = evaluateClassificationRules(
+    {
+      transactionId: classified.id,
+      rawDescription: classified.description,
+      ...(classified.merchantId === undefined ? {} : { merchantId: classified.merchantId }),
+      accountId: classified.accountId,
+      accountType,
+      postedDate: classified.postedDate,
+      amount: classified.money,
+      ...(classified.categoryId === undefined ? {} : { categoryId: classified.categoryId }),
+      tags: classified.tags,
+      isLockedMerchant: classified.merchantId !== undefined,
+      isLockedCategory: classified.classifications.category?.locked === true,
+    },
+    rules,
+  );
+
+  if (
+    classified.merchantId === undefined &&
+    evaluation.merchantResult.status === "matched" &&
+    evaluation.merchantResult.value !== undefined
+  ) {
+    classified = applyAutomaticMerchantEdit(
+      classified,
+      {
+        merchant: parseMerchantId(evaluation.merchantResult.value),
+        classification: ruleClassification(evaluation.merchantResult, now),
+      },
+      now,
+    );
+  }
+
+  if (
+    evaluation.categoryResult.status === "matched" &&
+    evaluation.categoryResult.value !== undefined
+  ) {
+    classified = applyAutomaticCategoryEdit(
+      classified,
+      {
+        category: parseCategoryId(evaluation.categoryResult.value),
+        classification: ruleClassification(evaluation.categoryResult, now),
+      },
+      now,
+    );
+  }
+
+  const needsReview =
+    merchantMatches.length > 1 ||
+    evaluation.merchantResult.status === "conflict" ||
+    evaluation.categoryResult.status === "conflict";
+  return needsReview ? { ...classified, reviewState: "needsReview" } : classified;
+}
+
+function ruleClassification(
+  result: ReturnType<typeof evaluateClassificationRules>["categoryResult"],
+  now: ReturnType<typeof parseUtcTimestamp>,
+) {
+  const winningRuleId = result.winningRuleId ?? "unknown";
+  return {
+    method: "rule" as const,
+    classifierId: `rule:${winningRuleId}`,
+    classifierVersion: "1.0.0",
+    evidence: [`matched-rule:${winningRuleId}`],
+    decidedAt: now,
+  };
 }
 
 export class ListImportHistory {

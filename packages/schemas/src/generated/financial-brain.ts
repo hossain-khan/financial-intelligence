@@ -133,6 +133,7 @@ export interface Alias {
  * via the `definition` "rule".
  */
 export interface Rule {
+  schemaVersion: "1.0.0";
   id: Uuid;
   name: string;
   enabled: boolean;
@@ -538,7 +539,9 @@ export interface Condition {
   field:
     | "normalizedDescription"
     | "merchantId"
+    | "accountId"
     | "accountType"
+    | "postedDate"
     | "direction"
     | "amount"
     | "categoryId"
@@ -566,6 +569,7 @@ export interface Action {
 export interface RecurringDecision {
   id: Uuid;
   signature: string;
+  name?: string;
   merchantId?: Uuid;
   status: "confirmed" | "dismissed" | "muted";
   cadence?: "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly" | "irregular";

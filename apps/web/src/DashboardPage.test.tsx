@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { parseMerchantId, parseTransactionId } from "@financial-intelligence/domain";
 
@@ -153,7 +153,8 @@ function fixtureServices(): ApplicationServices {
 describe("DashboardPage component", () => {
   it("renders all four dashboard sections with accessible data tables", async () => {
     const services = fixtureServices();
-    render(<DashboardPage services={services} />);
+    const onNavigateToLedger = vi.fn();
+    render(<DashboardPage services={services} onNavigateToLedger={onNavigateToLedger} />);
 
     await waitFor(() => {
       expect(screen.getByText(/Intelligence Dashboards/i)).toBeInTheDocument();
@@ -166,5 +167,8 @@ describe("DashboardPage component", () => {
 
     expect(screen.getByText("Grocery Store")).toBeInTheDocument();
     expect(screen.getByText("NETFLIX")).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: /View Txs/ })[0]!);
+    expect(onNavigateToLedger).toHaveBeenCalledWith(["018f6b80-0d62-7d2c-9a5c-7f5f59cda101"]);
   });
 });

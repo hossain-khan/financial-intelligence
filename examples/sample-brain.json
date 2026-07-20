@@ -51,6 +51,7 @@
   ],
   "rules": [
     {
+      "schemaVersion": "1.0.0",
       "id": "8045a681-72d8-4ab5-af3d-0bdf3196fd70",
       "name": "Harbor Coffee is a restaurant",
       "enabled": true,

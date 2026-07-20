@@ -25,6 +25,7 @@ export type TransactionLedgerSortField = "postedDate" | "amount" | "description"
 export type SortDirection = "ascending" | "descending";
 
 export interface TransactionLedgerFilter {
+  readonly transactionIds?: readonly string[];
   readonly accountIds?: readonly string[];
   readonly fromDate?: string;
   readonly toDate?: string;
@@ -233,6 +234,7 @@ export function planBulkTransactionEdit(
 }
 
 interface NormalizedFilter {
+  readonly transactionIds?: ReadonlySet<TransactionId>;
   readonly accountIds?: ReadonlySet<AccountId>;
   readonly fromDate?: DateOnly;
   readonly toDate?: DateOnly;
@@ -254,6 +256,9 @@ interface NormalizedFilter {
 function normalizeFilter(filter: TransactionLedgerFilter | undefined): NormalizedFilter {
   if (filter === undefined) return { uncategorized: false };
   return {
+    ...(filter.transactionIds === undefined
+      ? {}
+      : { transactionIds: new Set(filter.transactionIds.map(parseTransactionId)) }),
     ...(filter.accountIds === undefined
       ? {}
       : { accountIds: new Set(filter.accountIds.map(parseAccountId)) }),
@@ -279,6 +284,8 @@ function normalizeFilter(filter: TransactionLedgerFilter | undefined): Normalize
 
 function matches(record: TransactionLedgerRecord, filter: NormalizedFilter): boolean {
   const transaction = record;
+  if (filter.transactionIds !== undefined && !filter.transactionIds.has(transaction.id))
+    return false;
   if (filter.accountIds !== undefined && !filter.accountIds.has(transaction.accountId))
     return false;
   if (filter.fromDate !== undefined && transaction.postedDate < filter.fromDate) return false;

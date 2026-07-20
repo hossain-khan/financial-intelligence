@@ -12,6 +12,7 @@ import {
 
 import type { CategoryRepository } from "./categories";
 import type { MerchantRepository } from "./merchants";
+import type { RecurringDecisionRepository } from "./recurring";
 import type { RuleRepository } from "./rules";
 import type { ApplicationClock, IdGenerator } from "./workspaces";
 
@@ -22,14 +23,17 @@ export class ExportFinancialBrainUseCase {
     private readonly ruleRepository: RuleRepository,
     private readonly clock: ApplicationClock,
     private readonly ids: IdGenerator,
+    private readonly recurringRepository?: RecurringDecisionRepository,
+    private readonly validator?: FinancialBrainValidator,
   ) {}
 
   public async execute(): Promise<{ fileName: string; content: string }> {
     const now = parseUtcTimestamp(this.clock.now().toISOString());
-    const [categories, merchants, rules] = await Promise.all([
+    const [categories, merchants, rules, recurringDecisions] = await Promise.all([
       this.categoryRepository.list(),
       this.merchantRepository.list(),
       this.ruleRepository.list(),
+      this.recurringRepository?.list() ?? [],
     ]);
 
     const brainDoc: FinancialBrainDocument = {
@@ -44,7 +48,7 @@ export class ExportFinancialBrainUseCase {
       categories,
       merchants,
       rules,
-      recurringDecisions: [],
+      recurringDecisions,
       preferences: {
         locale: "en-US",
         firstDayOfWeek: "monday",
@@ -53,6 +57,7 @@ export class ExportFinancialBrainUseCase {
     };
 
     const content = serializeFinancialBrain(brainDoc);
+    parseAndValidateFinancialBrain(content, this.validator);
     const dateStr = now.slice(0, 10);
     const fileName = `financial-brain-${dateStr}.financial-brain.json`;
 
@@ -66,6 +71,7 @@ export class PreviewFinancialBrainImportUseCase {
     private readonly merchantRepository: MerchantRepository,
     private readonly ruleRepository: RuleRepository,
     private readonly validator?: FinancialBrainValidator,
+    private readonly recurringRepository?: RecurringDecisionRepository,
   ) {}
 
   public async execute(rawJson: string): Promise<{
@@ -74,14 +80,15 @@ export class PreviewFinancialBrainImportUseCase {
   }> {
     const doc = parseAndValidateFinancialBrain(rawJson, this.validator);
 
-    const [categories, merchants, rules] = await Promise.all([
+    const [categories, merchants, rules, recurringDecisions] = await Promise.all([
       this.categoryRepository.list(),
       this.merchantRepository.list(),
       this.ruleRepository.list(),
+      this.recurringRepository?.list() ?? [],
     ]);
 
     const plan = planFinancialBrainMerge(
-      { categories, merchants, rules, recurringDecisions: [] },
+      { categories, merchants, rules, recurringDecisions },
       {
         categories: doc.categories,
         merchants: doc.merchants,
@@ -101,6 +108,7 @@ export class ApplyFinancialBrainImportUseCase {
     private readonly ruleRepository: RuleRepository,
     private readonly ids: IdGenerator,
     private readonly validator?: FinancialBrainValidator,
+    private readonly recurringRepository?: RecurringDecisionRepository,
   ) {}
 
   public async execute(input: {
@@ -109,18 +117,20 @@ export class ApplyFinancialBrainImportUseCase {
   }): Promise<{ operationId: string; appliedCount: number }> {
     const doc = parseAndValidateFinancialBrain(input.rawJson, this.validator);
 
-    const [localCategories, localMerchants, localRules] = await Promise.all([
-      this.categoryRepository.list(),
-      this.merchantRepository.list(),
-      this.ruleRepository.list(),
-    ]);
+    const [localCategories, localMerchants, localRules, localRecurringDecisions] =
+      await Promise.all([
+        this.categoryRepository.list(),
+        this.merchantRepository.list(),
+        this.ruleRepository.list(),
+        this.recurringRepository?.list() ?? [],
+      ]);
 
     const plan = planFinancialBrainMerge(
       {
         categories: localCategories,
         merchants: localMerchants,
         rules: localRules,
-        recurringDecisions: [],
+        recurringDecisions: localRecurringDecisions,
       },
       {
         categories: doc.categories,
@@ -156,11 +166,38 @@ export class ApplyFinancialBrainImportUseCase {
       await this.merchantRepository.save(merch);
       appliedCount++;
     }
+    for (const conf of plan.conflicts.filter((c) => c.kind === "merchant")) {
+      if (input.conflictResolutions?.get(conf.id) === "accept-incoming") {
+        await this.merchantRepository.save(conf.incoming as (typeof localMerchants)[0]);
+        appliedCount++;
+      }
+    }
 
     // Apply rule additions & accepted updates
     for (const rule of [...plan.additions.rules, ...plan.updates.rules]) {
       await this.ruleRepository.save(rule);
       appliedCount++;
+    }
+
+    if (this.recurringRepository !== undefined) {
+      for (const decision of [
+        ...plan.additions.recurringDecisions,
+        ...plan.updates.recurringDecisions,
+      ]) {
+        await this.recurringRepository.save(decision);
+        appliedCount++;
+      }
+      for (const conf of plan.conflicts.filter((c) => c.kind === "recurringDecision")) {
+        if (input.conflictResolutions?.get(conf.id) === "accept-incoming") {
+          await this.recurringRepository.save(conf.incoming as (typeof localRecurringDecisions)[0]);
+          appliedCount++;
+        }
+      }
+    } else if (
+      plan.additions.recurringDecisions.length > 0 ||
+      plan.updates.recurringDecisions.length > 0
+    ) {
+      throw new Error("Recurring decision storage is unavailable");
     }
 
     const operationId = this.ids.generate();
