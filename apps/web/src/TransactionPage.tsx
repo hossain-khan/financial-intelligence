@@ -28,8 +28,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 
 import type { ApplicationServices } from "./infrastructure";
 import { BrainManagementView } from "./BrainManagementView";
+import { RecurringReviewSection } from "./RecurringReviewSection";
 import { TransferReviewSection } from "./TransferReviewSection";
-import type { TransferProposal } from "@financial-intelligence/domain";
+import type { RecurringProposal, TransferProposal } from "@financial-intelligence/domain";
 
 const EMPTY_PAGE: TransactionLedgerPage = { items: [], total: 0, offset: 0, limit: 50 };
 const EMPTY_SUMMARY: CashFlowReport = {
@@ -64,6 +65,7 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
   const [allTransactions, setAllTransactions] = useState<readonly Transaction[]>([]);
   const [summary, setSummary] = useState<CashFlowReport>(EMPTY_SUMMARY);
   const [proposals, setProposals] = useState<readonly TransferProposal[]>([]);
+  const [recurringProposals, setRecurringProposals] = useState<readonly RecurringProposal[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "saving" | "error">("loading");
   const [message, setMessage] = useState<string>();
   const accountInitialized = useRef(false);
@@ -93,30 +95,37 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
       fromDate,
       toDate,
     );
-    const [loadedPage, loadedSummary, transactionGroups, loadedDecisions, loadedProposals] =
-      await Promise.all([
-        services.queryTransactionLedger.execute({
-          filter: {
-            ...sharedFilter,
-            ...(search.trim() === "" ? {} : { search }),
-            ...(reviewState === ""
-              ? {}
-              : { reviewStates: [reviewState as "unreviewed" | "needsReview" | "reviewed"] }),
-            ...(direction === "" ? {} : { directions: [direction] }),
-          },
-          sort: { field: sortField, direction: sortDirection },
-          offset: pageIndex * 50,
-          limit: 50,
-        }),
-        services.queryCashFlowSummary.execute(sharedFilter),
-        Promise.all(
-          activeAccounts
-            .filter((account) => nextAccountId === "" || account.id === nextAccountId)
-            .map((account) => services.listTransactions.execute(account.id)),
-        ),
-        services.listDuplicateResolutions.execute(),
-        services.findTransferProposalsUseCase.execute(),
-      ]);
+    const [
+      loadedPage,
+      loadedSummary,
+      transactionGroups,
+      loadedDecisions,
+      loadedProposals,
+      loadedRecurring,
+    ] = await Promise.all([
+      services.queryTransactionLedger.execute({
+        filter: {
+          ...sharedFilter,
+          ...(search.trim() === "" ? {} : { search }),
+          ...(reviewState === ""
+            ? {}
+            : { reviewStates: [reviewState as "unreviewed" | "needsReview" | "reviewed"] }),
+          ...(direction === "" ? {} : { directions: [direction] }),
+        },
+        sort: { field: sortField, direction: sortDirection },
+        offset: pageIndex * 50,
+        limit: 50,
+      }),
+      services.queryCashFlowSummary.execute(sharedFilter),
+      Promise.all(
+        activeAccounts
+          .filter((account) => nextAccountId === "" || account.id === nextAccountId)
+          .map((account) => services.listTransactions.execute(account.id)),
+      ),
+      services.listDuplicateResolutions.execute(),
+      services.findTransferProposalsUseCase.execute(),
+      services.findRecurringProposalsUseCase.execute(),
+    ]);
     const transactions = transactionGroups.flat();
     const latestCreatedAt = transactions.reduce(
       (latest, transaction) => (transaction.createdAt > latest ? transaction.createdAt : latest),
@@ -139,6 +148,7 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
     setDuplicates(candidates);
     setDecisions(loadedDecisions);
     setProposals(loadedProposals);
+    setRecurringProposals(loadedRecurring);
     accountInitialized.current = true;
     setStatus("ready");
   }, [
@@ -333,6 +343,22 @@ export function TransactionPage({ services }: { readonly services: ApplicationSe
         }}
         onReject={async (proposal) => {
           await services.rejectTransferProposalUseCase.execute(proposal);
+          await refresh();
+        }}
+      />
+
+      <RecurringReviewSection
+        proposals={recurringProposals}
+        onConfirm={async (proposal) => {
+          await services.confirmRecurringProposalUseCase.execute(proposal);
+          await refresh();
+        }}
+        onDismiss={async (proposal) => {
+          await services.dismissRecurringProposalUseCase.execute(proposal);
+          await refresh();
+        }}
+        onMute={async (proposal) => {
+          await services.muteRecurringProposalUseCase.execute(proposal);
           await refresh();
         }}
       />

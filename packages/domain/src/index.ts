@@ -17,6 +17,7 @@ export {
   parseImportId,
   parseMerchantId,
   parseOperationId,
+  parseRecurringSeriesId,
   parseRuleId,
   parseTransactionId,
   parseTransferLinkId,
@@ -30,11 +31,20 @@ export type {
   ImportId,
   MerchantId,
   OperationId,
+  RecurringSeriesId,
   RuleId,
   TransactionId,
   TransferLinkId,
   WorkspaceId,
 } from "./identifiers";
+export { calculateRecurringSignature, findRecurringProposals } from "./recurring-detection";
+export type {
+  RecurringCadence,
+  RecurringDetectionOptions,
+  RecurringEvidence,
+  RecurringProposal,
+  RecurringStatus,
+} from "./recurring-detection";
 export { calculateTransferSignature, findTransferProposals } from "./transfer-matching";
 export type {
   TransferEvidence,

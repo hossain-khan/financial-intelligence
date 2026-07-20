@@ -33,8 +33,8 @@ afterEach(async () => {
 
 describe("database migrations", () => {
   it("keeps a contiguous registry with one source of truth", () => {
-    expect(DATABASE_MIGRATIONS.map(({ version }) => version)).toEqual([1, 2, 3, 4, 5, 6, 7]);
-    expect(CURRENT_DATABASE_VERSION).toBe(7);
+    expect(DATABASE_MIGRATIONS.map(({ version }) => version)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(CURRENT_DATABASE_VERSION).toBe(8);
   });
 
   it("rejects a migration registry with a missing prior version", () => {
@@ -59,6 +59,7 @@ describe("database migrations", () => {
       "imports",
       "merchants",
       "migrationJournal",
+      "recurringDecisions",
       "transactionFingerprints",
       "transactionOperations",
       "transactions",

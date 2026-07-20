@@ -93,6 +93,13 @@ export {
   PreviewFinancialBrainImportUseCase,
 } from "./financial-brain";
 export {
+  ConfirmRecurringProposalUseCase,
+  DismissRecurringProposalUseCase,
+  FindRecurringProposalsUseCase,
+  MuteRecurringProposalUseCase,
+} from "./recurring";
+export type { RecurringDecisionRepository } from "./recurring";
+export {
   ConfirmTransferProposalUseCase,
   FindTransferProposalsUseCase,
   RejectTransferProposalUseCase,
