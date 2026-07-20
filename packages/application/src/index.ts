@@ -62,6 +62,15 @@ export { ListCategories, RenameCategory, SetCategoryArchived } from "./categorie
 export type { CategoryRepository } from "./categories";
 export { CreateEncryptedWorkspaceBackup, PreviewEncryptedWorkspaceBackup } from "./backups";
 export type { EncryptedWorkspaceBackup, WorkspaceBackupRepository } from "./backups";
+export {
+  AddMerchantAliasUseCase,
+  CreateMerchantUseCase,
+  ListMerchants,
+  MergeMerchantsUseCase,
+  ResolveMerchantForDescription,
+  UnmergeMerchantUseCase,
+} from "./merchants";
+export type { MerchantRepository } from "./merchants";
 export type {
   BulkEditPreview,
   BulkTransactionChange,
