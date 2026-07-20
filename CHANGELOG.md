@@ -29,6 +29,11 @@ All notable changes to this project will be documented here. The format follows 
 - Transactional transfer confirmation and recurring edit/split/merge/supersession/invalidation history with recoverable undo.
 - Revision-consistent dashboard snapshots, shared merchant/tag/review/recurring filters, URL-preserved navigation, accessible charts, and exact ledger drilldown.
 
+### Changed
+
+- Mark Phase 2 complete after its delivery and hardening issues passed repository verification and
+  supported-browser qualification; identify Phase 3 as the next planned phase.
+
 ### Fixed
 
 - Apply saved merchant aliases and deterministic rules during later imports instead of limiting rule evaluation to the review queue.

@@ -1,9 +1,15 @@
-# Phase 2 Implementation and Hardening
+# Phase 2 Implementation and Completion
 
 ## Purpose
 
-Describe the implemented Phase 2 behavior, its trust boundaries, the evidence required before the
-milestone exits, and the remaining hardening work discovered during the post-merge review.
+Describe the completed Phase 2 behavior, its trust boundaries, the post-merge hardening, and the
+evidence used to close the milestone.
+
+## Completion status
+
+**Complete.** Delivery issues #18–#24 and hardening issues #72–#74 are closed. The combined
+hardening change passed the repository verification job and supported-browser end-to-end jobs for
+Chromium, Firefox, and WebKit before merge. Phase 3 is the next planned product phase.
 
 ## Implemented vertical slices
 
@@ -106,8 +112,8 @@ The maintained test suite covers:
   table parity, responsive semantics, and 50,000-row analysis bounds;
 - existing keyboard, responsive, offline, CSP, schema, migration, and browser gates.
 
-The milestone exits only after CI and supported-browser end-to-end qualification pass for the
-combined hardening pull request.
+The combined hardening pull request passed CI and supported-browser end-to-end qualification. This
+satisfies the final Phase 2 milestone exit gate.
 
 ## Related documents
 
