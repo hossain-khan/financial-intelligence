@@ -87,6 +87,11 @@ export type {
   QueryReviewQueueInput,
   ReviewQueueQueryResult,
 } from "./review-queue";
+export {
+  ApplyFinancialBrainImportUseCase,
+  ExportFinancialBrainUseCase,
+  PreviewFinancialBrainImportUseCase,
+} from "./financial-brain";
 export type {
   BulkEditPreview,
   BulkTransactionChange,

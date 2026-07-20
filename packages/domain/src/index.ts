@@ -12,6 +12,7 @@ export { CurrencyMismatchError, Money } from "./money";
 export {
   parseAccountId,
   parseAliasId,
+  parseBrainId,
   parseCategoryId,
   parseImportId,
   parseMerchantId,
@@ -23,6 +24,7 @@ export {
 export type {
   AccountId,
   AliasId,
+  BrainId,
   CategoryId,
   ImportId,
   MerchantId,
@@ -31,6 +33,23 @@ export type {
   TransactionId,
   WorkspaceId,
 } from "./identifiers";
+export {
+  FINANCIAL_BRAIN_SCHEMA_VERSION,
+  MAX_BRAIN_FILE_BYTES,
+  parseAndValidateFinancialBrain,
+  planFinancialBrainMerge,
+  serializeFinancialBrain,
+} from "./financial-brain";
+export type {
+  BrainConflictItem,
+  BrainImportPlan,
+  FinancialBrainDocument,
+  FinancialBrainPreferences,
+  FinancialBrainValidator,
+  FinancialBrainValidatorResult,
+  RecurringDecisionRecord,
+  SemanticDuplicateItem,
+} from "./financial-brain";
 export {
   analyzeRuleOverlap,
   calculateRuleSpecificity,
