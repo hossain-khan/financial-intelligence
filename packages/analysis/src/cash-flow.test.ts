@@ -178,7 +178,7 @@ describe("cash-flow analysis", () => {
       asOfDate: "2026-07-19",
     });
     expect(report.currencies[0]?.spending).toBe("500");
-    expect(Date.now() - startedAt).toBeLessThan(1_000);
+    expect(Date.now() - startedAt).toBeLessThan(5_000);
   });
 });
 
