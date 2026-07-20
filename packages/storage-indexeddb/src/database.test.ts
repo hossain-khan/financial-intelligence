@@ -16,6 +16,9 @@ import {
   detectDuplicateCandidates,
   duplicateEvidenceSignature,
   parseAccountId,
+  parseAliasId,
+  parseMerchantId,
+  parseRuleId,
   parseUtcTimestamp,
   parseWorkspaceId,
 } from "@financial-intelligence/domain";
@@ -27,6 +30,8 @@ import {
   IndexedDbCategoryRepository,
   IndexedDbDuplicateResolutionRepository,
   IndexedDbImportCommitRepository,
+  IndexedDbMerchantRepository,
+  IndexedDbRuleRepository,
   IndexedDbTransactionLedgerRepository,
   IndexedDbWorkspaceRepository,
   IndexedDbWorkspaceBackupRepository,
@@ -64,6 +69,65 @@ describe("IndexedDbCategoryRepository", () => {
       )?.name,
     ).toBe("Food at home");
     reopened.close();
+  });
+});
+
+describe("IndexedDbMerchantRepository & IndexedDbRuleRepository", () => {
+  it("persists and retrieves merchants and rules across database reopens", async () => {
+    const database = new FinancialDatabase(`test-${crypto.randomUUID()}`);
+    databases.push(database);
+
+    const merchants = new IndexedDbMerchantRepository(database);
+    const rules = new IndexedDbRuleRepository(database);
+
+    const now = parseUtcTimestamp("2026-07-20T12:00:00.000Z");
+
+    const merchantId = parseMerchantId("019829f0-4da4-7ae0-8a9c-383af22d7d01");
+    await merchants.save({
+      id: merchantId,
+      name: "Tim Hortons",
+      aliases: [
+        {
+          id: parseAliasId("019829f0-4da4-7ae0-8a9c-383af22d7d02"),
+          pattern: "tim hortons",
+          matchMode: "tokenPrefix",
+          normalizerVersion: "1.0.0",
+          createdAt: now,
+        },
+      ],
+      archived: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const ruleId = parseRuleId("019829f0-4da4-7ae0-8a9c-383af22d7d03");
+    await rules.save({
+      id: ruleId,
+      schemaVersion: "1.0.0",
+      name: "Tim Hortons Categorization",
+      enabled: true,
+      priority: 10,
+      conditions: [
+        { field: "normalizedDescription", operator: "startsWith", value: "tim hortons" },
+      ],
+      actions: [{ type: "setMerchant", value: merchantId }],
+      createdBy: "user",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    database.close();
+
+    const reopened = new FinancialDatabase(database.name);
+    databases.push(reopened);
+
+    const loadedMerchants = await new IndexedDbMerchantRepository(reopened).list();
+    expect(loadedMerchants).toHaveLength(1);
+    expect(loadedMerchants[0]?.name).toBe("Tim Hortons");
+
+    const loadedRules = await new IndexedDbRuleRepository(reopened).list();
+    expect(loadedRules).toHaveLength(1);
+    expect(loadedRules[0]?.name).toBe("Tim Hortons Categorization");
   });
 });
 

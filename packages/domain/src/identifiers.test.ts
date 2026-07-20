@@ -7,6 +7,7 @@ import {
   parseImportId,
   parseMerchantId,
   parseOperationId,
+  parseRuleId,
   parseTransactionId,
   parseWorkspaceId,
 } from "./identifiers";
@@ -22,6 +23,7 @@ describe("opaque identifiers", () => {
     parseCategoryId,
     parseMerchantId,
     parseAliasId,
+    parseRuleId,
     parseOperationId,
   ])("accepts and round-trips a UUID", (parse) => {
     expect(parse(UUID)).toBe(UUID);

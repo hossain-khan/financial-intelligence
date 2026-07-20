@@ -11,6 +11,8 @@ import type {
   DuplicateResolutionRepository,
   TransactionLedgerRepository,
   CategoryRepository,
+  MerchantRepository,
+  RuleRepository,
   WorkspaceBackupRepository,
 } from "@financial-intelligence/application";
 import {
@@ -29,9 +31,13 @@ import {
   type Account,
   type AccountId,
   type Category,
+  type ClassificationRule,
   type CanonicalTransactionDocument,
   type DuplicateResolutionEvent,
   type ImportId,
+  type Merchant,
+  type MerchantId,
+  type RuleId,
   type StatementImport,
   type StatementImportDocument,
   type Transaction as DomainTransaction,
@@ -54,6 +60,8 @@ type ImportRecord = StatementImportDocument;
 type TransactionRecord = CanonicalTransactionDocument;
 type TransactionFingerprintRecord = TransactionFingerprint;
 type CategoryRecord = Category;
+type MerchantRecord = Merchant;
+type ClassificationRuleRecord = ClassificationRule;
 interface TransactionOperationRecord {
   readonly id: string;
   readonly kind: "manual-transaction-edit";
@@ -80,6 +88,8 @@ export class FinancialDatabase extends Dexie {
   public transactions!: EntityTable<TransactionRecord, "id">;
   public transactionFingerprints!: EntityTable<TransactionFingerprintRecord, "transactionId">;
   public categories!: EntityTable<CategoryRecord, "id">;
+  public merchants!: EntityTable<MerchantRecord, "id">;
+  public classificationRules!: EntityTable<ClassificationRuleRecord, "id">;
   public transactionOperations!: EntityTable<TransactionOperationRecord, "id">;
   public duplicateResolutionEvents!: EntityTable<DuplicateResolutionEventRecord, "id">;
   public migrationJournal!: EntityTable<MigrationJournalRecord, "id">;
@@ -263,6 +273,8 @@ export class IndexedDbWorkspaceBackupRepository implements WorkspaceBackupReposi
           this.database.imports,
           this.database.transactions,
           this.database.categories,
+          this.database.merchants,
+          this.database.classificationRules,
           this.database.transactionOperations,
           this.database.duplicateResolutionEvents,
         ],
@@ -798,4 +810,84 @@ function candidateIdBelongsTo(candidateId: string, transactionIds: ReadonlySet<s
     transactionIds.has(candidateId.slice(0, separator)) &&
     transactionIds.has(candidateId.slice(separator + 1))
   );
+}
+
+export class IndexedDbMerchantRepository implements MerchantRepository {
+  public constructor(private readonly database: FinancialDatabase) {}
+
+  public async list(): Promise<readonly Merchant[]> {
+    try {
+      await openFinancialDatabase(this.database);
+      return await this.database.merchants.orderBy("name").toArray();
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  public async findById(id: MerchantId): Promise<Merchant | undefined> {
+    try {
+      await openFinancialDatabase(this.database);
+      return await this.database.merchants.get(id);
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  public async save(merchant: Merchant): Promise<void> {
+    try {
+      await openFinancialDatabase(this.database);
+      await this.database.merchants.put(merchant);
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  public async saveMany(merchants: readonly Merchant[]): Promise<void> {
+    try {
+      await openFinancialDatabase(this.database);
+      await this.database.merchants.bulkPut([...merchants]);
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+}
+
+export class IndexedDbRuleRepository implements RuleRepository {
+  public constructor(private readonly database: FinancialDatabase) {}
+
+  public async list(): Promise<readonly ClassificationRule[]> {
+    try {
+      await openFinancialDatabase(this.database);
+      return await this.database.classificationRules.orderBy("priority").reverse().toArray();
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  public async findById(id: RuleId): Promise<ClassificationRule | undefined> {
+    try {
+      await openFinancialDatabase(this.database);
+      return await this.database.classificationRules.get(id);
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  public async save(rule: ClassificationRule): Promise<void> {
+    try {
+      await openFinancialDatabase(this.database);
+      await this.database.classificationRules.put(rule);
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  public async delete(id: RuleId): Promise<void> {
+    try {
+      await openFinancialDatabase(this.database);
+      await this.database.classificationRules.delete(id);
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
 }

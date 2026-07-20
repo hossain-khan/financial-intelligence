@@ -16,6 +16,7 @@ export {
   parseImportId,
   parseMerchantId,
   parseOperationId,
+  parseRuleId,
   parseTransactionId,
   parseWorkspaceId,
 } from "./identifiers";
@@ -26,9 +27,33 @@ export type {
   ImportId,
   MerchantId,
   OperationId,
+  RuleId,
   TransactionId,
   WorkspaceId,
 } from "./identifiers";
+export {
+  analyzeRuleOverlap,
+  calculateRuleSpecificity,
+  createClassificationRule,
+  createRuleAction,
+  createRuleCondition,
+  evaluateClassificationRules,
+  evaluateCondition,
+} from "./classification-rule";
+export type {
+  ActionType,
+  AmountRange,
+  ClassificationRule,
+  ConditionField,
+  ConditionOperator,
+  CreateClassificationRuleInput,
+  RuleAction,
+  RuleCondition,
+  RuleFieldResult,
+  RuleSource,
+  TransactionRuleEvaluation,
+  TransactionRuleEvaluationContext,
+} from "./classification-rule";
 export {
   NORMALIZER_VERSION,
   addAliasToMerchant,
