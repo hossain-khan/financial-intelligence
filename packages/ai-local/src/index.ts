@@ -8,3 +8,6 @@ export { createLocalAiWorkerHandler } from "./worker-handler";
 export type { LocalAiWorkerHandler, WorkerResponseTarget } from "./worker-handler";
 export type { EngineDecoding, LocalEngine } from "./engine";
 export type { EngineDecodingMessage, LocalAiRequest, LocalAiResponse } from "./protocol";
+export { MODEL_CACHE_PREFIX, readyCacheName, stagingCacheName } from "./model-cache";
+export { ModelSideloader, SideloadError } from "./sideloader";
+export type { CacheLike, CacheStoreLike, SideloadFile } from "./sideloader";
