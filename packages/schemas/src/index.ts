@@ -1,5 +1,6 @@
 import {
   validateAiProviderSchema,
+  validateAiTaskSchema,
   validateCategorySchema,
   validateDashboardSchema,
   validateFinancialBrainSchema,
@@ -8,6 +9,7 @@ import {
 } from "./generated/validators";
 
 export type { AIProviderProfile } from "./generated/ai-provider";
+export type { AITask } from "./generated/ai-task";
 export type { Category } from "./generated/category";
 export type { Dashboard } from "./generated/dashboard";
 export type { FinancialBrain } from "./generated/financial-brain";
@@ -37,6 +39,7 @@ interface CompiledValidator {
 }
 
 export const validateAiProvider = createValidator(validateAiProviderSchema);
+export const validateAiTask = createValidator(validateAiTaskSchema);
 export const validateCategory = createValidator(validateCategorySchema);
 export const validateDashboard = createValidator(validateDashboardSchema);
 export const validateFinancialBrain = createValidator(validateFinancialBrainSchema);
