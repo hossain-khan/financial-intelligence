@@ -6,6 +6,12 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Added
 
+- Local OFX and QFX statement import: a purpose-built bounded parser for OFX 1.x SGML and OFX 2.x
+  XML bank and credit-card statements, a content-signature format dispatcher, account and
+  reconciliation preview with masked account hints, and reuse of the existing duplicate review and
+  atomic commit pipeline. The parser rejects DTDs, entities, and external references, follows no
+  URLs, decodes only documented encodings, enforces structural limits, and shares the canonical
+  fingerprint so OFX and CSV records deduplicate against each other (ADR-012).
 - Pie-chart dollar favicon, Apple touch icon, and regular/maskable PWA install icons.
 - Cloudflare Workers Static Assets reference deployment with a pinned Wrangler toolchain,
   Git-connected production and preview guidance, SPA fallback, security-header reuse, and dry-run

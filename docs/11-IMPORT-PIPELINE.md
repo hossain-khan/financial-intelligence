@@ -97,6 +97,36 @@ After commit, run deterministic merchant/rule classification, duplicate review, 
 - Map transaction type as source metadata, not directly to final category.
 - Never follow URLs or perform online-banking requests contained in the file.
 
+### v1 implementation (issue #25, ADR-012)
+
+The `@financial-intelligence/import-ofx` package implements the shared `StatementParser` contract
+with parser id `ofx`. It is isolated from storage and UI and shares the canonical
+candidate-validation, duplicate, and atomic-commit pipeline through the format-neutral
+`buildCandidatesFromDrafts` helper in `import-core`.
+
+- **Supported dialects:** OFX 1.x SGML with the `OFXHEADER` preamble and unclosed leaf elements, and
+  OFX 2.x XML/QFX with an `<OFX>` root. Supported message sets are bank
+  (`BANKMSGSRSV1/STMTTRNRS/STMTRS`) and credit-card (`CREDITCARDMSGSRSV1/CCSTMTTRNRS/CCSTMTRS`)
+  statement responses.
+- **Unsupported sections** (investment, loan, bill-pay, profile/signup, interbank/wire, sign-on)
+  produce bounded `UNSUPPORTED_SECTION` warnings, stay visible in the preview, and are never acted
+  upon.
+- **Security:** DTDs, entity and notation declarations, CDATA sections, non-standard entity
+  references, and processing instructions are rejected before tree construction; no external
+  resource is ever resolved. Only a documented encoding set is decoded (UTF-8, UTF-16 with BOM,
+  Windows-1252/US-ASCII); unknown or contradictory encodings are explicit errors. Byte,
+  decoded-character, nesting-depth, element-count, statement, transaction, field-length, issue,
+  output, and runtime limits are enforced.
+- **Dates and amounts:** OFX timestamps are parsed with a dedicated
+  `YYYYMMDDHHMMSS[.fff][offset:zone]` grammar with full calendar/offset validation; the canonical
+  date is derived from wall-clock fields and the raw string is preserved. `TRNAMT` is validated as a
+  signed decimal and never coerced.
+- **Provenance and privacy:** `FITID`, `NAME`, `MEMO`, `TRNTYPE`, `CHECKNUM`, `REFNUM`, `SIC`, and
+  the server transaction id are preserved as provenance; `CURDEF` and account type are detected
+  metadata; ledger/available balances are statement-level reconciliation values, never transaction
+  amounts. Full account and routing numbers are never stored or displayed — only a masked last-four
+  hint helps the user select a local account. A statement/account currency mismatch is an error.
+
 ## PDF behavior
 
 - Select adapters by bounded text/layout signatures.

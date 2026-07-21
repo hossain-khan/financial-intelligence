@@ -24,7 +24,7 @@ describe("ImportPage", () => {
     const parseFiles = vi.fn(async () => [validSource()]);
     const { commitExecute } = renderPage(parseFiles);
 
-    const picker = await screen.findByLabelText("Select one or more bounded CSV files");
+    const picker = await screen.findByLabelText("Select CSV files, or a single OFX/QFX statement");
     expect(picker).toHaveAttribute("multiple");
     fireEvent.change(picker, {
       target: { files: [new File(["safe"], "statement.csv", { type: "text/csv" })] },
@@ -68,7 +68,7 @@ describe("ImportPage", () => {
     const { commitExecute } = renderPage(async () => {
       throw new Error("Synthetic worker failure");
     });
-    const picker = await screen.findByLabelText("Select one or more bounded CSV files");
+    const picker = await screen.findByLabelText("Select CSV files, or a single OFX/QFX statement");
     fireEvent.change(picker, { target: { files: [new File(["safe"], "statement.csv")] } });
     expect(await screen.findByText("Synthetic worker failure")).toHaveAttribute("role", "alert");
     expect(commitExecute).not.toHaveBeenCalled();
@@ -82,7 +82,7 @@ describe("ImportPage", () => {
       Balance: "$0.00",
     });
     renderPage(async () => [invalid]);
-    const picker = await screen.findByLabelText("Select one or more bounded CSV files");
+    const picker = await screen.findByLabelText("Select CSV files, or a single OFX/QFX statement");
     fireEvent.change(picker, { target: { files: [new File(["safe"], "statement.csv")] } });
     await screen.findByText(/Parsed 1 source file/);
     fireEvent.change(screen.getByRole("combobox", { name: "Target account" }), {
@@ -148,6 +148,7 @@ function renderPage(parseFiles: (files: readonly File[]) => Promise<readonly Csv
     <ImportPage
       services={services}
       parseFiles={parseFiles}
+      detectFormat={async () => "csv"}
       presetStorage={storage}
       now={() => "2026-07-19T20:00:00.000Z"}
     />,

@@ -8,10 +8,13 @@ import {
   type CsvMappingSource,
   type DateFormat,
 } from "@financial-intelligence/import-core";
+import { mapOfxResult } from "@financial-intelligence/import-ofx";
 import { useEffect, useMemo, useState, type ChangeEvent, type DragEvent } from "react";
 
 import type { ApplicationServices } from "./infrastructure";
 import { parseCsvFiles } from "./csv-import";
+import { detectBatchFormat } from "./import-format";
+import { parseOfxFile, type ParsedOfxSource } from "./ofx-import";
 import { loadMappingPreset, saveMappingPreset } from "./mapping-presets";
 
 interface MappingDraft {
@@ -55,6 +58,8 @@ const EMPTY_DRAFT: MappingDraft = {
 export interface ImportPageProperties {
   readonly services: ApplicationServices;
   readonly parseFiles?: typeof parseCsvFiles;
+  readonly parseOfx?: typeof parseOfxFile;
+  readonly detectFormat?: typeof detectBatchFormat;
   readonly presetStorage?: Pick<Storage, "getItem" | "setItem">;
   readonly now?: () => string;
 }
@@ -62,12 +67,16 @@ export interface ImportPageProperties {
 export function ImportPage({
   services,
   parseFiles = parseCsvFiles,
+  parseOfx = parseOfxFile,
+  detectFormat = detectBatchFormat,
   presetStorage = localStorage,
   now = () => new Date().toISOString(),
 }: ImportPageProperties) {
   const [workspaces, setWorkspaces] = useState<readonly Workspace[]>([]);
   const [accounts, setAccounts] = useState<readonly Account[]>([]);
   const [sources, setSources] = useState<readonly CsvMappingSource[]>([]);
+  const [ofxSource, setOfxSource] = useState<ParsedOfxSource>();
+  const [ofxAccountId, setOfxAccountId] = useState("");
   const [draft, setDraft] = useState<MappingDraft>(EMPTY_DRAFT);
   const [status, setStatus] = useState<"loading" | "ready" | "parsing" | "error">("loading");
   const [message, setMessage] = useState<string>();
@@ -106,7 +115,9 @@ export function ImportPage({
     return firstRow === undefined ? [] : Object.keys(firstRow.fields);
   }, [sources]);
   const selectedAccount = accounts.find((account) => account.id === draft.accountId);
-  const historyAccount = selectedAccount ?? accounts[0];
+  const ofxAccount = accounts.find((account) => account.id === ofxAccountId);
+  const historyAccount =
+    ofxSource !== undefined ? (ofxAccount ?? accounts[0]) : (selectedAccount ?? accounts[0]);
   const mapping = useMemo(
     () => createMapping(draft, selectedAccount, headers),
     [draft, selectedAccount, headers],
@@ -114,6 +125,17 @@ export function ImportPage({
   const mapped = useMemo(
     () => (mapping === undefined ? undefined : mapCsvSources(sources, mapping)),
     [mapping, sources],
+  );
+  const ofxMapped = useMemo(
+    () =>
+      ofxSource === undefined || ofxAccount === undefined
+        ? undefined
+        : mapOfxResult(ofxSource.result, {
+            accountId: ofxAccount.id,
+            accountCurrency: ofxAccount.currency,
+            sourceFileSha256: ofxSource.metadata.sha256,
+          }),
+    [ofxSource, ofxAccount],
   );
 
   useEffect(() => {
@@ -141,7 +163,19 @@ export function ImportPage({
     setMessage(undefined);
     setPresetMessage(undefined);
     setSources([]);
+    setOfxSource(undefined);
+    setCommitStatus("idle");
     try {
+      const format = await detectFormat(files);
+      if (format === "ofx") {
+        const first = files[0];
+        if (first === undefined) throw new Error("Choose an OFX or QFX file.");
+        const parsedOfx = await parseOfx(first);
+        setOfxSource(parsedOfx);
+        setOfxAccountId((current) => current || matchOfxAccount(parsedOfx, accounts));
+        setStatus("ready");
+        return;
+      }
       const parsed = await parseFiles(files);
       setSources(parsed);
       setStatus("ready");
@@ -169,7 +203,7 @@ export function ImportPage({
     } catch (error) {
       setStatus("error");
       setMessage(
-        error instanceof Error ? error.message : "The selected CSV files could not be parsed.",
+        error instanceof Error ? error.message : "The selected files could not be parsed.",
       );
     }
   };
@@ -258,14 +292,83 @@ export function ImportPage({
     }
   };
 
+  const confirmOfxImport = async () => {
+    const workspace = workspaces[0];
+    if (
+      ofxSource === undefined ||
+      ofxAccount === undefined ||
+      ofxMapped?.canContinue !== true ||
+      workspace === undefined
+    )
+      return;
+    setCommitStatus("committing");
+    setMessage(undefined);
+    try {
+      const result = await services.commitAcceptedImport.execute({
+        workspaceId: workspace.id,
+        accountId: ofxAccount.id,
+        sources: [
+          {
+            fileName: ofxSource.metadata.fileName,
+            mediaType: ofxSource.metadata.mediaType,
+            byteSize: ofxSource.metadata.byteSize,
+            sha256: ofxSource.metadata.sha256,
+            parserId: ofxSource.result.parserId,
+            parserVersion: ofxSource.result.parserVersion,
+            sourceRows: ofxSource.result.rows.length,
+            issues: ofxSource.result.issues,
+          },
+        ],
+        candidates: ofxMapped.candidates.map((candidate) => ({
+          accountId: candidate.accountId,
+          postedDate: candidate.postedDate,
+          ...(candidate.transactionDate === undefined
+            ? {}
+            : { transactionDate: candidate.transactionDate }),
+          description: candidate.description,
+          amount: candidate.amount,
+          currency: candidate.currency,
+          ...(candidate.sourceTransactionId === undefined
+            ? {}
+            : { sourceTransactionId: candidate.sourceTransactionId }),
+          ...(candidate.status === undefined ? {} : { status: candidate.status }),
+          provenance: {
+            sourceFileSha256: candidate.provenance.sourceFileSha256,
+            sourceLocation: candidate.provenance.sourceLocation,
+            parserId: candidate.provenance.parserId,
+            parserVersion: candidate.provenance.parserVersion,
+            mappingVersion: candidate.provenance.mappingVersion,
+            original: { ...candidate.provenance.original },
+          },
+        })),
+        mapping: {
+          format: "ofx",
+          dialect: String(ofxSource.result.detectedMetadata?.dialect ?? ""),
+        },
+      });
+      setHistory(await services.listImportHistory.execute(ofxAccount.id));
+      setCommitStatus("committed");
+      setPresetMessage(
+        `Committed ${result.transactionCount} transaction${result.transactionCount === 1 ? "" : "s"} atomically at local revision ${result.committedRevision}.`,
+      );
+    } catch (error) {
+      setCommitStatus("error");
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "The import could not be committed. No partial transactions were saved.",
+      );
+    }
+  };
+
   return (
     <div className="import-page">
       <section className="import-heading" aria-labelledby="import-title">
-        <p className="eyebrow">Local CSV import</p>
+        <p className="eyebrow">Local statement import</p>
         <h1 id="import-title">Map every transaction before it enters your ledger.</h1>
         <p className="hero-copy">
-          Files are parsed in a dedicated browser worker. This preview does not write canonical
-          transactions.
+          CSV, OFX, and QFX files are parsed in a dedicated browser worker. This preview does not
+          write canonical transactions.
         </p>
       </section>
 
@@ -273,7 +376,7 @@ export function ImportPage({
         <div className="section-heading">
           <div>
             <p className="eyebrow">Step 1</p>
-            <h2 id="source-title">Choose CSV statements</h2>
+            <h2 id="source-title">Choose statements</h2>
           </div>
           <span className="storage-chip">Local worker</span>
         </div>
@@ -284,18 +387,19 @@ export function ImportPage({
           onDragOver={(event) => event.preventDefault()}
           onDrop={onDrop}
         >
-          <label htmlFor="csv-files">Select one or more bounded CSV files</label>
+          <label htmlFor="csv-files">Select CSV files, or a single OFX/QFX statement</label>
           <input
             id="csv-files"
             type="file"
-            accept=".csv,.tsv,text/csv,text/tab-separated-values"
+            accept=".csv,.tsv,.ofx,.qfx,text/csv,text/tab-separated-values,application/x-ofx,application/vnd.intu.qfx"
             multiple
             onChange={onFilesChanged}
           />
           <span>or drag and drop files here</span>
         </div>
         <p className="privacy-copy">
-          Raw statement contents remain in this browser and are not saved by this preview.
+          Raw statement contents remain in this browser and are not saved by this preview. The
+          detected format decides the mapping step; content is checked, not just the file extension.
         </p>
         {status === "parsing" && <p role="status">Parsing selected files locally…</p>}
         {message !== undefined && (
@@ -309,7 +413,33 @@ export function ImportPage({
             {sources.reduce((count, source) => count + source.rows.length, 0)} rows.
           </p>
         )}
+        {ofxSource !== undefined && (
+          <p className="success-message" role="status">
+            Parsed OFX statement {ofxSource.metadata.fileName} containing{" "}
+            {ofxSource.result.rows.length} transaction
+            {ofxSource.result.rows.length === 1 ? "" : "s"}.
+          </p>
+        )}
       </section>
+
+      {ofxSource !== undefined && (
+        <OfxAccountForm
+          source={ofxSource}
+          accounts={accounts}
+          accountId={ofxAccountId}
+          workspaceExists={workspaces.length > 0}
+          onChange={setOfxAccountId}
+        />
+      )}
+
+      {ofxSource !== undefined && (
+        <Preview
+          result={ofxMapped}
+          mappingReady={ofxAccount !== undefined}
+          isCommitting={commitStatus === "committing"}
+          onConfirm={() => void confirmOfxImport()}
+        />
+      )}
 
       {sources.length > 0 && (
         <MappingForm
@@ -338,6 +468,102 @@ export function ImportPage({
       {historyAccount !== undefined && <ImportHistory imports={history} account={historyAccount} />}
     </div>
   );
+}
+
+function OfxAccountForm({
+  source,
+  accounts,
+  accountId,
+  workspaceExists,
+  onChange,
+}: {
+  readonly source: ParsedOfxSource;
+  readonly accounts: readonly Account[];
+  readonly accountId: string;
+  readonly workspaceExists: boolean;
+  readonly onChange: (accountId: string) => void;
+}) {
+  const metadata = source.result.detectedMetadata ?? {};
+  const dialect = metadata.dialect === "ofx-xml" ? "OFX 2.x (XML/QFX)" : "OFX 1.x (SGML)";
+  const detected: readonly { readonly label: string; readonly value: string }[] = [
+    { label: "Detected format", value: dialect },
+    { label: "Statements", value: String(metadata.statementCount ?? 1) },
+    {
+      label: "Transactions",
+      value: String(metadata.transactionCount ?? source.result.rows.length),
+    },
+    { label: "Account type", value: formatMetaValue(metadata.accountType) },
+    { label: "Account hint", value: formatMetaValue(metadata.maskedAccountHint) },
+    { label: "Statement currency", value: formatMetaValue(metadata.currency) },
+  ];
+  const unsupported = source.result.issues.filter((issue) => issue.code === "UNSUPPORTED_SECTION");
+
+  return (
+    <section className="import-panel" aria-labelledby="ofx-account-title">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Step 2</p>
+          <h2 id="ofx-account-title">Confirm the account</h2>
+        </div>
+        <span className="storage-chip">{dialect}</span>
+      </div>
+      {!workspaceExists && (
+        <p className="error-message" role="alert">
+          Create a workspace and account before importing.
+        </p>
+      )}
+      {workspaceExists && accounts.length === 0 && (
+        <p className="error-message" role="alert">
+          Add an active account before importing.
+        </p>
+      )}
+      <dl className="import-totals" aria-label="Detected statement details">
+        {detected.map((item) => (
+          <div key={item.label}>
+            <dt>{item.label}</dt>
+            <dd>{item.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <form className="mapping-form" onSubmit={(event) => event.preventDefault()}>
+        <SelectField label="Target account" value={accountId} onChange={onChange} required>
+          <option value="">Choose an account</option>
+          {accounts.map((account) => (
+            <option key={account.id} value={account.id}>
+              {account.name} · {account.currency}
+            </option>
+          ))}
+        </SelectField>
+      </form>
+      <p className="privacy-copy">
+        The statement currency must match the selected account. Full account and routing numbers are
+        never stored; only a masked hint is shown to help you choose.
+      </p>
+      {unsupported.length > 0 && (
+        <div className="issue-list">
+          <h3>Unsupported sections</h3>
+          <ul>
+            {unsupported.map((issue, index) => (
+              <li key={`${issue.code}-${index}`}>
+                <span>{issue.message}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function formatMetaValue(value: string | number | boolean | undefined): string {
+  return value === undefined || value === "" ? "—" : String(value);
+}
+
+function matchOfxAccount(source: ParsedOfxSource, accounts: readonly Account[]): string {
+  const currency = source.result.detectedMetadata?.currency;
+  if (typeof currency !== "string") return "";
+  const matches = accounts.filter((account) => account.currency === currency);
+  return matches.length === 1 && matches[0] !== undefined ? matches[0].id : "";
 }
 
 function MappingForm({

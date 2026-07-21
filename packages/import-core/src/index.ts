@@ -93,6 +93,8 @@ export {
   mappingPresetKey,
   sanitizeSpreadsheetCell,
 } from "./mapping";
+export { buildCandidatesFromDrafts } from "./candidate-mapping";
+export type { CandidateDraft, CandidateMappingContext } from "./candidate-mapping";
 export type {
   AmountMapping,
   CanonicalTransactionCandidate,
