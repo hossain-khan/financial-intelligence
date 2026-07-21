@@ -23,6 +23,7 @@ import {
   type ApplicationServices,
   type DatabaseHealth,
 } from "./infrastructure";
+import { LocalAiPanel } from "./LocalAiPanel";
 import { RecoveryScreen } from "./RecoveryScreen";
 import { RestorePanel } from "./RestorePanel";
 import { StoragePanel } from "./StoragePanel";
@@ -882,6 +883,7 @@ function SettingsPage({ services }: AppProperties) {
         </div>
       </dl>
       <StoragePanel />
+      <LocalAiPanel />
       <section className="backup-grid" aria-labelledby="backup-heading">
         <div className="backup-panel">
           <h2 id="backup-heading">Create encrypted backup</h2>

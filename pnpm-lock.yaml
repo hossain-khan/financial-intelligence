@@ -76,6 +76,9 @@ importers:
 
   apps/web:
     dependencies:
+      "@financial-intelligence/ai-local":
+        specifier: workspace:*
+        version: link:../../packages/ai-local
       "@financial-intelligence/analysis":
         specifier: workspace:*
         version: link:../../packages/analysis
