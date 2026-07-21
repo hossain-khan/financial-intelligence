@@ -32,8 +32,7 @@ export interface AiTaskRequest {
 }
 
 export type AiResultEnvelope =
-  | { readonly ok: true; readonly output: unknown }
-  | { readonly ok: false; readonly error: AiError };
+  { readonly ok: true; readonly output: unknown } | { readonly ok: false; readonly error: AiError };
 
 export interface AiProvider {
   readonly profile: AiProviderProfileIdentity;

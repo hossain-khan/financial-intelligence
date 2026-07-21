@@ -48,7 +48,9 @@ describe("SetAiProviderProfile", () => {
   it("rejects an invalid profile without saving", async () => {
     const repo = new MemoryRepo();
     await expect(
-      new SetAiProviderProfile(deps(repo)).execute({ kind: "none" } as unknown as AIProviderProfile),
+      new SetAiProviderProfile(deps(repo)).execute({
+        kind: "none",
+      } as unknown as AIProviderProfile),
     ).rejects.toBeInstanceOf(AiProviderConfigValidationError);
     expect(repo.stored).toBeUndefined();
   });

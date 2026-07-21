@@ -42,7 +42,10 @@ export class FakeProvider implements AiProvider {
   public execute(request: AiTaskRequest, options: ExecuteOptions): Promise<AiResultEnvelope> {
     this.calls.push(request);
     if (options.signal.aborted) {
-      return Promise.resolve({ ok: false, error: aiError("cancelled", "Aborted before dispatch.") });
+      return Promise.resolve({
+        ok: false,
+        error: aiError("cancelled", "Aborted before dispatch."),
+      });
     }
     if (this.script.throwOnExecute === true) {
       throw new Error("fake provider failure");
@@ -50,7 +53,10 @@ export class FakeProvider implements AiProvider {
     const response = this.script.responses[this.index] ?? this.script.responses.at(-1);
     this.index += 1;
     if (response === undefined) {
-      return Promise.resolve({ ok: false, error: aiError("provider_error", "No scripted response.") });
+      return Promise.resolve({
+        ok: false,
+        error: aiError("provider_error", "No scripted response."),
+      });
     }
     return Promise.resolve(response);
   }

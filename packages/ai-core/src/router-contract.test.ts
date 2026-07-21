@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import { AiRouter, type RouterDeps } from "./router";
 import { FakeProvider } from "./testing/fake-provider";
 
-const good = { ok: true as const, output: { categoryId: "dining", confidence: 0.8, rationale: "ok" } };
+const good = {
+  ok: true as const,
+  output: { categoryId: "dining", confidence: 0.8, rationale: "ok" },
+};
 const bad = { ok: true as const, output: { categoryId: 5 } };
 const base = {
   task: "category.classify.v1" as const,

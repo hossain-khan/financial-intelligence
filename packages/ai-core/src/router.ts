@@ -63,7 +63,10 @@ export class AiRouter {
     if (!envelope.ok) {
       return this.settle(input, "error", envelope.error.code, null, null);
     }
-    if (!this.validEnvelope(input.task, "response", envelope.output) || !this.allowedOk(input, envelope.output)) {
+    if (
+      !this.validEnvelope(input.task, "response", envelope.output) ||
+      !this.allowedOk(input, envelope.output)
+    ) {
       if (this.deps.allowRepair === true) {
         const hints = this.hintsFor(input, envelope.output);
         const repaired = await this.dispatchRepair(input, hints, signal);
@@ -117,7 +120,11 @@ export class AiRouter {
     }
   }
 
-  private validEnvelope(task: AiTaskId, direction: "request" | "response", payload: unknown): boolean {
+  private validEnvelope(
+    task: AiTaskId,
+    direction: "request" | "response",
+    payload: unknown,
+  ): boolean {
     return validateAiTask({ schemaVersion: SCHEMA_VERSION, task, direction, payload }).valid;
   }
 

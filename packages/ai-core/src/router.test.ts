@@ -34,7 +34,10 @@ describe("AiRouter", () => {
   });
 
   it("abstains when the model returns a category outside the allowed set", async () => {
-    const bad = { ok: true as const, output: { categoryId: "hacking", confidence: 0.9, rationale: "x" } };
+    const bad = {
+      ok: true as const,
+      output: { categoryId: "hacking", confidence: 0.9, rationale: "x" },
+    };
     const router = new AiRouter(deps(new FakeProvider({ responses: [bad] })));
     const { suggestion, audit } = await router.execute(req);
     expect(suggestion).toBeNull();
@@ -43,7 +46,10 @@ describe("AiRouter", () => {
   });
 
   it("returns unsupported when the provider does not support the task", async () => {
-    const provider = new FakeProvider({ profile: { supportedTasks: [] }, responses: [validResponse] });
+    const provider = new FakeProvider({
+      profile: { supportedTasks: [] },
+      responses: [validResponse],
+    });
     const router = new AiRouter(deps(provider));
     const { suggestion, audit } = await router.execute(req);
     expect(suggestion).toBeNull();
