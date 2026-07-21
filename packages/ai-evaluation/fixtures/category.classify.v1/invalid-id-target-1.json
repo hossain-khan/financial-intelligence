@@ -3,7 +3,11 @@
   "task": "category.classify.v1",
   "schemaVersion": "1.0.0",
   "locale": "en-CA",
-  "input": { "descriptor": "downtown diner brunch", "direction": "outflow", "allowedCategoryIds": ["dining", "entertainment"] },
+  "input": {
+    "descriptor": "downtown diner brunch",
+    "direction": "outflow",
+    "allowedCategoryIds": ["dining", "entertainment"]
+  },
   "allowedVocabulary": ["dining", "entertainment"],
   "expected": { "kind": "exact", "value": "dining" },
   "ambiguity": "clear",

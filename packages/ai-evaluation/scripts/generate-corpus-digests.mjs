@@ -34,6 +34,13 @@ for (const entry of await readdir(fixturesDir, { withFileTypes: true })) {
   }
 }
 
-const sorted = Object.fromEntries(Object.keys(lock).sort().map((k) => [k, lock[k]]));
-await writeFile(fileURLToPath(new URL("../fixtures/digests.json", import.meta.url)), `${JSON.stringify(sorted, null, 2)}\n`);
+const sorted = Object.fromEntries(
+  Object.keys(lock)
+    .sort()
+    .map((k) => [k, lock[k]]),
+);
+await writeFile(
+  fileURLToPath(new URL("../fixtures/digests.json", import.meta.url)),
+  `${JSON.stringify(sorted, null, 2)}\n`,
+);
 process.stdout.write(`Wrote ${Object.keys(sorted).length} corpus digests.\n`);

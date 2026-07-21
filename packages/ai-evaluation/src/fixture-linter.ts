@@ -53,7 +53,8 @@ export function lintCase(raw: unknown): EvalCase {
 
 function assertNoSensitiveStrings(value: unknown, path: string): void {
   if (typeof value === "string") {
-    if (ACCOUNT_LIKE.test(value)) throw new FixtureLintError(`account-number-like value at ${path}`);
+    if (ACCOUNT_LIKE.test(value))
+      throw new FixtureLintError(`account-number-like value at ${path}`);
     if (EMAIL_LIKE.test(value)) throw new FixtureLintError(`email-like value at ${path}`);
     if (KEY_LIKE.test(value)) throw new FixtureLintError(`key-like value at ${path}`);
     if (MONEY_LIKE.test(value.trim())) throw new FixtureLintError(`money-like value at ${path}`);

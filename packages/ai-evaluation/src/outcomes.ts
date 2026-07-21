@@ -5,13 +5,7 @@ import type { AiTaskId } from "@financial-intelligence/ai-core";
  * `cancelled`, and `error` are distinct — never collapsed — so metric denominators are unambiguous.
  */
 export type CaseOutcomeKind =
-  | "accepted"
-  | "abstained"
-  | "invalidOutput"
-  | "refused"
-  | "timeout"
-  | "cancelled"
-  | "error";
+  "accepted" | "abstained" | "invalidOutput" | "refused" | "timeout" | "cancelled" | "error";
 
 export interface CaseOutcome {
   readonly caseId: string;

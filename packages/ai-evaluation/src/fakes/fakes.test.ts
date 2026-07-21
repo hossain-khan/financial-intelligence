@@ -26,7 +26,10 @@ describe("fake providers", () => {
   });
 
   it("abstaining provider returns unsupported", async () => {
-    const result = await createAbstainingProvider().execute(req, opts(new AbortController().signal));
+    const result = await createAbstainingProvider().execute(
+      req,
+      opts(new AbortController().signal),
+    );
     expect(result.ok).toBe(false);
   });
 
@@ -36,7 +39,10 @@ describe("fake providers", () => {
   });
 
   it("leaky provider echoes the forbidden token", async () => {
-    const result = await createLeakyProvider("SECRET").execute(req, opts(new AbortController().signal));
+    const result = await createLeakyProvider("SECRET").execute(
+      req,
+      opts(new AbortController().signal),
+    );
     expect(JSON.stringify(result)).toContain("SECRET");
   });
 

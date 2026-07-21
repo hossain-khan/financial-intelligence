@@ -16,9 +16,9 @@ describe("assertNoSensitiveContent", () => {
   });
 
   it("rejects a free-text description", () => {
-    expect(() => assertNoSensitiveContent({ metrics: { note: "coffee shop downtown cafe" } })).toThrow(
-      ArtifactPrivacyError,
-    );
+    expect(() =>
+      assertNoSensitiveContent({ metrics: { note: "coffee shop downtown cafe" } }),
+    ).toThrow(ArtifactPrivacyError);
   });
 
   it("rejects a disallowed key", () => {

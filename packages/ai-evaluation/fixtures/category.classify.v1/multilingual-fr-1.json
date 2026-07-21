@@ -3,7 +3,11 @@
   "task": "category.classify.v1",
   "schemaVersion": "1.0.0",
   "locale": "fr-CA",
-  "input": { "descriptor": "cafe du coin montreal", "direction": "outflow", "allowedCategoryIds": ["dining", "travel"] },
+  "input": {
+    "descriptor": "cafe du coin montreal",
+    "direction": "outflow",
+    "allowedCategoryIds": ["dining", "travel"]
+  },
   "allowedVocabulary": ["dining", "travel"],
   "expected": { "kind": "exact", "value": "dining" },
   "ambiguity": "clear",

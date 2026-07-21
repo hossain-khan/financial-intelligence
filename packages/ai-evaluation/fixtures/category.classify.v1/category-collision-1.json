@@ -3,7 +3,11 @@
   "task": "category.classify.v1",
   "schemaVersion": "1.0.0",
   "locale": "en-CA",
-  "input": { "descriptor": "corner market cafe", "direction": "outflow", "allowedCategoryIds": ["dining", "groceries"] },
+  "input": {
+    "descriptor": "corner market cafe",
+    "direction": "outflow",
+    "allowedCategoryIds": ["dining", "groceries"]
+  },
   "allowedVocabulary": ["dining", "groceries"],
   "expected": { "kind": "acceptableSet", "values": ["dining", "groceries"] },
   "ambiguity": "ambiguous",

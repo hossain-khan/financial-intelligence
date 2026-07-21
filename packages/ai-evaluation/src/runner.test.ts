@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { EvalCase } from "./corpus";
-import {
-  createLeakyProvider,
-  createMalformedProvider,
-  createPerfectProvider,
-} from "./fakes/index";
+import { createLeakyProvider, createMalformedProvider, createPerfectProvider } from "./fakes/index";
 import { runEvaluation } from "./runner";
 
 const options = { perCaseDeadlineMs: 1000, concurrency: 2, now: () => 0 };

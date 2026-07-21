@@ -36,7 +36,10 @@ export async function assertCorpusDigests(
 ): Promise<void> {
   const lockKeys = Object.keys(lock).sort();
   const caseKeys = [...cases.keys()].sort();
-  if (lockKeys.length !== caseKeys.length || lockKeys.some((key, index) => key !== caseKeys[index])) {
+  if (
+    lockKeys.length !== caseKeys.length ||
+    lockKeys.some((key, index) => key !== caseKeys[index])
+  ) {
     throw new CorpusDigestError("corpus case set does not match the digest lock");
   }
   for (const [id, evalCase] of cases) {

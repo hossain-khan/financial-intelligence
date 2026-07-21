@@ -50,7 +50,11 @@ describe("corpus fixtures", () => {
 
   it("the perfect provider passes the answerable cases with no safety violations", async () => {
     const cases = [...(await loadCorpusFromDisk()).values()].filter((c) => !c.expectedAbstention);
-    const outcomes = await runEvaluation(createPerfectProvider(perfectAnswerFor(cases)), cases, options);
+    const outcomes = await runEvaluation(
+      createPerfectProvider(perfectAnswerFor(cases)),
+      cases,
+      options,
+    );
     const metrics = computeMetrics(cases, outcomes);
     expect(metrics.groundingViolations).toBe(0);
     expect(metrics.privacyViolations).toBe(0);
