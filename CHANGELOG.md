@@ -6,6 +6,18 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Added
 
+- Provider-neutral AI core that opens Phase 4 (issue #31, ADR-018): a dependency-free
+  `@financial-intelligence/ai-core` package with one generated versioned task wire schema
+  (`schemas/ai-task.schema.json`) covering merchant resolution, category classification, query
+  planning, and insight wording; a provider interface plus router that selects only the configured
+  profile supporting the exact task version, validates request and response, enforces
+  workspace-current allowed IDs, applies a one-shot repair policy, and settles exactly once under an
+  `AbortSignal` and deadline; an always-available `NoAiProvider`; immutable suggestion and audit
+  values that store redacted digests only, never prompt or response bodies; an application
+  provider-config port that seeds and persists a default `kind: none` profile in a new IndexedDB
+  `aiProviderProfiles` store (schema v10); and a dependency-boundary test plus a no-network
+  regression proving the rules-only default path issues zero AI/model/API requests. No provider
+  runtime, model download, or network destination is added; rules-only behavior is unchanged.
 - Migration, format-compatibility, and disaster-recovery drills that close Phase 3: a
   machine-readable compatibility registry (in `@financial-intelligence/qualification`) enumerating
   every independently-versioned portable format with a drift test that fails if a live version

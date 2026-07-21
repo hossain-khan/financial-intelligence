@@ -78,6 +78,7 @@ async function generateStandaloneValidators() {
 
   const standaloneSource = standaloneCode(ajv, {
     validateAiProviderSchema: schemaId("ai-provider.schema.json"),
+    validateAiTaskSchema: schemaId("ai-task.schema.json"),
     validateCategorySchema: schemaId("category.schema.json"),
     validateDashboardSchema: schemaId("dashboard.schema.json"),
     validateFinancialBrainSchema: schemaId("financial-brain.schema.json"),

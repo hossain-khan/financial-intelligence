@@ -14,7 +14,7 @@ describe("generated portable schema types", () => {
       .filter((fileName) => fileName.endsWith(".ts") && fileName !== "validators.ts")
       .sort();
 
-    expect(schemaFiles).toHaveLength(7);
+    expect(schemaFiles).toHaveLength(8);
     expect(generatedFiles).toEqual(
       schemaFiles.map((fileName) => fileName.replace(".schema.json", ".ts")),
     );
@@ -35,6 +35,7 @@ describe("generated portable schema types", () => {
     expect(source).not.toMatch(/\b(?:eval|Function)\s*\(/u);
     for (const exportName of [
       "validateAiProviderSchema",
+      "validateAiTaskSchema",
       "validateCategorySchema",
       "validateDashboardSchema",
       "validateFinancialBrainSchema",

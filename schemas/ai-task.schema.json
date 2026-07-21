@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://financial-intelligence.local/schemas/ai-task.schema.json",
+  "title": "AI Task",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "task", "direction", "payload"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "task": {
+      "enum": [
+        "merchant.resolve.v1",
+        "category.classify.v1",
+        "query.plan.v1",
+        "insight.word.v1"
+      ]
+    },
+    "direction": { "enum": ["request", "response"] },
+    "payload": { "type": "object" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "task": { "const": "merchant.resolve.v1" },
+          "direction": { "const": "request" }
+        },
+        "required": ["task", "direction"]
+      },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/merchantResolveRequest" } } }
+    },
+    {
+      "if": {
+        "properties": {
+          "task": { "const": "merchant.resolve.v1" },
+          "direction": { "const": "response" }
+        },
+        "required": ["task", "direction"]
+      },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/merchantResolveResponse" } } }
+    },
+    {
+      "if": {
+        "properties": {
+          "task": { "const": "category.classify.v1" },
+          "direction": { "const": "request" }
+        },
+        "required": ["task", "direction"]
+      },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/categoryClassifyRequest" } } }
+    },
+    {
+      "if": {
+        "properties": {
+          "task": { "const": "category.classify.v1" },
+          "direction": { "const": "response" }
+        },
+        "required": ["task", "direction"]
+      },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/categoryClassifyResponse" } } }
+    },
+    {
+      "if": {
+        "properties": {
+          "task": { "const": "query.plan.v1" },
+          "direction": { "const": "request" }
+        },
+        "required": ["task", "direction"]
+      },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/queryPlanRequest" } } }
+    },
+    {
+      "if": {
+        "properties": {
+          "task": { "const": "query.plan.v1" },
+          "direction": { "const": "response" }
+        },
+        "required": ["task", "direction"]
+      },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/queryPlanResponse" } } }
+    },
+    {
+      "if": {
+        "properties": {
+          "task": { "const": "insight.word.v1" },
+          "direction": { "const": "request" }
+        },
+        "required": ["task", "direction"]
+      },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/insightWordRequest" } } }
+    },
+    {
+      "if": {
+        "properties": {
+          "task": { "const": "insight.word.v1" },
+          "direction": { "const": "response" }
+        },
+        "required": ["task", "direction"]
+      },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/insightWordResponse" } } }
+    }
+  ],
+  "$defs": {
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "boundedText": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "evidenceCode": {
+      "enum": [
+        "matched_alias",
+        "similar_confirmed_merchant",
+        "model_category_candidate",
+        "insufficient_evidence"
+      ]
+    },
+    "categoryId": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "descriptionToken": { "type": "string", "minLength": 1, "maxLength": 60 },
+    "merchantResolveRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tokens"],
+      "properties": {
+        "tokens": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/descriptionToken" }
+        },
+        "countryHint": { "type": "string", "minLength": 2, "maxLength": 2 },
+        "categoryHint": { "$ref": "#/$defs/categoryId" }
+      }
+    },
+    "merchantResolveResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "confidence", "evidence"],
+      "properties": {
+        "label": { "$ref": "#/$defs/boundedText" },
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": { "$ref": "#/$defs/evidenceCode" }
+        }
+      }
+    },
+    "categoryClassifyRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["descriptor", "direction", "allowedCategoryIds"],
+      "properties": {
+        "descriptor": { "$ref": "#/$defs/boundedText" },
+        "direction": { "enum": ["inflow", "outflow"] },
+        "allowedCategoryIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "items": { "$ref": "#/$defs/categoryId" }
+        }
+      }
+    },
+    "categoryClassifyResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["categoryId", "confidence", "rationale"],
+      "properties": {
+        "categoryId": { "$ref": "#/$defs/categoryId" },
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "rationale": { "$ref": "#/$defs/boundedText" }
+      }
+    },
+    "queryPlanRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["question", "metrics", "dimensions"],
+      "properties": {
+        "question": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "metrics": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/boundedText" }
+        },
+        "dimensions": {
+          "type": "array",
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/boundedText" }
+        },
+        "dateRange": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["from", "to"],
+          "properties": {
+            "from": { "type": "string", "format": "date" },
+            "to": { "type": "string", "format": "date" }
+          }
+        }
+      }
+    },
+    "queryPlanResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metric", "dimensions"],
+      "properties": {
+        "metric": { "$ref": "#/$defs/boundedText" },
+        "dimensions": {
+          "type": "array",
+          "maxItems": 8,
+          "items": { "$ref": "#/$defs/boundedText" }
+        },
+        "filters": {
+          "type": "array",
+          "maxItems": 16,
+          "items": { "$ref": "#/$defs/boundedText" }
+        },
+        "period": { "$ref": "#/$defs/boundedText" },
+        "comparison": { "$ref": "#/$defs/boundedText" },
+        "sort": { "$ref": "#/$defs/boundedText" },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 1000 }
+      }
+    },
+    "insightWordRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["facts"],
+      "properties": {
+        "facts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "value"],
+            "properties": {
+              "id": { "$ref": "#/$defs/boundedText" },
+              "value": { "$ref": "#/$defs/boundedText" }
+            }
+          }
+        }
+      }
+    },
+    "insightWordResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "factRefs"],
+      "properties": {
+        "summary": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "factRefs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/boundedText" }
+        }
+      }
+    }
+  }
+}

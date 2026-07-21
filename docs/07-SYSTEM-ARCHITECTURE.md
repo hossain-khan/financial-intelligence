@@ -60,7 +60,7 @@ IndexedDB is the primary store (see [ADR-002](adr/ADR-002-Why-IndexedDB.md)). Su
 
 - `meta`: workspace and database versions;
 - `accounts`, `imports`, `transactions`, `categories`, `merchants`;
-- `rules`, `corrections`, `recurringSeries`, `providerProfiles`;
+- `rules`, `corrections`, `recurringSeries`, `aiProviderProfiles` (schema v10, keyed by profile id);
 - `operationJournal`, `auditEvents`;
 - rebuildable indexes/projections keyed by time, account, category, and merchant.
 

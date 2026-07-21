@@ -42,3 +42,4 @@ Status is one of `Proposed`, `Accepted`, `Deprecated`, or `Superseded by ADR-NNN
 - [ADR-015: Production encrypted backup with authenticated manifest and staged atomic restore](ADR-015-Production-Encrypted-Backup-Restore.md)
 - [ADR-016: Deterministic qualification harness for browser, accessibility, and performance](ADR-016-Qualification-Matrix.md)
 - [ADR-017: Compatibility registry, immutable fixtures, and disaster-recovery drills](ADR-017-Compatibility-And-Recovery.md)
+- [ADR-018: Provider-neutral AI core, task contracts, and no-AI default](ADR-018-Provider-Neutral-AI-Core.md)

@@ -99,6 +99,21 @@ describe("IndexedDB version matrix", () => {
     upgraded.close();
   });
 
+  it("preserves workspaces written at v9 through the ai-provider-store upgrade", async () => {
+    const name = databaseName();
+    const versionNine = await openFinancialDatabase(
+      new FinancialDatabase(name, DATABASE_MIGRATIONS.slice(0, 9)),
+    );
+    await versionNine.workspaces.put(workspace());
+    versionNine.close();
+
+    const upgraded = await openFinancialDatabase(new FinancialDatabase(name));
+    expect(upgraded.verno).toBe(CURRENT_DATABASE_VERSION);
+    expect(await upgraded.workspaces.toArray()).toEqual([workspace()]);
+    expect(await upgraded.aiProviderProfiles.toArray()).toEqual([]);
+    upgraded.close();
+  });
+
   it("fails closed when the on-disk database is newer than this build", async () => {
     const name = databaseName();
     const current = await openFinancialDatabase(new FinancialDatabase(name));

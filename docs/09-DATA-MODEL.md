@@ -140,7 +140,7 @@ Defined by [dashboard.schema.json](../schemas/dashboard.schema.json). Stores lay
 
 ## AI provider profile
 
-Defined by [ai-provider.schema.json](../schemas/ai-provider.schema.json). Stores provider kind, endpoint origin where applicable, model/task configuration, consent metadata, and optional secret reference. It never contains an API key.
+Defined by [ai-provider.schema.json](../schemas/ai-provider.schema.json). Stores provider kind, endpoint origin where applicable, model/task configuration, consent metadata, and optional secret reference. It never contains an API key. Persisted in the IndexedDB `aiProviderProfiles` store (schema v10), keyed by profile id so multiple named profiles can coexist. The application seeds a default `kind: none` profile on first read; see [ADR-018](adr/ADR-018-Provider-Neutral-AI-Core.md).
 
 ## Financial Brain
 

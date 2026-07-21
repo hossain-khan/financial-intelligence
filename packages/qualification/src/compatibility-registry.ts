@@ -72,16 +72,17 @@ export const COMPATIBILITY_REGISTRY: readonly CompatibilityAxis[] = Object.freez
   {
     id: "indexeddb-schema",
     label: "IndexedDB schema (Dexie)",
-    currentVersion: "9",
-    readableVersions: ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
-    writableVersions: ["9"],
+    currentVersion: "10",
+    readableVersions: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
+    writableVersions: ["10"],
     lossless: true,
     downgradePolicy: "export-only",
     unsupportedRecovery:
       "A database newer than this build fails closed (VERSION_INCOMPATIBLE); open it in the newer app and export a backup.",
     fixture: "indexeddb/v1",
     removalMilestone: "none",
-    notes: "Additive store/index migrations v1→9; upgrades are journaled and abort-safe.",
+    notes:
+      "Additive store/index migrations v1→10; upgrades are journaled and abort-safe. v10 adds the aiProviderProfiles store (#31).",
   },
   {
     id: "canonical-transaction",

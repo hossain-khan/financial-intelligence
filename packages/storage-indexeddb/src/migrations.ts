@@ -31,6 +31,7 @@ const TRANSFER_DECISION_SCHEMA = "&id, signature, status, updatedAt";
 const RECURRING_DECISION_SCHEMA = "&id, signature, status, updatedAt";
 const LEARNING_OPERATION_SCHEMA = "&id, kind, createdAt, undoneAt";
 const DECISION_EVENT_SCHEMA = "&id, aggregateType, aggregateId, action, occurredAt";
+const AI_PROVIDER_PROFILE_SCHEMA = "&id, kind, enabled, updatedAt";
 
 export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
   {
@@ -157,9 +158,31 @@ export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
       decisionEvents: DECISION_EVENT_SCHEMA,
     },
   },
+  {
+    version: 10,
+    description: "Add AI provider profile store",
+    stores: {
+      workspaces: WORKSPACE_SCHEMA,
+      migrationJournal: MIGRATION_JOURNAL_SCHEMA,
+      accounts: ACCOUNT_SCHEMA,
+      imports: IMPORT_SCHEMA,
+      transactions: REVIEWABLE_TRANSACTION_SCHEMA,
+      transactionFingerprints: TRANSACTION_FINGERPRINT_SCHEMA,
+      categories: CATEGORY_SCHEMA,
+      transactionOperations: TRANSACTION_OPERATION_SCHEMA,
+      duplicateResolutionEvents: DUPLICATE_RESOLUTION_SCHEMA,
+      merchants: MERCHANT_SCHEMA,
+      classificationRules: CLASSIFICATION_RULE_SCHEMA,
+      transferDecisions: TRANSFER_DECISION_SCHEMA,
+      recurringDecisions: RECURRING_DECISION_SCHEMA,
+      learningOperations: LEARNING_OPERATION_SCHEMA,
+      decisionEvents: DECISION_EVENT_SCHEMA,
+      aiProviderProfiles: AI_PROVIDER_PROFILE_SCHEMA,
+    },
+  },
 ];
 
-export const CURRENT_DATABASE_VERSION = 9;
+export const CURRENT_DATABASE_VERSION = 10;
 
 export function registerDatabaseMigrations(
   database: Dexie,
