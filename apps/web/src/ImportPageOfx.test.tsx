@@ -132,7 +132,9 @@ function renderPage() {
 describe("ImportPage OFX flow", () => {
   it("parses, auto-matches the single same-currency account, previews, and commits", async () => {
     const { commitExecute } = renderPage();
-    const picker = await screen.findByLabelText("Select CSV files, or a single OFX/QFX statement");
+    const picker = await screen.findByLabelText(
+      "Select CSV files, or a single OFX/QFX or PDF statement",
+    );
     fireEvent.change(picker, {
       target: { files: [new File(["OFXHEADER:100"], "statement.ofx")] },
     });

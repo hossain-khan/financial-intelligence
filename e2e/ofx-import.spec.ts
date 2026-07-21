@@ -39,7 +39,7 @@ test("atomically commits and reloads a bank-shaped OFX import without network ac
   await expect(page.getByText("Everyday account", { exact: true })).toBeVisible();
 
   await page.goto("/import");
-  await page.getByLabel("Select CSV files, or a single OFX/QFX statement").setInputFiles({
+  await page.getByLabel("Select CSV files, or a single OFX/QFX or PDF statement").setInputFiles({
     name: "synthetic-statement.ofx",
     mimeType: "application/x-ofx",
     buffer: Buffer.from(OFX_SGML),
@@ -81,7 +81,7 @@ test("rejects an OFX extension whose content is not OFX", async ({ page }) => {
   await page.getByRole("button", { name: "Add account" }).click();
 
   await page.goto("/import");
-  await page.getByLabel("Select CSV files, or a single OFX/QFX statement").setInputFiles({
+  await page.getByLabel("Select CSV files, or a single OFX/QFX or PDF statement").setInputFiles({
     name: "not-really.ofx",
     mimeType: "application/x-ofx",
     buffer: Buffer.from("date,amount\n2026-01-01,-1.00"),

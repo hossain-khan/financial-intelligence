@@ -9,12 +9,14 @@ import {
   type DateFormat,
 } from "@financial-intelligence/import-core";
 import { mapOfxResult } from "@financial-intelligence/import-ofx";
+import { mapPdfResult } from "@financial-intelligence/import-pdf";
 import { useEffect, useMemo, useState, type ChangeEvent, type DragEvent } from "react";
 
 import type { ApplicationServices } from "./infrastructure";
 import { parseCsvFiles } from "./csv-import";
 import { detectBatchFormat } from "./import-format";
 import { parseOfxFile, type ParsedOfxSource } from "./ofx-import";
+import { parsePdfFile, type ParsedPdfSource } from "./pdf-import";
 import { loadMappingPreset, saveMappingPreset } from "./mapping-presets";
 
 interface MappingDraft {
@@ -59,6 +61,7 @@ export interface ImportPageProperties {
   readonly services: ApplicationServices;
   readonly parseFiles?: typeof parseCsvFiles;
   readonly parseOfx?: typeof parseOfxFile;
+  readonly parsePdf?: typeof parsePdfFile;
   readonly detectFormat?: typeof detectBatchFormat;
   readonly presetStorage?: Pick<Storage, "getItem" | "setItem">;
   readonly now?: () => string;
@@ -68,6 +71,7 @@ export function ImportPage({
   services,
   parseFiles = parseCsvFiles,
   parseOfx = parseOfxFile,
+  parsePdf = parsePdfFile,
   detectFormat = detectBatchFormat,
   presetStorage = localStorage,
   now = () => new Date().toISOString(),
@@ -77,6 +81,8 @@ export function ImportPage({
   const [sources, setSources] = useState<readonly CsvMappingSource[]>([]);
   const [ofxSource, setOfxSource] = useState<ParsedOfxSource>();
   const [ofxAccountId, setOfxAccountId] = useState("");
+  const [pdfSource, setPdfSource] = useState<ParsedPdfSource>();
+  const [pdfAccountId, setPdfAccountId] = useState("");
   const [draft, setDraft] = useState<MappingDraft>(EMPTY_DRAFT);
   const [status, setStatus] = useState<"loading" | "ready" | "parsing" | "error">("loading");
   const [message, setMessage] = useState<string>();
@@ -116,8 +122,13 @@ export function ImportPage({
   }, [sources]);
   const selectedAccount = accounts.find((account) => account.id === draft.accountId);
   const ofxAccount = accounts.find((account) => account.id === ofxAccountId);
+  const pdfAccount = accounts.find((account) => account.id === pdfAccountId);
   const historyAccount =
-    ofxSource !== undefined ? (ofxAccount ?? accounts[0]) : (selectedAccount ?? accounts[0]);
+    ofxSource !== undefined
+      ? (ofxAccount ?? accounts[0])
+      : pdfSource !== undefined
+        ? (pdfAccount ?? accounts[0])
+        : (selectedAccount ?? accounts[0]);
   const mapping = useMemo(
     () => createMapping(draft, selectedAccount, headers),
     [draft, selectedAccount, headers],
@@ -136,6 +147,17 @@ export function ImportPage({
             sourceFileSha256: ofxSource.metadata.sha256,
           }),
     [ofxSource, ofxAccount],
+  );
+  const pdfMapped = useMemo(
+    () =>
+      pdfSource === undefined || pdfAccount === undefined
+        ? undefined
+        : mapPdfResult(pdfSource.result, {
+            accountId: pdfAccount.id,
+            accountCurrency: pdfAccount.currency,
+            sourceFileSha256: pdfSource.metadata.sha256,
+          }),
+    [pdfSource, pdfAccount],
   );
 
   useEffect(() => {
@@ -164,6 +186,7 @@ export function ImportPage({
     setPresetMessage(undefined);
     setSources([]);
     setOfxSource(undefined);
+    setPdfSource(undefined);
     setCommitStatus("idle");
     try {
       const format = await detectFormat(files);
@@ -173,6 +196,17 @@ export function ImportPage({
         const parsedOfx = await parseOfx(first);
         setOfxSource(parsedOfx);
         setOfxAccountId((current) => current || matchOfxAccount(parsedOfx, accounts));
+        setStatus("ready");
+        return;
+      }
+      if (format === "pdf") {
+        const first = files[0];
+        if (first === undefined) throw new Error("Choose a PDF statement.");
+        const parsedPdf = await parsePdf(first);
+        setPdfSource(parsedPdf);
+        setPdfAccountId(
+          (current) => current || (accounts.length === 1 ? (accounts[0]?.id ?? "") : ""),
+        );
         setStatus("ready");
         return;
       }
@@ -361,14 +395,83 @@ export function ImportPage({
     }
   };
 
+  const confirmPdfImport = async () => {
+    const workspace = workspaces[0];
+    if (
+      pdfSource === undefined ||
+      pdfAccount === undefined ||
+      pdfMapped?.canContinue !== true ||
+      workspace === undefined
+    )
+      return;
+    setCommitStatus("committing");
+    setMessage(undefined);
+    try {
+      const result = await services.commitAcceptedImport.execute({
+        workspaceId: workspace.id,
+        accountId: pdfAccount.id,
+        sources: [
+          {
+            fileName: pdfSource.metadata.fileName,
+            mediaType: pdfSource.metadata.mediaType,
+            byteSize: pdfSource.metadata.byteSize,
+            sha256: pdfSource.metadata.sha256,
+            parserId: pdfSource.result.parserId,
+            parserVersion: pdfSource.result.parserVersion,
+            sourceRows: pdfSource.result.rows.length,
+            issues: pdfSource.result.issues,
+          },
+        ],
+        candidates: pdfMapped.candidates.map((candidate) => ({
+          accountId: candidate.accountId,
+          postedDate: candidate.postedDate,
+          ...(candidate.transactionDate === undefined
+            ? {}
+            : { transactionDate: candidate.transactionDate }),
+          description: candidate.description,
+          amount: candidate.amount,
+          currency: candidate.currency,
+          ...(candidate.sourceTransactionId === undefined
+            ? {}
+            : { sourceTransactionId: candidate.sourceTransactionId }),
+          ...(candidate.status === undefined ? {} : { status: candidate.status }),
+          provenance: {
+            sourceFileSha256: candidate.provenance.sourceFileSha256,
+            sourceLocation: candidate.provenance.sourceLocation,
+            parserId: candidate.provenance.parserId,
+            parserVersion: candidate.provenance.parserVersion,
+            mappingVersion: candidate.provenance.mappingVersion,
+            original: { ...candidate.provenance.original },
+          },
+        })),
+        mapping: {
+          format: "pdf",
+          adapter: String(pdfSource.result.detectedMetadata?.adapterId ?? ""),
+        },
+      });
+      setHistory(await services.listImportHistory.execute(pdfAccount.id));
+      setCommitStatus("committed");
+      setPresetMessage(
+        `Committed ${result.transactionCount} transaction${result.transactionCount === 1 ? "" : "s"} atomically at local revision ${result.committedRevision}.`,
+      );
+    } catch (error) {
+      setCommitStatus("error");
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "The import could not be committed. No partial transactions were saved.",
+      );
+    }
+  };
+
   return (
     <div className="import-page">
       <section className="import-heading" aria-labelledby="import-title">
         <p className="eyebrow">Local statement import</p>
         <h1 id="import-title">Map every transaction before it enters your ledger.</h1>
         <p className="hero-copy">
-          CSV, OFX, and QFX files are parsed in a dedicated browser worker. This preview does not
-          write canonical transactions.
+          CSV, OFX, QFX, and text-based PDF files are parsed in a dedicated browser worker. This
+          preview does not write canonical transactions.
         </p>
       </section>
 
@@ -387,11 +490,11 @@ export function ImportPage({
           onDragOver={(event) => event.preventDefault()}
           onDrop={onDrop}
         >
-          <label htmlFor="csv-files">Select CSV files, or a single OFX/QFX statement</label>
+          <label htmlFor="csv-files">Select CSV files, or a single OFX/QFX or PDF statement</label>
           <input
             id="csv-files"
             type="file"
-            accept=".csv,.tsv,.ofx,.qfx,text/csv,text/tab-separated-values,application/x-ofx,application/vnd.intu.qfx"
+            accept=".csv,.tsv,.ofx,.qfx,.pdf,text/csv,text/tab-separated-values,application/x-ofx,application/vnd.intu.qfx,application/pdf"
             multiple
             onChange={onFilesChanged}
           />
@@ -420,6 +523,13 @@ export function ImportPage({
             {ofxSource.result.rows.length === 1 ? "" : "s"}.
           </p>
         )}
+        {pdfSource !== undefined && (
+          <p className="success-message" role="status">
+            Parsed PDF statement {pdfSource.metadata.fileName} containing{" "}
+            {pdfSource.result.rows.length} transaction
+            {pdfSource.result.rows.length === 1 ? "" : "s"}.
+          </p>
+        )}
       </section>
 
       {ofxSource !== undefined && (
@@ -438,6 +548,25 @@ export function ImportPage({
           mappingReady={ofxAccount !== undefined}
           isCommitting={commitStatus === "committing"}
           onConfirm={() => void confirmOfxImport()}
+        />
+      )}
+
+      {pdfSource !== undefined && (
+        <PdfAccountForm
+          source={pdfSource}
+          accounts={accounts}
+          accountId={pdfAccountId}
+          workspaceExists={workspaces.length > 0}
+          onChange={setPdfAccountId}
+        />
+      )}
+
+      {pdfSource !== undefined && (
+        <Preview
+          result={pdfMapped}
+          mappingReady={pdfAccount !== undefined}
+          isCommitting={commitStatus === "committing"}
+          onConfirm={() => void confirmPdfImport()}
         />
       )}
 
@@ -551,6 +680,75 @@ function OfxAccountForm({
           </ul>
         </div>
       )}
+    </section>
+  );
+}
+
+function PdfAccountForm({
+  source,
+  accounts,
+  accountId,
+  workspaceExists,
+  onChange,
+}: {
+  readonly source: ParsedPdfSource;
+  readonly accounts: readonly Account[];
+  readonly accountId: string;
+  readonly workspaceExists: boolean;
+  readonly onChange: (accountId: string) => void;
+}) {
+  const metadata = source.result.detectedMetadata ?? {};
+  const adapter = formatMetaValue(metadata.adapterId);
+  const detected: readonly { readonly label: string; readonly value: string }[] = [
+    { label: "Detected layout", value: adapter },
+    { label: "Pages", value: String(metadata.pageCount ?? 1) },
+    { label: "Transactions", value: String(source.result.rows.length) },
+    { label: "Column mode", value: formatMetaValue(metadata.columnMode) },
+    { label: "Statement currency", value: formatMetaValue(metadata.currency) },
+  ];
+
+  return (
+    <section className="import-panel" aria-labelledby="pdf-account-title">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Step 2</p>
+          <h2 id="pdf-account-title">Confirm the account</h2>
+        </div>
+        <span className="storage-chip">Text PDF</span>
+      </div>
+      {!workspaceExists && (
+        <p className="error-message" role="alert">
+          Create a workspace and account before importing.
+        </p>
+      )}
+      {workspaceExists && accounts.length === 0 && (
+        <p className="error-message" role="alert">
+          Add an active account before importing.
+        </p>
+      )}
+      <dl className="import-totals" aria-label="Detected statement details">
+        {detected.map((item) => (
+          <div key={item.label}>
+            <dt>{item.label}</dt>
+            <dd>{item.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <form className="mapping-form" onSubmit={(event) => event.preventDefault()}>
+        <SelectField label="Target account" value={accountId} onChange={onChange} required>
+          <option value="">Choose an account</option>
+          {accounts.map((account) => (
+            <option key={account.id} value={account.id}>
+              {account.name} · {account.currency}
+            </option>
+          ))}
+        </SelectField>
+      </form>
+      <p className="privacy-copy">
+        Amounts and dates are read from the statement text, not rendered images. Review the preview
+        below; the source PDF is not saved by this preview. If a layout is not recognized, export a
+        CSV or OFX statement instead.
+      </p>
     </section>
   );
 }

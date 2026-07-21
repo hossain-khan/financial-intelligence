@@ -37,3 +37,4 @@ Status is one of `Proposed`, `Accepted`, `Deprecated`, or `Superseded by ADR-NNN
 - [ADR-010: CSP-safe generated validators and narrow WebAssembly execution](ADR-010-CSP-Safe-Generated-Validators-And-WebAssembly.md)
 - [ADR-011: Persistent Cloudflare invocation logging](ADR-011-Cloudflare-Invocation-Logging.md)
 - [ADR-012: Purpose-built bounded OFX/QFX parser](ADR-012-OFX-Parser.md)
+- [ADR-013: Text-based PDF statement import using a hardened, worker-isolated PDF.js](ADR-013-PDF-Parser.md)

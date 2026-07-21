@@ -69,6 +69,10 @@ The app does not claim protection against a fully compromised device, malicious 
 - Trusted Types where browser/tooling support is practical.
 - Lock dependencies and verify build provenance; review high-risk parser/crypto/model dependencies.
 - Parse untrusted documents in bounded workers and never follow embedded URLs.
+- Extract PDF text only through `pdfjs-dist` configured with `isEvalSupported: false` and no worker
+  fetch; never render pages, execute document JavaScript/actions, or resolve annotations, links,
+  attachments, CMap, or font URLs. Reject password-protected/encrypted PDFs without retaining a
+  password, and classify text-free documents as image-only (ADR-013).
 - Use framework escaping plus explicit URL and downloadable-filename sanitization.
 - Prevent spreadsheet formula injection in CSV exports by safe encoding/prefix policy with disclosure.
 
