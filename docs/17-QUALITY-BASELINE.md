@@ -48,6 +48,8 @@ selectors, and retained traces only on failure. Reports and test output are igno
 
 The gate covers:
 
+- complete favicon, Apple touch icon, and regular/maskable PWA manifest assets in the production
+  bundle;
 - workspace creation, IndexedDB persistence, and reload;
 - reload from the installed service-worker cache while Chromium is offline;
 - axe-core checks for the overview/form, storage-error, and settings states;

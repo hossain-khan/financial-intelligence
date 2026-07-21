@@ -48,6 +48,14 @@ A screenshot is reference material, not authority to copy inaccessible or incons
 
 ## Visual language
 
+### Brand icon
+
+The canonical application icon is the pie-chart dollar artwork in
+`apps/web/public/favicon.svg`. Use the complete mark for browser and installed-application identity;
+do not recolor, redraw, crop, rotate, or place interface status badges over it. Platform-specific
+maskable output adds only the safe-zone padding needed to prevent clipping. The icon is brand
+identity, not an unlabeled substitute for transaction, chart, or money actions inside the product.
+
 ### Color
 
 Use semantic custom properties rather than literal colors in components.

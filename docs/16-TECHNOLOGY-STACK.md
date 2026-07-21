@@ -167,6 +167,12 @@ Worker protocols are versioned discriminated unions with operation ID, progress,
 
 ## UI and accessibility
 
+The application brand artwork is maintained as `apps/web/public/favicon.svg`. The browser favicon,
+Apple touch icon, and 192/512 pixel PWA icons are generated from that source. A separately padded,
+opaque 512 pixel maskable icon keeps the chart and currency mark inside the platform safe zone.
+All shipped icon assets are included in the application-shell precache so installed and offline
+surfaces do not depend on the network for branding.
+
 Use React Aria Components for interactive primitives when their behavior is compatible with the
 production CSP. Use the shared native `Button` for ordinary actions because React Aria press handling
 mutates inline `user-select` styles. Project CSS owns visual design through tokens for color,
