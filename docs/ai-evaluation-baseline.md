@@ -53,6 +53,21 @@ by a competent classifier and clearly failed by a broken one; they will be re-de
 real browser-local model's measured results in #33 and recorded here, per the "do not invent final
 accuracy numbers before running the baseline" rule.
 
+## Browser-local provider (`ai-local`, #33)
+
+The `local-classifier-v1` profile (transformers.js, ONNX Runtime Web; see
+[ADR-020](adr/ADR-020-Browser-Local-AI-Runtime.md)) is wired but **not yet pinned or measured**. The
+runtime, worker adapter, sideload/integrity, capability preflight, and harness registration are
+CI-verified against a fake engine; the exact model (target: a Gemma 3n edge ONNX export; fallback: a
+smaller known-good ONNX instruct model), its file digests, and its measured metrics are recorded here
+after the maintainer runs the model on real WebGPU hardware.
+
+| Metric | Value |
+| --- | --- |
+| Model repo / revision | PENDING maintainer spike |
+| Accuracy / abstention recall / latency p95 | PENDING maintainer spike |
+| Support status | not yet evaluated |
+
 ## Support records
 
 None yet. A provider is marked `supported`, `experimental`, or `failed` per task and device tier,
