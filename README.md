@@ -97,9 +97,12 @@ Workspace packages follow the dependency direction documented in the [technology
 ## Cloudflare Workers deployment
 
 The reference production deployment uses Cloudflare Workers Static Assets. It serves the generated
-PWA without a Worker entrypoint, application backend, remote database, telemetry, or access to local
-financial records. Wrangler usage metrics, dependency instrumentation, and Worker observability are
-disabled in the repository configuration.
+PWA without a Worker entrypoint, application backend, remote database, client telemetry SDK, or
+access to local financial records. Wrangler usage metrics and dependency instrumentation remain
+disabled. Cloudflare Worker invocation logs are persisted at 100% sampling for operational
+diagnosis; they can contain request URLs and Cloudflare request/response metadata, but the
+application emits no custom financial logs. Distributed traces remain disabled. Do not place
+statement text, amounts, merchant names, account labels, secrets, or other restricted data in URLs.
 
 Validate the deployable bundle locally:
 
@@ -121,7 +124,8 @@ Set `NODE_VERSION=24` and `PNPM_VERSION=10.33.0` in the Cloudflare build variabl
 the same supported toolchain as CI. The Cloudflare Worker name must match `financial-intelligence` in
 [`wrangler.jsonc`](wrangler.jsonc).
 
-See [ADR-009](docs/adr/ADR-009-Cloudflare-Workers-Static-Hosting.md) for the privacy boundary,
+See [ADR-011](docs/adr/ADR-011-Cloudflare-Invocation-Logging.md) for the logging boundary and
+[ADR-009](docs/adr/ADR-009-Cloudflare-Workers-Static-Hosting.md) for the hosting boundary,
 alternatives, and production verification requirements.
 
 ## Development principles

@@ -42,7 +42,10 @@ Versions are pinned through the lockfile. Upgrades use the latest stable release
 single-page-application fallback for direct React Router navigation and consumes the `_headers` file
 copied by Vite. Wrangler is a pinned development dependency so local dry runs and Cloudflare Workers
 Builds use the same deployment contract. The configuration disables Wrangler usage metrics,
-dependency instrumentation, and Worker observability by default.
+dependency instrumentation, and distributed traces. It enables persistent invocation logs at 100%
+sampling for the maintainer-selected operational baseline. Application code must not emit financial
+or user-authored values to `console`; request URLs and Cloudflare metadata remain visible to the
+hosting provider. See ADR-011.
 
 Cloudflare is an asset host, not an application tier. Do not add a Worker entrypoint, D1, KV, R2,
 server-side rendering, or API route without a separate requirement, privacy/security review, and

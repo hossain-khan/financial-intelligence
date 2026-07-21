@@ -6,7 +6,11 @@ Define the threat model, data boundaries, security controls, consent model, rete
 
 ## Privacy promise
 
-Core use is local. The application does not require an account, bank credentials, telemetry, or remote AI. When a user enables a network capability, the product identifies the destination and data classes before transmission. This document is a product/engineering specification, not a substitute for a release-specific privacy notice.
+Core use is local. The application does not require an account, bank credentials, client-side
+telemetry, or remote AI. The reference static host persists invocation metadata as documented below;
+it cannot access origin-local financial records. When a user enables another network capability,
+the product identifies the destination and data classes before transmission. This document is a
+product/engineering specification, not a substitute for a release-specific privacy notice.
 
 ## Data classification
 
@@ -28,6 +32,12 @@ Exact amounts and merchant combinations can reveal health, religion, location, r
 5. **Network boundary:** static host, model asset host, self-hosted/remote AI.
 6. **Extension boundary:** plugins and their UI/network capabilities.
 7. **Export boundary:** files downloaded outside application control.
+
+The reference static host persists 100% sampled Worker invocation logs. Cloudflare can retain
+request URLs and platform request/response metadata according to the account plan and service
+configuration. The application emits no custom financial logs and tracing remains disabled, but URL
+query values are inside this network boundary. Never put source text, descriptions, exact amounts,
+account labels, filenames, prompts, secrets, or backup contents in a URL.
 
 ## Threat actors and scenarios
 

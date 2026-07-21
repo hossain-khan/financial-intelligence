@@ -174,7 +174,18 @@ compatible.
 
 ## Observability
 
-Operational state is local and redacted:
+The application does not emit custom remote logs or automatic diagnostic bundles. The reference
+Cloudflare host persists invocation logs at 100% sampling for operational diagnosis while traces
+remain disabled. Invocation logs can contain request URLs and provider-generated request/response
+metadata. They do not grant the Worker access to IndexedDB, statement files, transaction records,
+backup plaintext, or Financial Brain contents.
+
+Dashboard query strings can contain opaque account/merchant identifiers, tags, currency, and date
+filters, so those values may enter invocation logs. Restricted transaction text, exact amounts,
+account labels, filenames, prompts, secrets, or backup contents must never be placed in URLs or
+application logs. See [ADR-011](adr/ADR-011-Cloudflare-Invocation-Logging.md).
+
+User-exported diagnostic state remains local and redacted:
 
 - stable error code, component version, duration bucket, browser capability flags;
 - no transaction text, exact amounts, account labels, file contents, prompts, secrets, or full URLs;

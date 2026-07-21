@@ -123,6 +123,8 @@ promoting a release, verify the preview and production URLs over HTTPS:
 - service-worker registration, installability, coordinated update, and offline reload;
 - IndexedDB persistence across reload and deployment without transmitting workspace records;
 - the local-mode network allow-list in Chromium, Firefox, and WebKit.
+- Cloudflare invocation-log persistence at 100% sampling, with distributed traces disabled and no
+  application-emitted financial or user-authored log fields.
 
 Workers Builds uses `main` for production and `wrangler versions upload` for non-production preview
 versions. A Cloudflare build cannot replace GitHub CI or authorize an unreviewed production change.

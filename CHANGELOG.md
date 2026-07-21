@@ -34,6 +34,8 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Changed
 
+- Enable persistent Cloudflare Worker invocation logs at 100% sampling while keeping distributed
+  traces disabled and application financial data local.
 - Mark Phase 2 complete after its delivery and hardening issues passed repository verification and
   supported-browser qualification; identify Phase 3 as the next planned phase.
 
