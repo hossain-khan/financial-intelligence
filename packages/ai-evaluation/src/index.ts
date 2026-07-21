@@ -16,3 +16,17 @@ export {
 } from "./fakes/index";
 export { classifyOutcome, runEvaluation } from "./runner";
 export type { RunnerOptions } from "./runner";
+export {
+  EVAL_RESULT_VERSION,
+  EvalResultError,
+  compareEvalResults,
+  validateEvalResult,
+} from "./result-schema";
+export type {
+  EvalProfile,
+  EvalResult,
+  ProfileComparison,
+  SupportRecord,
+  SupportStatus,
+} from "./result-schema";
+export { ArtifactPrivacyError, assertNoSensitiveContent } from "./privacy-guard";
