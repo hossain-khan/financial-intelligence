@@ -11,3 +11,7 @@ export type { EngineDecodingMessage, LocalAiRequest, LocalAiResponse } from "./p
 export { MODEL_CACHE_PREFIX, readyCacheName, stagingCacheName } from "./model-cache";
 export { ModelSideloader, SideloadError } from "./sideloader";
 export type { CacheLike, CacheStoreLike, SideloadFile } from "./sideloader";
+export { buildClassifyPrompt } from "./prompt";
+export { createLocalAiWorker } from "./worker-client";
+export { LocalAiProvider } from "./provider";
+export type { LocalAiProviderDeps, LocalWorker } from "./provider";

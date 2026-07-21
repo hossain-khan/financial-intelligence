@@ -9,5 +9,8 @@
     "@financial-intelligence/ai-core": "workspace:*",
     "@financial-intelligence/domain": "workspace:*",
     "@financial-intelligence/schemas": "workspace:*"
+  },
+  "devDependencies": {
+    "@financial-intelligence/ai-evaluation": "workspace:*"
   }
 }

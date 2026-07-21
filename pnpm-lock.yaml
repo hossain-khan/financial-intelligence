@@ -173,6 +173,10 @@ importers:
       "@financial-intelligence/schemas":
         specifier: workspace:*
         version: link:../schemas
+    devDependencies:
+      "@financial-intelligence/ai-evaluation":
+        specifier: workspace:*
+        version: link:../ai-evaluation
 
   packages/analysis:
     dependencies:
