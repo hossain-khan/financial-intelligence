@@ -28,10 +28,12 @@ export class TransformersLocalEngine implements LocalEngine {
     env.useBrowserCache = true;
 
     if (signal.aborted) throw new DOMException("aborted", "AbortError");
+    // dtype comes from the pinned profile. Gemma 3n must use `q4`, not `q4f16`: the q4f16 export
+    // crashes ORT Web session creation with a float16/float32 mismatch in the AltUp block (#33).
     this.generator = (await pipeline("text-generation", profile.modelRepo, {
       revision: profile.modelRevision,
       device: "webgpu",
-      dtype: "q4f16",
+      dtype: profile.quantization as "q4" | "q4f16" | "fp16",
       progress_callback: (report: ProgressInfo) => {
         if ("progress" in report && typeof report.progress === "number") {
           onProgress(report.progress / 100);

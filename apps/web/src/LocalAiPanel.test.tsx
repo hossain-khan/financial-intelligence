@@ -30,11 +30,17 @@ describe("LocalAiPanel", () => {
     await waitFor(() => expect(screen.getByText(/cannot run local AI/)).toBeInTheDocument());
   });
 
-  it("keeps model selection disabled until a model profile is pinned", async () => {
-    // The shipped profile is PENDING_SPIKE, so selection is intentionally gated.
+  it("enables model selection now that a model profile is pinned", async () => {
     render(<LocalAiPanel detectCapability={() => Promise.resolve(recommended)} />);
     const button = await screen.findByRole("button", { name: /Select model files/ });
-    expect(button).toBeDisabled();
-    expect(screen.getByText(/unlocks once a model profile is pinned/)).toBeInTheDocument();
+    expect(button).toBeEnabled();
+    expect(screen.queryByText(/unlocks once a model profile is pinned/)).not.toBeInTheDocument();
+  });
+
+  it("shows the pinned model repository", async () => {
+    render(<LocalAiPanel detectCapability={() => Promise.resolve(recommended)} />);
+    await waitFor(() =>
+      expect(screen.getByText("onnx-community/gemma-3n-E2B-it-ONNX")).toBeInTheDocument(),
+    );
   });
 });
