@@ -86,6 +86,7 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Fixed
 
+- Center the local-mode checkmark inside its mint status circle by isolating privacy-seal text styles.
 - Keep shared button press behavior compatible with the production style CSP and provide explicit
   non-personal autofill context for encrypted-backup passphrase forms.
 - Precompile portable JSON Schema validators during the build so the deployed application starts

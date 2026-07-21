@@ -170,6 +170,8 @@ before adding variants. A new reusable pattern belongs in the shared component l
 
 - A card groups one concept or action. Avoid a card for every individual sentence or metric.
 - Chips represent compact metadata or status, not primary actions.
+- Keep decorative status glyphs centered inside their shaped container. Scope text-flow selectors to
+  the content wrapper so they cannot override the glyph container's layout mode.
 - Status uses neutral, proposed, confirmed, dismissed/muted, warning, and error semantics consistently.
 - Loading, empty, partial, error, offline, unavailable, and stale states are designed states—not
   blank panels.

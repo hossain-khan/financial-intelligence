@@ -162,6 +162,9 @@ test("supports keyboard focus, narrow reflow, and reduced motion", async ({
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
 
+  await expect(page.locator(".privacy-icon")).toHaveCSS("display", "grid");
+  await expect(page.locator(".privacy-icon")).toHaveCSS("place-items", "center");
+
   const skipLink = page.getByRole("link", { name: "Skip to content" });
   if (browserName === "webkit") {
     // WebKit follows the host macOS full-keyboard-access preference, which is unavailable in CI.
