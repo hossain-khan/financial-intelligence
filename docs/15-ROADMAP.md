@@ -68,7 +68,12 @@ passed repository verification and the supported Chromium, Firefox, and WebKit b
   isolated worker with a hardened no-network, no-eval, no-active-content configuration; image-only,
   encrypted, and unsupported/ambiguous layouts fail closed with guidance; institution-specific
   layouts remain additive follow-ups.
-- Installable PWA, coordinated updates, storage management, model/source cache controls.
+- Installable PWA, coordinated updates, storage management, model/source cache controls. **Done**
+  (issue #27, ADR-014): explicit update lifecycle state machine with multi-tab coordination and
+  protected-operation deferral, app-shell navigation fallback, storage estimate/persistence and
+  per-namespace cache inventory/clear that never touches canonical data, install affordance with
+  Safari/iOS guidance, and a startup recovery screen that preserves data on a failed database open.
+  Model and source cache namespaces are declared for #28/#38 but not yet populated.
 - Git-connected Cloudflare Workers Static Assets reference deployment with SPA routing, security
   headers, preview versions, and production verification.
 - Full backup encryption implementation, restore replacement/merge policy, and recovery documentation.

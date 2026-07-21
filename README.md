@@ -62,7 +62,8 @@ text-based PDF statement import, canonical ledger review, deterministic merchant
 stale-safe Financial Brain
 apply/undo, recoverable transfer and recurring decisions, and revision-consistent financial
 dashboards with shared filters, accessible charts, exact drilldown, and design-system-consistent
-responsive presentation.
+responsive presentation. It installs as an offline PWA with coordinated, data-safe updates,
+storage and cache controls, and a startup recovery path that never clears local data.
 
 ## Local development
 

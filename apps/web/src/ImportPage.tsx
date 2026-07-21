@@ -18,6 +18,7 @@ import { detectBatchFormat } from "./import-format";
 import { parseOfxFile, type ParsedOfxSource } from "./ofx-import";
 import { parsePdfFile, type ParsedPdfSource } from "./pdf-import";
 import { loadMappingPreset, saveMappingPreset } from "./mapping-presets";
+import { withProtectedOperation } from "./pwa/protected-operations";
 
 interface MappingDraft {
   readonly accountId: string;
@@ -266,43 +267,45 @@ export function ImportPage({
     setCommitStatus("committing");
     setMessage(undefined);
     try {
-      const result = await services.commitAcceptedImport.execute({
-        workspaceId: workspace.id,
-        accountId: mapping.accountId,
-        sources: sources.map((source) => ({
-          fileName: source.metadata.fileName,
-          mediaType: source.metadata.mediaType,
-          byteSize: source.metadata.byteSize,
-          sha256: source.metadata.sha256,
-          parserId: source.parserId,
-          parserVersion: source.parserVersion,
-          sourceRows: source.rows.length,
-          issues: source.issues,
-        })),
-        candidates: mapped.candidates.map((candidate) => ({
-          accountId: candidate.accountId,
-          postedDate: candidate.postedDate,
-          ...(candidate.transactionDate === undefined
-            ? {}
-            : { transactionDate: candidate.transactionDate }),
-          description: candidate.description,
-          amount: candidate.amount,
-          currency: candidate.currency,
-          ...(candidate.sourceTransactionId === undefined
-            ? {}
-            : { sourceTransactionId: candidate.sourceTransactionId }),
-          ...(candidate.status === undefined ? {} : { status: candidate.status }),
-          provenance: {
-            sourceFileSha256: candidate.provenance.sourceFileSha256,
-            sourceLocation: candidate.provenance.sourceLocation,
-            parserId: candidate.provenance.parserId,
-            parserVersion: candidate.provenance.parserVersion,
-            mappingVersion: candidate.provenance.mappingVersion,
-            original: { ...candidate.provenance.original },
-          },
-        })),
-        mapping: mappingSummary(mapping),
-      });
+      const result = await withProtectedOperation("import-commit", () =>
+        services.commitAcceptedImport.execute({
+          workspaceId: workspace.id,
+          accountId: mapping.accountId,
+          sources: sources.map((source) => ({
+            fileName: source.metadata.fileName,
+            mediaType: source.metadata.mediaType,
+            byteSize: source.metadata.byteSize,
+            sha256: source.metadata.sha256,
+            parserId: source.parserId,
+            parserVersion: source.parserVersion,
+            sourceRows: source.rows.length,
+            issues: source.issues,
+          })),
+          candidates: mapped.candidates.map((candidate) => ({
+            accountId: candidate.accountId,
+            postedDate: candidate.postedDate,
+            ...(candidate.transactionDate === undefined
+              ? {}
+              : { transactionDate: candidate.transactionDate }),
+            description: candidate.description,
+            amount: candidate.amount,
+            currency: candidate.currency,
+            ...(candidate.sourceTransactionId === undefined
+              ? {}
+              : { sourceTransactionId: candidate.sourceTransactionId }),
+            ...(candidate.status === undefined ? {} : { status: candidate.status }),
+            provenance: {
+              sourceFileSha256: candidate.provenance.sourceFileSha256,
+              sourceLocation: candidate.provenance.sourceLocation,
+              parserId: candidate.provenance.parserId,
+              parserVersion: candidate.provenance.parserVersion,
+              mappingVersion: candidate.provenance.mappingVersion,
+              original: { ...candidate.provenance.original },
+            },
+          })),
+          mapping: mappingSummary(mapping),
+        }),
+      );
       const signature = createFormatSignature(headers, first.parserId, first.parserVersion);
       saveMappingPreset(presetStorage, {
         formatSignature: signature,
@@ -338,48 +341,50 @@ export function ImportPage({
     setCommitStatus("committing");
     setMessage(undefined);
     try {
-      const result = await services.commitAcceptedImport.execute({
-        workspaceId: workspace.id,
-        accountId: ofxAccount.id,
-        sources: [
-          {
-            fileName: ofxSource.metadata.fileName,
-            mediaType: ofxSource.metadata.mediaType,
-            byteSize: ofxSource.metadata.byteSize,
-            sha256: ofxSource.metadata.sha256,
-            parserId: ofxSource.result.parserId,
-            parserVersion: ofxSource.result.parserVersion,
-            sourceRows: ofxSource.result.rows.length,
-            issues: ofxSource.result.issues,
+      const result = await withProtectedOperation("import-commit", () =>
+        services.commitAcceptedImport.execute({
+          workspaceId: workspace.id,
+          accountId: ofxAccount.id,
+          sources: [
+            {
+              fileName: ofxSource.metadata.fileName,
+              mediaType: ofxSource.metadata.mediaType,
+              byteSize: ofxSource.metadata.byteSize,
+              sha256: ofxSource.metadata.sha256,
+              parserId: ofxSource.result.parserId,
+              parserVersion: ofxSource.result.parserVersion,
+              sourceRows: ofxSource.result.rows.length,
+              issues: ofxSource.result.issues,
+            },
+          ],
+          candidates: ofxMapped.candidates.map((candidate) => ({
+            accountId: candidate.accountId,
+            postedDate: candidate.postedDate,
+            ...(candidate.transactionDate === undefined
+              ? {}
+              : { transactionDate: candidate.transactionDate }),
+            description: candidate.description,
+            amount: candidate.amount,
+            currency: candidate.currency,
+            ...(candidate.sourceTransactionId === undefined
+              ? {}
+              : { sourceTransactionId: candidate.sourceTransactionId }),
+            ...(candidate.status === undefined ? {} : { status: candidate.status }),
+            provenance: {
+              sourceFileSha256: candidate.provenance.sourceFileSha256,
+              sourceLocation: candidate.provenance.sourceLocation,
+              parserId: candidate.provenance.parserId,
+              parserVersion: candidate.provenance.parserVersion,
+              mappingVersion: candidate.provenance.mappingVersion,
+              original: { ...candidate.provenance.original },
+            },
+          })),
+          mapping: {
+            format: "ofx",
+            dialect: String(ofxSource.result.detectedMetadata?.dialect ?? ""),
           },
-        ],
-        candidates: ofxMapped.candidates.map((candidate) => ({
-          accountId: candidate.accountId,
-          postedDate: candidate.postedDate,
-          ...(candidate.transactionDate === undefined
-            ? {}
-            : { transactionDate: candidate.transactionDate }),
-          description: candidate.description,
-          amount: candidate.amount,
-          currency: candidate.currency,
-          ...(candidate.sourceTransactionId === undefined
-            ? {}
-            : { sourceTransactionId: candidate.sourceTransactionId }),
-          ...(candidate.status === undefined ? {} : { status: candidate.status }),
-          provenance: {
-            sourceFileSha256: candidate.provenance.sourceFileSha256,
-            sourceLocation: candidate.provenance.sourceLocation,
-            parserId: candidate.provenance.parserId,
-            parserVersion: candidate.provenance.parserVersion,
-            mappingVersion: candidate.provenance.mappingVersion,
-            original: { ...candidate.provenance.original },
-          },
-        })),
-        mapping: {
-          format: "ofx",
-          dialect: String(ofxSource.result.detectedMetadata?.dialect ?? ""),
-        },
-      });
+        }),
+      );
       setHistory(await services.listImportHistory.execute(ofxAccount.id));
       setCommitStatus("committed");
       setPresetMessage(
@@ -407,48 +412,50 @@ export function ImportPage({
     setCommitStatus("committing");
     setMessage(undefined);
     try {
-      const result = await services.commitAcceptedImport.execute({
-        workspaceId: workspace.id,
-        accountId: pdfAccount.id,
-        sources: [
-          {
-            fileName: pdfSource.metadata.fileName,
-            mediaType: pdfSource.metadata.mediaType,
-            byteSize: pdfSource.metadata.byteSize,
-            sha256: pdfSource.metadata.sha256,
-            parserId: pdfSource.result.parserId,
-            parserVersion: pdfSource.result.parserVersion,
-            sourceRows: pdfSource.result.rows.length,
-            issues: pdfSource.result.issues,
+      const result = await withProtectedOperation("import-commit", () =>
+        services.commitAcceptedImport.execute({
+          workspaceId: workspace.id,
+          accountId: pdfAccount.id,
+          sources: [
+            {
+              fileName: pdfSource.metadata.fileName,
+              mediaType: pdfSource.metadata.mediaType,
+              byteSize: pdfSource.metadata.byteSize,
+              sha256: pdfSource.metadata.sha256,
+              parserId: pdfSource.result.parserId,
+              parserVersion: pdfSource.result.parserVersion,
+              sourceRows: pdfSource.result.rows.length,
+              issues: pdfSource.result.issues,
+            },
+          ],
+          candidates: pdfMapped.candidates.map((candidate) => ({
+            accountId: candidate.accountId,
+            postedDate: candidate.postedDate,
+            ...(candidate.transactionDate === undefined
+              ? {}
+              : { transactionDate: candidate.transactionDate }),
+            description: candidate.description,
+            amount: candidate.amount,
+            currency: candidate.currency,
+            ...(candidate.sourceTransactionId === undefined
+              ? {}
+              : { sourceTransactionId: candidate.sourceTransactionId }),
+            ...(candidate.status === undefined ? {} : { status: candidate.status }),
+            provenance: {
+              sourceFileSha256: candidate.provenance.sourceFileSha256,
+              sourceLocation: candidate.provenance.sourceLocation,
+              parserId: candidate.provenance.parserId,
+              parserVersion: candidate.provenance.parserVersion,
+              mappingVersion: candidate.provenance.mappingVersion,
+              original: { ...candidate.provenance.original },
+            },
+          })),
+          mapping: {
+            format: "pdf",
+            adapter: String(pdfSource.result.detectedMetadata?.adapterId ?? ""),
           },
-        ],
-        candidates: pdfMapped.candidates.map((candidate) => ({
-          accountId: candidate.accountId,
-          postedDate: candidate.postedDate,
-          ...(candidate.transactionDate === undefined
-            ? {}
-            : { transactionDate: candidate.transactionDate }),
-          description: candidate.description,
-          amount: candidate.amount,
-          currency: candidate.currency,
-          ...(candidate.sourceTransactionId === undefined
-            ? {}
-            : { sourceTransactionId: candidate.sourceTransactionId }),
-          ...(candidate.status === undefined ? {} : { status: candidate.status }),
-          provenance: {
-            sourceFileSha256: candidate.provenance.sourceFileSha256,
-            sourceLocation: candidate.provenance.sourceLocation,
-            parserId: candidate.provenance.parserId,
-            parserVersion: candidate.provenance.parserVersion,
-            mappingVersion: candidate.provenance.mappingVersion,
-            original: { ...candidate.provenance.original },
-          },
-        })),
-        mapping: {
-          format: "pdf",
-          adapter: String(pdfSource.result.detectedMetadata?.adapterId ?? ""),
-        },
-      });
+        }),
+      );
       setHistory(await services.listImportHistory.execute(pdfAccount.id));
       setCommitStatus("committed");
       setPresetMessage(
