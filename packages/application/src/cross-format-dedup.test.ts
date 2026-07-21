@@ -64,9 +64,30 @@ describe("cross-format deduplication", () => {
     sourceLocation: "statement:1/transaction:1",
     sourceTransactionId: "202401150001",
   });
+  const pdfTransaction = transaction({
+    id: "018f6b80-0d62-7d2c-9a5c-7f5f59cda204",
+    importId: "018f6b80-0d62-7d2c-9a5c-7f5f59cda304",
+    parserId: "pdf",
+    sourceLocation: "page:1/items:3-5",
+  });
 
   it("produces an identical fingerprint basis regardless of parser or source id", () => {
     expect(createFingerprintBasis(ofxTransaction)).toBe(createFingerprintBasis(csvTransaction));
+    expect(createFingerprintBasis(pdfTransaction)).toBe(createFingerprintBasis(csvTransaction));
+  });
+
+  it("flags a PDF import as an exact duplicate of the existing CSV transaction via fingerprint", () => {
+    const fingerprintValue = "shared-fingerprint";
+    const candidates = detectDuplicateCandidates({
+      existing: [csvTransaction],
+      incoming: [pdfTransaction],
+      fingerprints: [
+        { transactionId: csvTransaction.id, value: fingerprintValue },
+        { transactionId: pdfTransaction.id, value: fingerprintValue },
+      ],
+    });
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]).toMatchObject({ kind: "exact", score: 10_000 });
   });
 
   it("flags the OFX import as an exact duplicate of the existing CSV transaction via fingerprint", () => {

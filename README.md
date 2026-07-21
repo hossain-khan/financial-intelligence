@@ -57,8 +57,9 @@ Start with:
 
 ## Project status
 
-**Phase 2 complete; Phase 3 in progress.** The offline PWA supports local CSV and OFX/QFX import,
-canonical ledger review, deterministic merchant/category learning, stale-safe Financial Brain
+**Phase 2 complete; Phase 3 in progress.** The offline PWA supports local CSV, OFX/QFX, and
+text-based PDF statement import, canonical ledger review, deterministic merchant/category learning,
+stale-safe Financial Brain
 apply/undo, recoverable transfer and recurring decisions, and revision-consistent financial
 dashboards with shared filters, accessible charts, exact drilldown, and design-system-consistent
 responsive presentation.

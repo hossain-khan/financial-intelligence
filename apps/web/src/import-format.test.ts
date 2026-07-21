@@ -6,6 +6,7 @@ import { detectBatchFormat, detectImportFormat } from "./import-format";
 
 const OFX_CONTENT = "OFXHEADER:100\nDATA:OFXSGML\n\n<OFX><BANKMSGSRSV1></BANKMSGSRSV1></OFX>";
 const CSV_CONTENT = "date,amount,description\n2024-01-01,-1.00,Coffee";
+const PDF_CONTENT = "%PDF-1.4\n1 0 obj<< /Type /Catalog >>endobj\n%%EOF";
 
 function file(name: string, content: string, type = ""): File {
   return new File([content], name, { type });
@@ -32,6 +33,25 @@ describe("detectImportFormat", () => {
       /recognizable OFX/u,
     );
   });
+
+  it("detects PDF from its content signature", async () => {
+    expect(await detectImportFormat(file("statement.pdf", PDF_CONTENT))).toBe("pdf");
+  });
+
+  it("rejects PDF content wearing a CSV or OFX extension", async () => {
+    await expect(detectImportFormat(file("statement.csv", PDF_CONTENT))).rejects.toThrow(
+      /PDF content/u,
+    );
+    await expect(detectImportFormat(file("statement.ofx", PDF_CONTENT))).rejects.toThrow(
+      /PDF content/u,
+    );
+  });
+
+  it("rejects a PDF extension without PDF content", async () => {
+    await expect(detectImportFormat(file("statement.pdf", CSV_CONTENT))).rejects.toThrow(
+      /recognizable PDF/u,
+    );
+  });
 });
 
 describe("detectBatchFormat", () => {
@@ -51,5 +71,11 @@ describe("detectBatchFormat", () => {
     expect(await detectBatchFormat([file("a.csv", CSV_CONTENT), file("b.csv", CSV_CONTENT)])).toBe(
       "csv",
     );
+  });
+
+  it("rejects more than one PDF file at once", async () => {
+    await expect(
+      detectBatchFormat([file("a.pdf", PDF_CONTENT), file("b.pdf", PDF_CONTENT)]),
+    ).rejects.toThrow(/one PDF/u);
   });
 });

@@ -13,7 +13,8 @@ Specify the safe conversion of untrusted statements into canonical transactions,
 
 ### v1 conditional
 
-- Text-based PDF for explicitly supported layouts/adapters.
+- Text-based PDF for explicitly supported layouts/adapters. Implemented for a generic tabular layout
+  (issue #26, ADR-013); institution-specific adapters are additive follow-ups.
 
 Image-only PDFs, password-protected documents, spreadsheets, and direct bank connections are not core v1 formats. The UI must state limitations and recommend a supported export rather than pretending success.
 
@@ -135,6 +136,33 @@ candidate-validation, duplicate, and atomic-commit pipeline through the format-n
 - Reject unsupported or low-confidence extraction with guidance; do not invent missing amounts.
 - OCR, if later added, is a separate capability with explicit local/remote disclosure and review requirements.
 
+### v1 implementation (issue #26, ADR-013)
+
+The `@financial-intelligence/import-pdf` package implements the shared `StatementParser` contract
+with parser id `pdf`. It is isolated from storage and UI and shares the canonical
+candidate-validation, duplicate, and atomic-commit pipeline through the format-neutral
+`buildCandidatesFromDrafts` helper in `import-core`.
+
+- **Extraction:** Mozilla PDF.js (`pdfjs-dist`, pinned) extracts the text layer only, running in
+  main-thread mode inside the import worker (no nested worker, no CDN). The document is opened from
+  an in-memory byte array with a hardened configuration (`isEvalSupported: false`,
+  `useWorkerFetch: false`, `disableFontFace: true`, `useSystemFonts: false`, CMap/standard-font URLs
+  unset), so no page is rendered, no active content executes, and no network request occurs.
+- **Bounds and classification:** `%PDF-` content is validated first, then file-byte, page,
+  per-page item, item-length, total-text-character, issue, output-row, output-character, and runtime
+  limits are enforced. Password-protected/encrypted PDFs are rejected without collecting a password;
+  documents with no usable text are classified image-only. All failures explain the next step
+  (export CSV/OFX or a text-based PDF).
+- **Layout adapters:** A registry selects a unique winning adapter (minimum score plus a margin over
+  the runner-up); ties, missing columns, and low coverage return unsupported/ambiguous. v1 ships one
+  generic tabular adapter (date / description / signed-amount or debit-credit columns) that handles
+  repeated headers/footers, wrapped multi-line descriptions, page continuation, parenthesized/
+  trailing-minus amounts, and summary rows, and never invents a missing date, amount, sign, or
+  description.
+- **Provenance and privacy:** Each row carries `page:N/items:a-b` source locations plus the original
+  date, description, and amount text; the parser id/version and adapter id/version are recorded. The
+  source PDF is not retained by the preview; PDF bytes are released when the staged session ends.
+
 ## Provenance
 
 Each canonical record references:
@@ -168,9 +196,12 @@ Limits must be configurable and tested for file bytes, archive nesting if ever s
 
 ## Open questions
 
-- Choose maintained PDF adapter families from user demand and legal availability of synthetic fixtures.
+- Choose maintained institution-specific PDF adapter families from user demand and legal
+  availability of synthetic fixtures (the generic tabular adapter and framework landed in issue #26).
 - Set default size/row limits after browser benchmarks.
 - Decide whether spreadsheet import belongs in v1.x via a sandboxed library.
+- Decide whether to bundle local CMaps/standard fonts for CJK-heavy PDF statements behind the
+  existing no-network guarantee.
 
 ## Related documents
 

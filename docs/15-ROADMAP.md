@@ -63,7 +63,11 @@ passed repository verification and the supported Chromium, Firefox, and WebKit b
 - OFX/QFX parser adapters and fixtures. **Done** for OFX 1.x SGML and OFX 2.x XML bank and
   credit-card statements (issue #25, ADR-012); investment, loan, bill-pay, and online-banking
   message sets remain out of scope and surface bounded unsupported-section warnings.
-- Selected text-PDF adapter(s) based on demand and fixture availability.
+- Selected text-PDF adapter(s) based on demand and fixture availability. **Done** for the framework
+  and one generic tabular layout (issue #26, ADR-013): PDF.js-backed text extraction runs in an
+  isolated worker with a hardened no-network, no-eval, no-active-content configuration; image-only,
+  encrypted, and unsupported/ambiguous layouts fail closed with guidance; institution-specific
+  layouts remain additive follow-ups.
 - Installable PWA, coordinated updates, storage management, model/source cache controls.
 - Git-connected Cloudflare Workers Static Assets reference deployment with SPA routing, security
   headers, preview versions, and production verification.
@@ -114,7 +118,7 @@ Candidates are not commitments. Tax optimization, automated advice, live bank sy
 | UI/build/test stack | Decided in ADR-004 |
 | Browser support matrix | Phase 0/1 |
 | Backup KDF/container | Phase 1 completion |
-| First PDF layouts | Phase 3 |
+| First PDF layouts | Generic tabular layout decided in ADR-013; institution layouts are follow-ups |
 | Local runtime/model/license | Phase 4 |
 | Provider adapters and consent text | Phase 4 |
 | Plugin sandbox/registry governance | Post-v1 |

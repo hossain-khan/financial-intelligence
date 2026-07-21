@@ -144,7 +144,10 @@ Worker protocols are versioned discriminated unions with operation ID, progress,
 - OFX/QFX: a purpose-built bounded tokenizer covering both OFX 1.x SGML (unclosed leaves) and OFX
   2.x XML with no third-party OFX or XML dependency; DTDs, entities, and external references are
   rejected (ADR-012).
-- PDF: PDF.js text extraction only for explicitly supported layout adapters.
+- PDF: `pdfjs-dist` text extraction only (no rendering, no active content), run in main-thread mode
+  inside a dedicated worker with a hardened no-eval, no-network configuration and bundled locally;
+  pure layout adapters with unique/confident selection over an immutable quantized text-page model
+  (ADR-013).
 - Every parser implements `StatementParser` from `import-core`.
 - Boundary data is `unknown` until validated.
 - Parser output contains source rows/issues, not canonical database records.

@@ -21,7 +21,7 @@ test("atomically commits and reloads a bank-shaped CSV import without network ac
   await expect(
     page.getByRole("heading", { name: "Map every transaction before it enters your ledger." }),
   ).toBeVisible();
-  await page.getByLabel("Select CSV files, or a single OFX/QFX statement").setInputFiles({
+  await page.getByLabel("Select CSV files, or a single OFX/QFX or PDF statement").setInputFiles({
     name: "synthetic-bank-details.csv",
     mimeType: "text/csv",
     buffer: Buffer.from(
@@ -118,7 +118,7 @@ test("atomically commits and reloads a bank-shaped CSV import without network ac
   await expect(
     page.getByRole("heading", { name: "Map every transaction before it enters your ledger." }),
   ).toBeVisible();
-  await page.getByLabel("Select CSV files, or a single OFX/QFX statement").setInputFiles({
+  await page.getByLabel("Select CSV files, or a single OFX/QFX or PDF statement").setInputFiles({
     name: "synthetic-overlap.csv",
     mimeType: "text/csv",
     buffer: Buffer.from(

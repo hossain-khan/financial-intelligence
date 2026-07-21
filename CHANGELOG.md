@@ -6,6 +6,15 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Added
 
+- Local text-based PDF statement import: a `pdfjs-dist`-backed extractor running in an isolated
+  worker with a hardened no-network, no-eval, no-active-content, no-nested-worker configuration; an
+  immutable quantized text-page model; a pure layout-adapter registry with unique/confident adapter
+  selection and one generic tabular adapter (date / description / signed-amount or debit-credit,
+  handling repeated headers/footers, wrapped multi-line rows, page continuation, and summary rows);
+  `page:N/items:a-b` provenance; image-only, password-protected, and unsupported/ambiguous documents
+  that fail closed with guidance; and reuse of the shared candidate validation, duplicate review,
+  and atomic commit pipeline so PDF, OFX, and CSV records deduplicate via the canonical fingerprint
+  (ADR-013).
 - Local OFX and QFX statement import: a purpose-built bounded parser for OFX 1.x SGML and OFX 2.x
   XML bank and credit-card statements, a content-signature format dispatcher, account and
   reconciliation preview with masked account hints, and reuse of the existing duplicate review and
