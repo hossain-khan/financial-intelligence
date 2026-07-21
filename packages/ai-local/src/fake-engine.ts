@@ -42,7 +42,9 @@ export class FakeLocalEngine implements LocalEngine {
       await new Promise((resolve) => setTimeout(resolve, this.script.generateDelayMs));
     }
     if (signal.aborted) throw new DOMException("aborted", "AbortError");
-    return this.script.generateOutput ?? '{"categoryId":"dining","confidence":0.9,"rationale":"ok"}';
+    return (
+      this.script.generateOutput ?? '{"categoryId":"dining","confidence":0.9,"rationale":"ok"}'
+    );
   }
 
   public unload(): Promise<void> {

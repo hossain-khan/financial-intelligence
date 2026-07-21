@@ -2,12 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { readyCacheName, stagingCacheName } from "./model-cache";
 import type { ModelProfile } from "./model-profile";
-import {
-  ModelSideloader,
-  SideloadError,
-  type CacheLike,
-  type CacheStoreLike,
-} from "./sideloader";
+import { ModelSideloader, SideloadError, type CacheLike, type CacheStoreLike } from "./sideloader";
 
 function memoryCache() {
   const stores = new Map<string, Map<string, ArrayBuffer>>();

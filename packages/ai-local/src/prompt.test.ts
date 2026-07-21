@@ -14,7 +14,10 @@ describe("buildClassifyPrompt", () => {
   });
 
   it("instructs the model that data is untrusted", () => {
-    const prompt = buildClassifyPrompt({ descriptor: "x", direction: "outflow", allowedCategoryIds: ["a"] }, "1.0.0");
+    const prompt = buildClassifyPrompt(
+      { descriptor: "x", direction: "outflow", allowedCategoryIds: ["a"] },
+      "1.0.0",
+    );
     expect(prompt.toLowerCase()).toContain("untrusted");
   });
 });

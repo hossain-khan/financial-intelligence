@@ -85,8 +85,8 @@ export function LocalAiPanel({ detectCapability, sideload }: LocalAiPanelPropert
     <section className="local-ai-panel" aria-labelledby="local-ai-heading">
       <h3 id="local-ai-heading">Local AI (optional)</h3>
       <p>
-        Runs an optional model entirely on your device to assist categorization. Nothing is sent to a
-        network; you supply the model files yourself.
+        Runs an optional model entirely on your device to assist categorization. Nothing is sent to
+        a network; you supply the model files yourself.
       </p>
 
       {capability === undefined ? (

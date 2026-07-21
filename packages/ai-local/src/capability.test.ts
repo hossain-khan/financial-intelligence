@@ -19,7 +19,8 @@ function env(over: EnvOverrides = {}): CapabilityEnvironment {
     isSecureContext: over.isSecureContext ?? true,
     hasWorker: over.hasWorker ?? true,
     ...(gpu === null || gpu === undefined ? {} : { gpu }),
-    estimateStorage: over.estimateStorage ?? (() => Promise.resolve({ usage: 0, quota: 10_000_000 })),
+    estimateStorage:
+      over.estimateStorage ?? (() => Promise.resolve({ usage: 0, quota: 10_000_000 })),
   };
 }
 

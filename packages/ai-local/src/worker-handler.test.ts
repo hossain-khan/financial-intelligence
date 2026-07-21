@@ -16,17 +16,40 @@ describe("local ai worker handler", () => {
   it("loads with progress then reports loaded", async () => {
     const target = collector();
     const handle = createLocalAiWorkerHandler(target, new FakeLocalEngine({ loadSteps: 2 }));
-    await handle({ protocolVersion: 1, type: "load", operationId: "op1", profile: CLASSIFIER_PROFILE });
+    await handle({
+      protocolVersion: 1,
+      type: "load",
+      operationId: "op1",
+      profile: CLASSIFIER_PROFILE,
+    });
     expect(target.messages.some((m) => m.type === "progress")).toBe(true);
     expect(target.messages.at(-1)?.type).toBe("loaded");
   });
 
   it("executes and returns a result", async () => {
     const target = collector();
-    const handle = createLocalAiWorkerHandler(target, new FakeLocalEngine({ generateOutput: "OUT" }));
-    await handle({ protocolVersion: 1, type: "load", operationId: "l", profile: CLASSIFIER_PROFILE });
-    await handle({ protocolVersion: 1, type: "execute", operationId: "e", task: "category.classify.v1", prompt: "p", decoding });
-    expect(target.messages.find((m) => m.type === "result")).toMatchObject({ type: "result", output: "OUT" });
+    const handle = createLocalAiWorkerHandler(
+      target,
+      new FakeLocalEngine({ generateOutput: "OUT" }),
+    );
+    await handle({
+      protocolVersion: 1,
+      type: "load",
+      operationId: "l",
+      profile: CLASSIFIER_PROFILE,
+    });
+    await handle({
+      protocolVersion: 1,
+      type: "execute",
+      operationId: "e",
+      task: "category.classify.v1",
+      prompt: "p",
+      decoding,
+    });
+    expect(target.messages.find((m) => m.type === "result")).toMatchObject({
+      type: "result",
+      output: "OUT",
+    });
   });
 
   it("cancels an in-flight execute without emitting a late result", async () => {
@@ -35,20 +58,51 @@ describe("local ai worker handler", () => {
       target,
       new FakeLocalEngine({ generateDelayMs: 50, generateOutput: "LATE" }),
     );
-    await handle({ protocolVersion: 1, type: "load", operationId: "l", profile: CLASSIFIER_PROFILE });
-    const exec = handle({ protocolVersion: 1, type: "execute", operationId: "e", task: "category.classify.v1", prompt: "p", decoding });
+    await handle({
+      protocolVersion: 1,
+      type: "load",
+      operationId: "l",
+      profile: CLASSIFIER_PROFILE,
+    });
+    const exec = handle({
+      protocolVersion: 1,
+      type: "execute",
+      operationId: "e",
+      task: "category.classify.v1",
+      prompt: "p",
+      decoding,
+    });
     await handle({ protocolVersion: 1, type: "cancel", operationId: "e" });
     await exec;
     expect(target.messages.some((m) => m.type === "result")).toBe(false);
-    expect(target.messages.some((m) => m.type === "failed" && m.errorCode === "CANCELLED")).toBe(true);
+    expect(target.messages.some((m) => m.type === "failed" && m.errorCode === "CANCELLED")).toBe(
+      true,
+    );
   });
 
   it("maps a device-lost generate to DEVICE_LOST", async () => {
     const target = collector();
-    const handle = createLocalAiWorkerHandler(target, new FakeLocalEngine({ deviceLostOnGenerate: true }));
-    await handle({ protocolVersion: 1, type: "load", operationId: "l", profile: CLASSIFIER_PROFILE });
-    await handle({ protocolVersion: 1, type: "execute", operationId: "e", task: "category.classify.v1", prompt: "p", decoding });
-    expect(target.messages.some((m) => m.type === "failed" && m.errorCode === "DEVICE_LOST")).toBe(true);
+    const handle = createLocalAiWorkerHandler(
+      target,
+      new FakeLocalEngine({ deviceLostOnGenerate: true }),
+    );
+    await handle({
+      protocolVersion: 1,
+      type: "load",
+      operationId: "l",
+      profile: CLASSIFIER_PROFILE,
+    });
+    await handle({
+      protocolVersion: 1,
+      type: "execute",
+      operationId: "e",
+      task: "category.classify.v1",
+      prompt: "p",
+      decoding,
+    });
+    expect(target.messages.some((m) => m.type === "failed" && m.errorCode === "DEVICE_LOST")).toBe(
+      true,
+    );
   });
 
   it("rejects an unsupported protocol version", async () => {

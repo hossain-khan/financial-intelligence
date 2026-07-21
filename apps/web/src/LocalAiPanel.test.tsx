@@ -27,9 +27,7 @@ describe("LocalAiPanel", () => {
 
   it("explains rules-only remains available on unsupported devices", async () => {
     render(<LocalAiPanel detectCapability={() => Promise.resolve(unsupported)} />);
-    await waitFor(() =>
-      expect(screen.getByText(/cannot run local AI/)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/cannot run local AI/)).toBeInTheDocument());
   });
 
   it("keeps model selection disabled until a model profile is pinned", async () => {

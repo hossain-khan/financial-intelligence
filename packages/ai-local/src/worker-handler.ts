@@ -30,7 +30,11 @@ export function createLocalAiWorkerHandler(
       message.protocolVersion !== 1 ||
       typeof message.operationId !== "string"
     ) {
-      fail(readOperationId(message), "UNSUPPORTED_PROTOCOL_VERSION", "Unsupported worker protocol version");
+      fail(
+        readOperationId(message),
+        "UNSUPPORTED_PROTOCOL_VERSION",
+        "Unsupported worker protocol version",
+      );
       return;
     }
     const operationId = message.operationId;
@@ -45,11 +49,15 @@ export function createLocalAiWorkerHandler(
     try {
       switch (message.type) {
         case "load": {
-          await engine.load(message.profile as ModelProfile, (fraction) => {
-            if (!controller.signal.aborted) {
-              target.postMessage({ protocolVersion: 1, type: "progress", operationId, fraction });
-            }
-          }, controller.signal);
+          await engine.load(
+            message.profile as ModelProfile,
+            (fraction) => {
+              if (!controller.signal.aborted) {
+                target.postMessage({ protocolVersion: 1, type: "progress", operationId, fraction });
+              }
+            },
+            controller.signal,
+          );
           if (controller.signal.aborted) fail(operationId, "CANCELLED", "Load cancelled");
           else loaded(operationId);
           break;

@@ -20,7 +20,12 @@ class GroundedWorker implements LocalWorker {
       message.type === "load"
         ? { protocolVersion: 1, type: "loaded", operationId: message.operationId }
         : message.type === "execute"
-          ? { protocolVersion: 1, type: "result", operationId: message.operationId, output: this.answer }
+          ? {
+              protocolVersion: 1,
+              type: "result",
+              operationId: message.operationId,
+              output: this.answer,
+            }
           : undefined;
     if (response !== undefined) {
       queueMicrotask(() => {
@@ -32,12 +37,16 @@ class GroundedWorker implements LocalWorker {
     if (type === "message") this.messageListeners.push(listener);
   }
   public removeEventListener(type: "message" | "error", listener: never): void {
-    if (type === "message") this.messageListeners = this.messageListeners.filter((l) => l !== listener);
+    if (type === "message")
+      this.messageListeners = this.messageListeners.filter((l) => l !== listener);
   }
   public terminate(): void {}
 }
 
-const profile: ModelProfile = { ...CLASSIFIER_PROFILE, files: [{ path: "a", sha256: "x", byteSize: 1 }] };
+const profile: ModelProfile = {
+  ...CLASSIFIER_PROFILE,
+  files: [{ path: "a", sha256: "x", byteSize: 1 }],
+};
 
 const cases: EvalCase[] = [
   {

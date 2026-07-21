@@ -46,7 +46,8 @@ export class LocalAiProvider implements AiProvider {
       adapterId: "ai-local",
       adapterVersion: "1.0.0",
       executionLocation: "local",
-      reportedModel: model.modelRepo === "PENDING_SPIKE" ? null : `${model.modelRepo}@${model.modelRevision}`,
+      reportedModel:
+        model.modelRepo === "PENDING_SPIKE" ? null : `${model.modelRepo}@${model.modelRevision}`,
       supportedTasks: [model.task],
       structuredOutput: true,
       contextLimit: 4096,
@@ -120,7 +121,12 @@ export class LocalAiProvider implements AiProvider {
         onFailed: (code, message) => reject(new WorkerFailure(code, message)),
         onCancel: () => reject(new WorkerFailure("CANCELLED", "Load cancelled")),
       });
-      worker.postMessage({ protocolVersion: 1, type: "load", operationId, profile: this.deps.profile });
+      worker.postMessage({
+        protocolVersion: 1,
+        type: "load",
+        operationId,
+        profile: this.deps.profile,
+      });
       void settle;
     });
   }
