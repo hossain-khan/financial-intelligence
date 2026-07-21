@@ -19,3 +19,5 @@ export type {
   HealthReport,
 } from "./provider";
 export type { AiExecutionAudit, AiOutcome, AiSuggestion } from "./suggestion";
+export { FakeProvider } from "./testing/fake-provider";
+export type { FakeProviderScript } from "./testing/fake-provider";
