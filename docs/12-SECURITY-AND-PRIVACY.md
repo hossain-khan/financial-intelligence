@@ -75,6 +75,11 @@ The app does not claim protection against a fully compromised device, malicious 
   password, and classify text-free documents as image-only (ADR-013).
 - Use framework escaping plus explicit URL and downloadable-filename sanitization.
 - Prevent spreadsheet formula injection in CSV exports by safe encoding/prefix policy with disclosure.
+- The service worker precaches only versioned app-shell assets and performs no runtime caching:
+  remote/AI requests, exports, blob URLs, and query strings never enter Cache Storage. A generic
+  cache clear acts only on disposable namespaces and never on IndexedDB, exports, or the app shell;
+  a failed database open preserves all data and shows recovery rather than clearing storage
+  (ADR-014).
 
 ### Storage
 

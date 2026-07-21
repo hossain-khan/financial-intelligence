@@ -2,7 +2,18 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
+// A stable per-build identifier. Uses the CI commit SHA when present so the running build is
+// traceable; otherwise a coarse date bucket keeps local builds distinguishable without embedding a
+// changing value into every dev reload. Never contains user data.
+const buildId =
+  process.env.GITHUB_SHA?.slice(0, 12) ??
+  process.env.CF_PAGES_COMMIT_SHA?.slice(0, 12) ??
+  `local-${new Date().toISOString().slice(0, 10)}`;
+
 export default defineConfig({
+  define: {
+    __APP_BUILD_ID__: JSON.stringify(buildId),
+  },
   plugins: [
     react(),
     VitePWA({

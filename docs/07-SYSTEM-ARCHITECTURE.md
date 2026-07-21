@@ -108,6 +108,18 @@ Examples:
 
 The service worker caches only versioned application assets and user-selected local model artifacts. It must not cache remote AI requests or sensitive exports. Updates download in the background but activate only at a safe boundary after the user is told a reload is required. The currently installed version remains usable offline.
 
+Implemented in Phase 3 (issue #27, ADR-014): a page-side `PwaController` models an explicit lifecycle
+(`checking`, `ready`, `offline-ready`, `update-available`, `activating`, `reload-required`,
+`failed`). Activation is deferred while a ref-counted protected operation (import commit, backup,
+bulk edit, migration) is in progress and applied automatically once it clears; tabs coordinate a
+single activation decision over `BroadcastChannel`. The worker precaches the versioned shell
+(including lazy chunks and parser/crypto workers) and serves a navigation fallback to the app shell
+offline, with no runtime caching. Cache Storage is partitioned into versioned namespaces
+(`app-shell` populated and protected; `model` and `source` declared for #38 and source retention); a
+storage-inventory service reports usage/quota/persistence and clears only disposable namespaces,
+never IndexedDB or exports. A startup database-health check renders a recovery screen (retry,
+diagnostic export, backup guidance) on a failed open and never clears or reload-loops.
+
 ## Provider boundary
 
 AI providers implement a task-based interface rather than exposing arbitrary chat:

@@ -3,7 +3,8 @@ import { createRoot } from "react-dom/client";
 
 import { App } from "./App";
 import { applicationServices } from "./infrastructure";
-import { registerApplicationServiceWorker } from "./pwa";
+import { initInstallAffordance } from "./pwa/install";
+import { registerApplicationServiceWorker } from "./pwa/register";
 import "./styles.css";
 
 const root = document.querySelector<HTMLDivElement>("#root");
@@ -18,4 +19,5 @@ createRoot(root).render(
   </StrictMode>,
 );
 
+initInstallAffordance();
 registerApplicationServiceWorker();

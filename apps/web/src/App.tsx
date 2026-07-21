@@ -4,16 +4,7 @@ import {
   type Account,
   type Workspace,
 } from "@financial-intelligence/domain";
-import {
-  Suspense,
-  lazy,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-  type FormEvent,
-} from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { FieldError, Form, Input, Label, TextField } from "react-aria-components";
 import {
   BrowserRouter,
@@ -27,8 +18,16 @@ import {
 import type { DashboardFilterState } from "./DashboardPage";
 
 import { Button } from "./Button";
-import type { ApplicationServices } from "./infrastructure";
-import { getPendingApplicationUpdate, subscribeToApplicationUpdate } from "./pwa";
+import {
+  checkDatabaseHealth,
+  type ApplicationServices,
+  type DatabaseHealth,
+} from "./infrastructure";
+import { RecoveryScreen } from "./RecoveryScreen";
+import { StoragePanel } from "./StoragePanel";
+import { usePwaStatus } from "./pwa/use-pwa-status";
+import { getPwaController } from "./pwa/register";
+import { withProtectedOperation } from "./pwa/protected-operations";
 
 const ImportPage = lazy(async () => {
   const module = await import("./ImportPage");
@@ -47,7 +46,56 @@ export interface AppProperties {
   readonly services: ApplicationServices;
 }
 
-export function App({ services }: AppProperties) {
+export interface AppRootProperties extends AppProperties {
+  /** Injectable for tests; defaults to the real IndexedDB open/migration health check. */
+  readonly checkHealth?: () => Promise<DatabaseHealth>;
+}
+
+export function App({ services, checkHealth = checkDatabaseHealth }: AppRootProperties) {
+  const [health, setHealth] = useState<DatabaseHealth | "checking">("checking");
+  const [retrying, setRetrying] = useState(false);
+
+  const openFailure: DatabaseHealth = {
+    ok: false,
+    code: "OPEN_FAILED",
+    message: "The local database could not be opened. Your data has not been changed or deleted.",
+  };
+
+  const retryHealthCheck = useCallback(() => {
+    setRetrying(true);
+    checkHealth()
+      .then((result) => setHealth(result))
+      .catch(() => setHealth(openFailure))
+      .finally(() => setRetrying(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- openFailure is a stable literal.
+  }, [checkHealth]);
+
+  useEffect(() => {
+    let active = true;
+    checkHealth()
+      .then((result) => {
+        if (active) setHealth(result);
+      })
+      .catch(() => {
+        if (active) setHealth(openFailure);
+      });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- openFailure is a stable literal.
+  }, [checkHealth]);
+
+  if (health !== "checking" && !health.ok) {
+    return (
+      <RecoveryScreen
+        code={health.code}
+        message={health.message}
+        isRetrying={retrying}
+        onRetry={retryHealthCheck}
+      />
+    );
+  }
+
   return (
     <BrowserRouter>
       <div className="app-shell">
@@ -756,9 +804,11 @@ function SettingsPage({ services }: AppProperties) {
     setBusy(true);
     setStatus("Encrypting locally…");
     try {
-      const result = await services.createEncryptedWorkspaceBackup.execute(
-        parseWorkspaceId(workspaceId),
-        backupPassphrase,
+      const result = await withProtectedOperation("backup", () =>
+        services.createEncryptedWorkspaceBackup.execute(
+          parseWorkspaceId(workspaceId),
+          backupPassphrase,
+        ),
       );
       const url = URL.createObjectURL(new Blob([result.content], { type: result.mediaType }));
       const link = document.createElement("a");
@@ -830,6 +880,7 @@ function SettingsPage({ services }: AppProperties) {
           <dd>Encrypted export and restore preview</dd>
         </div>
       </dl>
+      <StoragePanel />
       <section className="backup-grid" aria-labelledby="backup-heading">
         <div className="backup-panel">
           <h2 id="backup-heading">Create encrypted backup</h2>
@@ -951,20 +1002,58 @@ function SettingsPage({ services }: AppProperties) {
 }
 
 function UpdateBanner() {
-  const pendingUpdate = useSyncExternalStore(
-    subscribeToApplicationUpdate,
-    getPendingApplicationUpdate,
-    getPendingApplicationUpdate,
-  );
+  const status = usePwaStatus();
+  const controller = getPwaController();
 
-  if (pendingUpdate === undefined) {
+  if (status.state === "reload-required") {
+    return (
+      <div className="update-banner" role="alert">
+        <span>This tab is running an old version. Reload to continue safely.</span>
+        <Button onClick={() => location.reload()}>Reload now</Button>
+      </div>
+    );
+  }
+
+  if (status.state !== "update-available" && status.state !== "activating") {
     return null;
+  }
+
+  if (status.updateDeferred) {
+    return (
+      <div className="update-banner" role="status">
+        <span>
+          An update is ready and will apply automatically when your current work finishes
+          {status.blockingOperations.length > 0
+            ? ` (${describeOperations(status.blockingOperations)})`
+            : ""}
+          .
+        </span>
+      </div>
+    );
   }
 
   return (
     <div className="update-banner" role="status">
-      <span>A new version is ready.</span>
-      <Button onClick={() => void pendingUpdate()}>Update safely</Button>
+      <span>A new version is ready. Reloading applies it and briefly reopens the app.</span>
+      <Button
+        isDisabled={status.state === "activating" || controller === undefined}
+        onClick={() => void controller?.confirmUpdate()}
+      >
+        {status.state === "activating" ? "Updating…" : "Update and reload"}
+      </Button>
     </div>
   );
+}
+
+function describeOperations(operations: readonly string[]): string {
+  const labels: Record<string, string> = {
+    "import-commit": "an import is committing",
+    "bulk-edit": "a bulk edit is running",
+    backup: "a backup is in progress",
+    restore: "a restore is in progress",
+    migration: "a migration is running",
+    "brain-apply": "a Financial Brain change is applying",
+  };
+  const described = operations.map((operation) => labels[operation] ?? "an operation is running");
+  return described.join(", ");
 }

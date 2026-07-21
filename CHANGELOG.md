@@ -6,6 +6,16 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Added
 
+- PWA install, offline-update, storage, and cache-lifecycle hardening: an explicit service-worker
+  lifecycle state machine that downloads updates in the background and activates only after the user
+  confirms at a safe boundary, defers activation while an import, backup, bulk edit, or migration is
+  in progress, and coordinates multiple tabs over `BroadcastChannel`; an app-shell navigation
+  fallback so core routes open offline with no runtime caching; a Settings storage panel showing
+  usage/quota (labelled an estimate) and durable-persistence status, an install affordance with
+  Safari/iOS guidance, and a per-namespace cache inventory whose clear action never touches
+  IndexedDB, exports, or canonical workspaces; and a startup recovery screen that preserves all data
+  and offers retry, diagnostic export, and backup guidance when the local database cannot be opened
+  (ADR-014).
 - Local text-based PDF statement import: a `pdfjs-dist`-backed extractor running in an isolated
   worker with a hardened no-network, no-eval, no-active-content, no-nested-worker configuration; an
   immutable quantized text-page model; a pure layout-adapter registry with unique/confident adapter

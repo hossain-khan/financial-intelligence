@@ -60,6 +60,7 @@ import {
 import { validateFinancialBrain } from "@financial-intelligence/schemas";
 import {
   FinancialDatabase,
+  openFinancialDatabase,
   IndexedDbAccountRepository,
   IndexedDbAtomicLearningRepository,
   IndexedDbCategoryRepository,
@@ -359,3 +360,30 @@ export const applicationServices: ApplicationServices = {
   ),
   queryDashboardUseCase: new QueryDashboardUseCase(dashboardSnapshotRepository, clock),
 };
+
+/**
+ * Attempt to open (and migrate) the local database through the normal journaled path. Returns
+ * `ok` on success, or a bounded, sanitized failure the recovery screen can present. This never
+ * clears or deletes any store — a failed open must preserve all data and offer recovery/export,
+ * not treat cache deletion as a rollback (issue #27, NFR-030).
+ */
+export type DatabaseHealth =
+  { readonly ok: true } | { readonly ok: false; readonly code: string; readonly message: string };
+
+export async function checkDatabaseHealth(): Promise<DatabaseHealth> {
+  try {
+    await openFinancialDatabase(database);
+    return { ok: true };
+  } catch (error) {
+    const code =
+      typeof error === "object" && error !== null && "code" in error
+        ? String((error as { code: unknown }).code)
+        : "OPEN_FAILED";
+    return {
+      ok: false,
+      code,
+      message:
+        "The local database could not be opened. Your data has not been changed or deleted. Try again, export a diagnostic report, or restore from a backup.",
+    };
+  }
+}

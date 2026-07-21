@@ -1573,6 +1573,104 @@ table select {
     }
   }
 
+  .storage-panel-group {
+    margin-top: 2.5rem;
+    padding: 1.4rem;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .install-affordance h3,
+  .storage-estimate h3,
+  .cache-inventory h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.05rem;
+  }
+
+  .install-affordance p,
+  .storage-estimate p {
+    color: var(--ink-muted);
+    line-height: 1.5;
+  }
+
+  .cache-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .cache-row {
+    padding: 0.9rem;
+    background: var(--forest-soft);
+    border-radius: 12px;
+    display: grid;
+    gap: 0.6rem;
+  }
+
+  .cache-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 1rem;
+  }
+
+  .cache-summary span {
+    color: var(--ink-muted);
+    display: block;
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+
+  .cache-row .field-help {
+    color: var(--ink-muted);
+    font-size: 0.85rem;
+  }
+
+  .recovery-screen {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 1.5rem;
+    background: var(--cream, var(--paper));
+  }
+
+  .recovery-panel {
+    max-width: 34rem;
+    padding: 2rem;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+  }
+
+  .recovery-panel h1 {
+    margin: 0.25rem 0 1rem;
+  }
+
+  .recovery-panel p,
+  .recovery-guidance {
+    color: var(--ink-muted);
+    line-height: 1.6;
+  }
+
+  .recovery-detail code {
+    padding: 0.1rem 0.35rem;
+    background: var(--forest-soft);
+    border-radius: 6px;
+  }
+
+  .recovery-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 1.25rem 0;
+  }
+
   .update-banner {
     position: fixed;
     z-index: 10;
