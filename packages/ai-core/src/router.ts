@@ -64,6 +64,22 @@ export class AiRouter {
       return this.settle(input, "error", envelope.error.code, null, null);
     }
     if (!this.validEnvelope(input.task, "response", envelope.output) || !this.allowedOk(input, envelope.output)) {
+      if (this.deps.allowRepair === true) {
+        const hints = this.hintsFor(input, envelope.output);
+        const repaired = await this.dispatchRepair(input, hints, signal);
+        if (
+          repaired.ok &&
+          this.validEnvelope(input.task, "response", repaired.output) &&
+          this.allowedOk(input, repaired.output)
+        ) {
+          const repairedSuggestion: AiSuggestion = {
+            task: input.task,
+            output: repaired.output,
+            confidence: readConfidence(repaired.output),
+          };
+          return this.settle(input, "accepted", null, repairedSuggestion, repaired.output);
+        }
+      }
       return this.settle(input, "abstained", "invalid_output", null, null);
     }
 
@@ -73,6 +89,32 @@ export class AiRouter {
       confidence: readConfidence(envelope.output),
     };
     return this.settle(input, "accepted", null, suggestion, envelope.output);
+  }
+
+  private hintsFor(input: RouterExecuteInput, output: unknown): string[] {
+    const result = validateAiTask({
+      schemaVersion: SCHEMA_VERSION,
+      task: input.task,
+      direction: "response",
+      payload: output,
+    });
+    return result.valid ? ["allowed_id"] : result.errors.map((error) => error.keyword);
+  }
+
+  private async dispatchRepair(
+    input: RouterExecuteInput,
+    repairHints: string[],
+    signal: AbortSignal,
+  ) {
+    const payload = { ...(input.payload as object), repairHints };
+    try {
+      return await this.deps.provider.execute(
+        { task: input.task, payload },
+        { signal, deadlineMs: input.deadlineMs ?? DEFAULT_DEADLINE_MS },
+      );
+    } catch {
+      return { ok: false as const, error: aiError("provider_error", "Repair dispatch failed.") };
+    }
   }
 
   private validEnvelope(task: AiTaskId, direction: "request" | "response", payload: unknown): boolean {
