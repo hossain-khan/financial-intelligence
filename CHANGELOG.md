@@ -6,6 +6,9 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Added
 
+- Cloudflare Workers Static Assets reference deployment with a pinned Wrangler toolchain,
+  Git-connected production and preview guidance, SPA fallback, security-header reuse, and dry-run
+  validation.
 - Canonical product design-system guidance for visual tokens, typography, spacing, shared component
   patterns, responsive behavior, accessibility evidence, and reuse-before-invention agent workflow.
 - Mandatory documentation impact audits and a pull-request checklist that make each implementation

@@ -32,9 +32,22 @@ The application has no required backend. Optional remote AI providers are adapte
 | Unit/integration tests | Vitest, Testing Library, fake-indexeddb, fast-check | Prefer domain properties and contract tests over snapshot volume |
 | Browser tests | Playwright and axe-core | Cover critical flows, offline behavior, workers, migrations, and accessibility |
 | CI | GitHub Actions | Format, lint, typecheck, unit/contract tests, build, schema checks, browser smoke tests |
-| Hosting | Static HTTPS host with configurable security headers | No functions required; deployment must support CSP, Permissions-Policy, and immutable assets |
+| Hosting | Cloudflare Workers Static Assets reference deployment | Assets-only Worker; no functions, runtime bindings, or backend; preserve portability to hosts with equivalent SPA routing and security headers |
 
 Versions are pinned through the lockfile. Upgrades use the latest stable release compatible with the published browser and Node support matrices; experimental/canary packages require an ADR or isolated evaluation.
+
+### Reference hosting and delivery
+
+`wrangler.jsonc` publishes `apps/web/dist` as Cloudflare Workers Static Assets. The configuration uses
+single-page-application fallback for direct React Router navigation and consumes the `_headers` file
+copied by Vite. Wrangler is a pinned development dependency so local dry runs and Cloudflare Workers
+Builds use the same deployment contract. The configuration disables Wrangler usage metrics,
+dependency instrumentation, and Worker observability by default.
+
+Cloudflare is an asset host, not an application tier. Do not add a Worker entrypoint, D1, KV, R2,
+server-side rendering, or API route without a separate requirement, privacy/security review, and
+ADR. Production follows reviewed merges to `main`; non-production branches upload preview versions.
+See [ADR-009](adr/ADR-009-Cloudflare-Workers-Static-Hosting.md).
 
 TypeScript 7 supplies the repository's `tsc` executable. Until API-dependent tools support the new
 TypeScript API, the `typescript` module name resolves to Microsoft's TypeScript 6 compatibility

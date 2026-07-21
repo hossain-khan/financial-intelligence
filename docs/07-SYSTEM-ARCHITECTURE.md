@@ -149,7 +149,20 @@ This is a target layout, not permission to create all packages before a vertical
 
 ## Deployment
 
-Static assets may be hosted on any HTTPS static host. The deployed app must function without a first-party API. Security headers include a restrictive CSP, `Referrer-Policy`, `Permissions-Policy`, MIME sniffing protection, and cross-origin isolation only if required by a selected local runtime and compatible with deployment assets.
+The reference deployment is an assets-only Cloudflare Worker configured by `wrangler.jsonc`; see
+[ADR-009](adr/ADR-009-Cloudflare-Workers-Static-Hosting.md). Wrangler publishes `apps/web/dist` with
+single-page-application fallback so direct React Router navigations return the application shell.
+The Worker has no script entrypoint, runtime bindings, application API, or remote canonical store.
+
+Cloudflare Workers Builds promotes reviewed changes from `main` and uploads non-production branches
+as preview versions. This deployment step follows GitHub CI and does not replace the repository's
+quality gates. The checked-in `_headers` file supplies the restrictive CSP, `Referrer-Policy`,
+`Permissions-Policy`, MIME-sniffing protection, framing protection, and cache policy.
+
+The static artifact remains host-portable. Another HTTPS static host may replace Cloudflare when it
+implements equivalent SPA routing, asset caching, headers, and release verification. Cross-origin
+isolation is enabled only if a selected local runtime requires it and deployment assets remain
+compatible.
 
 ## Observability
 

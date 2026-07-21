@@ -63,6 +63,8 @@ passed repository verification and the supported Chromium, Firefox, and WebKit b
 - OFX/QFX parser adapters and fixtures.
 - Selected text-PDF adapter(s) based on demand and fixture availability.
 - Installable PWA, coordinated updates, storage management, model/source cache controls.
+- Git-connected Cloudflare Workers Static Assets reference deployment with SPA routing, security
+  headers, preview versions, and production verification.
 - Full backup encryption implementation, restore replacement/merge policy, and recovery documentation.
 - Published browser support and reference workload benchmarks.
 
