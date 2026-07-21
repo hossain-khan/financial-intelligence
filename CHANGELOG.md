@@ -6,6 +6,19 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Added
 
+- AI evaluation harness and release thresholds (issue #32, ADR-019): a new
+  `@financial-intelligence/ai-evaluation` package that imports only `ai-core` contracts and drives
+  providers through the same `AiProvider` interface the app uses. It ships a versioned, SHA-256
+  digest-locked synthetic corpus (one JSON file per case) with a fixture linter that rejects
+  real-data-shaped content; task-specific metrics (schema-valid/invalid-output rate, accuracy,
+  abstention precision/recall, allowed-ID grounding violations, privacy violations, latency
+  percentiles) with distinct refusal/timeout/invalid/abstention outcomes; six fake providers
+  (perfect, abstaining, malformed, leaky, slow, nondeterministic); an in-process runner with bounded
+  concurrency, per-case timeout, and cancellation; a profile-keyed result schema with
+  `compareEvalResults` regression comparison and an artifact privacy guard; and a threshold policy
+  with hard structural safety gates plus support records (`supported`/`experimental`/`failed`). No
+  real provider, model runtime, network access, CLI, or new CI workflow is added; fast fake-provider
+  self-tests run in the existing per-PR gate.
 - Provider-neutral AI core that opens Phase 4 (issue #31, ADR-018): a dependency-free
   `@financial-intelligence/ai-core` package with one generated versioned task wire schema
   (`schemas/ai-task.schema.json`) covering merchant resolution, category classification, query
