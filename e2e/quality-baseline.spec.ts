@@ -8,7 +8,13 @@ const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"];
 
 test("boots under the production CSP without runtime code generation", async ({ page }) => {
   const pageErrors: string[] = [];
+  const policyViolations: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error" && message.text().includes("Content Security Policy")) {
+      policyViolations.push(message.text());
+    }
+  });
 
   const response = await page.goto("/");
 
@@ -17,7 +23,9 @@ test("boots under the production CSP without runtime code generation", async ({ 
   );
   expect(response?.headers()["content-security-policy"]).not.toContain("'unsafe-eval'");
   await expect(page.getByText("No workspace exists on this device yet.")).toBeVisible();
+  await page.getByRole("button", { name: "Create workspace" }).click();
   expect(pageErrors).toEqual([]);
+  expect(policyViolations).toEqual([]);
 });
 
 test("creates and reloads a workspace without unexpected network access", async ({

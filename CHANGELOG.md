@@ -41,6 +41,8 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Fixed
 
+- Keep shared button press behavior compatible with the production style CSP and provide explicit
+  non-personal autofill context for encrypted-backup passphrase forms.
 - Precompile portable JSON Schema validators during the build so the deployed application starts
   under the production Content Security Policy without unsafe JavaScript evaluation, while retaining
   the narrow WebAssembly compilation permission required by local Argon2id backups.

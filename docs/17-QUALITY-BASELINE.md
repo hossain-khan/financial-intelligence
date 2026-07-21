@@ -55,8 +55,10 @@ The gate covers:
 - reflow at a 320 CSS pixel viewport and reduced-motion preference propagation;
 - a fail-closed local-mode network allow-list;
 - a negative request proving an unknown origin is blocked and reported.
-- application bootstrap under the production CSP, with unsafe evaluation absent and uncaught page
-  errors treated as failures.
+- application bootstrap and button press under the production CSP, with unsafe evaluation, style
+  policy console violations, and uncaught page errors treated as failures;
+- encrypted-backup password forms with explicit non-personal username context so password managers
+  do not misclassify them as incomplete login forms.
 
 Coverage thresholds apply to maintained runtime source. Machine-generated schema types and
 standalone validator modules are excluded from line accounting; schema contract, round-trip,

@@ -57,6 +57,9 @@ The app does not claim protection against a fully compromised device, malicious 
 ### Application and content security
 
 - Strict CSP; avoid inline scripts and unsafe evaluation.
+- Do not weaken `style-src` for an interaction library that mutates inline styles. Use a semantic
+  native/shared primitive whose pressed, disabled, focus, and selection behavior is expressed by
+  attributes and the project-owned stylesheet.
 - Compile JSON Schema validators into checked generated modules at build time; never use runtime
   schema compilation, `eval`, or `Function` construction in the browser bundle.
 - Limit the production script policy to same-origin code plus `'wasm-unsafe-eval'` for the reviewed

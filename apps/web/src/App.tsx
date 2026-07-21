@@ -14,7 +14,7 @@ import {
   useSyncExternalStore,
   type FormEvent,
 } from "react";
-import { Button, FieldError, Form, Input, Label, TextField } from "react-aria-components";
+import { FieldError, Form, Input, Label, TextField } from "react-aria-components";
 import {
   BrowserRouter,
   NavLink,
@@ -26,6 +26,7 @@ import {
 } from "react-router-dom";
 import type { DashboardFilterState } from "./DashboardPage";
 
+import { Button } from "./Button";
 import type { ApplicationServices } from "./infrastructure";
 import { getPendingApplicationUpdate, subscribeToApplicationUpdate } from "./pwa";
 
@@ -628,13 +629,13 @@ function AccountGroup({
                   <FieldError />
                 </TextField>
                 <Button type="submit">Save name</Button>
-                <Button type="button" onPress={() => void onArchive(account.id, !account.archived)}>
+                <Button type="button" onClick={() => void onArchive(account.id, !account.archived)}>
                   {account.archived ? "Restore" : "Archive"}
                 </Button>
                 <Button
                   type="button"
                   className="danger-button"
-                  onPress={() => onRequestDelete(account.id)}
+                  onClick={() => onRequestDelete(account.id)}
                 >
                   Delete
                 </Button>
@@ -644,11 +645,11 @@ function AccountGroup({
                   <p>Delete “{account.name}”? Deletion is blocked if any records reference it.</p>
                   <Button
                     className="danger-button"
-                    onPress={() => void onConfirmDelete(account.id)}
+                    onClick={() => void onConfirmDelete(account.id)}
                   >
                     Confirm delete
                   </Button>
-                  <Button onPress={onCancelDelete}>Cancel</Button>
+                  <Button onClick={onCancelDelete}>Cancel</Button>
                 </div>
               )}
             </li>
@@ -836,6 +837,14 @@ function SettingsPage({ services }: AppProperties) {
             No password recovery is possible. The passphrase and plaintext never leave this page.
           </p>
           <form onSubmit={(event) => void createBackup(event)}>
+            <input
+              type="text"
+              name="username"
+              autoComplete="username"
+              value="financial-intelligence-backup"
+              readOnly
+              hidden
+            />
             <label htmlFor="backup-workspace">Workspace</label>
             <select
               id="backup-workspace"
@@ -880,6 +889,14 @@ function SettingsPage({ services }: AppProperties) {
             Decrypts and validates in memory. It cannot merge, replace, or write workspace data.
           </p>
           <form onSubmit={(event) => void inspectBackup(event)}>
+            <input
+              type="text"
+              name="username"
+              autoComplete="username"
+              value="financial-intelligence-backup"
+              readOnly
+              hidden
+            />
             <label htmlFor="preview-file">Encrypted backup file</label>
             <input
               id="preview-file"
@@ -947,7 +964,7 @@ function UpdateBanner() {
   return (
     <div className="update-banner" role="status">
       <span>A new version is ready.</span>
-      <Button onPress={() => void pendingUpdate()}>Update safely</Button>
+      <Button onClick={() => void pendingUpdate()}>Update safely</Button>
     </div>
   );
 }

@@ -138,6 +138,10 @@ before adding variants. A new reusable pattern belongs in the shared component l
 
 ### Buttons and links
 
+- Use the shared native `Button` for ordinary actions. It preserves native keyboard/click semantics,
+  the existing `data-disabled` styling contract, and strict-CSP compatibility without runtime inline
+  style mutation. React Aria button/press primitives are not used unless their production bundle is
+  proven to operate without inline style writes.
 - One primary action per local decision area. Secondary and text actions remain visually quieter.
 - Button labels state the result: “Apply import,” “Confirm transfer,” or “Export CSV.” Avoid “OK,”
   “Submit,” and icon-only consequential actions.
@@ -225,8 +229,9 @@ WCAG 2.2 AA is the minimum target. Every new or changed surface must provide:
 - usable reflow at 320 CSS pixels and 200% zoom;
 - target sizes meeting the applicable WCAG minimum, preferably larger.
 
-React Aria Components are preferred for interaction primitives. An unstyled primitive supplies
-behavior, not permission to invent a new visual treatment.
+React Aria Components are preferred for interaction primitives when compatible with the production
+CSP. The shared native `Button` is the ordinary-action exception documented above. An unstyled
+primitive supplies behavior, not permission to invent a new visual treatment.
 
 ## Agent implementation workflow
 
@@ -281,4 +286,3 @@ palette, rhythm, shared selectors, and review workflow.
 - [Cash-flow and filtered export](18-CASH-FLOW-AND-FILTERED-EXPORT.md)
 - [Phase 2 implementation](20-PHASE-2-IMPLEMENTATION.md)
 - [ADR-004: Technology stack](adr/ADR-004-Technology-Stack.md)
-
