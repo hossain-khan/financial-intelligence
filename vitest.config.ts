@@ -9,6 +9,7 @@ export default defineConfig({
   },
   test: {
     coverage: {
+      exclude: ["packages/schemas/src/generated/**"],
       provider: "v8",
       reporter: ["text", "json", "html"],
       thresholds: {

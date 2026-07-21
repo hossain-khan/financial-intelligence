@@ -11,12 +11,12 @@
     "schema:generate": "node scripts/generate-types.mjs",
     "typecheck": "tsc -p tsconfig.json"
   },
-  "dependencies": {
-    "ajv": "8.20.0",
-    "ajv-formats": "3.0.1"
-  },
   "devDependencies": {
     "@financial-intelligence/domain": "workspace:*",
-    "json-schema-to-typescript": "15.0.4"
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "esbuild": "0.28.1",
+    "json-schema-to-typescript": "15.0.4",
+    "prettier": "3.9.5"
   }
 }

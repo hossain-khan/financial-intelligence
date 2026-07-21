@@ -47,6 +47,11 @@ The app does not claim protection against a fully compromised device, malicious 
 ### Application and content security
 
 - Strict CSP; avoid inline scripts and unsafe evaluation.
+- Compile JSON Schema validators into checked generated modules at build time; never use runtime
+  schema compilation, `eval`, or `Function` construction in the browser bundle.
+- Limit the production script policy to same-origin code plus `'wasm-unsafe-eval'` for the reviewed
+  local Argon2id adapter. This WebAssembly-specific source expression must not be replaced with the
+  broader `'unsafe-eval'` permission.
 - Render imported/model/plugin text as text, never raw HTML.
 - Trusted Types where browser/tooling support is practical.
 - Lock dependencies and verify build provenance; review high-risk parser/crypto/model dependencies.

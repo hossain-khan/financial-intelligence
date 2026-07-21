@@ -159,6 +159,14 @@ as preview versions. This deployment step follows GitHub CI and does not replace
 quality gates. The checked-in `_headers` file supplies the restrictive CSP, `Referrer-Policy`,
 `Permissions-Policy`, MIME-sniffing protection, framing protection, and cache policy.
 
+Portable JSON Schemas are compiled into standalone validator modules during schema generation.
+Production code imports those generated functions and must not initialize Ajv or compile schemas in
+the browser, because runtime compilation depends on dynamic code evaluation that the deployment CSP
+intentionally forbids. Schema generation and stale-artifact checks remain build-time concerns.
+The policy permits only the narrower WebAssembly compilation source expression needed by the local
+Argon2id backup adapter; it does not enable JavaScript `eval` or `Function` construction. See
+[ADR-010](adr/ADR-010-CSP-Safe-Generated-Validators-And-WebAssembly.md).
+
 The static artifact remains host-portable. Another HTTPS static host may replace Cloudflare when it
 implements equivalent SPA routing, asset caching, headers, and release verification. Cross-origin
 isolation is enabled only if a selected local runtime requires it and deployment assets remain

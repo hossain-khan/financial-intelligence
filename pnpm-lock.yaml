@@ -178,20 +178,25 @@ importers:
         version: 8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(terser@5.49.0)
 
   packages/schemas:
-    dependencies:
+    devDependencies:
+      "@financial-intelligence/domain":
+        specifier: workspace:*
+        version: link:../domain
       ajv:
         specifier: 8.20.0
         version: 8.20.0
       ajv-formats:
         specifier: 3.0.1
         version: 3.0.1(ajv@8.20.0)
-    devDependencies:
-      "@financial-intelligence/domain":
-        specifier: workspace:*
-        version: link:../domain
+      esbuild:
+        specifier: 0.28.1
+        version: 0.28.1
       json-schema-to-typescript:
         specifier: 15.0.4
         version: 15.0.4
+      prettier:
+        specifier: 3.9.5
+        version: 3.9.5
 
   packages/storage-indexeddb:
     dependencies:

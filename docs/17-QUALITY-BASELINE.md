@@ -42,8 +42,9 @@ pnpm browser:test:chromium
 ```
 
 `pnpm browser:test` runs Chromium, Firefox, and WebKit when all three binaries are installed. Tests
-use the production build, a temporary browser profile, synthetic workspace names, semantic
-role/label selectors, and retained traces only on failure. Reports and test output are ignored by Git.
+use the production build served by the pinned local Wrangler runtime so the checked-in `_headers`
+policy is exercised, a temporary browser profile, synthetic workspace names, semantic role/label
+selectors, and retained traces only on failure. Reports and test output are ignored by Git.
 
 The gate covers:
 
@@ -54,6 +55,12 @@ The gate covers:
 - reflow at a 320 CSS pixel viewport and reduced-motion preference propagation;
 - a fail-closed local-mode network allow-list;
 - a negative request proving an unknown origin is blocked and reported.
+- application bootstrap under the production CSP, with unsafe evaluation absent and uncaught page
+  errors treated as failures.
+
+Coverage thresholds apply to maintained runtime source. Machine-generated schema types and
+standalone validator modules are excluded from line accounting; schema contract, round-trip,
+generation-freshness, and CSP-safety tests validate those artifacts instead.
 
 Only the local application origin plus `blob:` and `data:` resources are allowed by the browser
 tests. Analytics, remote fonts, provider endpoints, and any unknown origin fail the local-mode gate.
@@ -94,8 +101,10 @@ pnpm security:headers:check -- apps/web/dist/_headers
 ```
 
 The check requires restrictive CSP, Permissions-Policy, Referrer-Policy, MIME sniffing protection,
-and framing protection, and rejects unsafe inline/eval CSP allowances. Hosts that do not consume the
-`_headers` format must translate the same policy and verify the actual HTTPS response before release.
+and framing protection. It rejects unsafe inline and JavaScript-eval allowances while requiring the
+narrow WebAssembly compilation source expression used by the reviewed local Argon2id adapter. Hosts
+that do not consume the `_headers` format must translate the same policy and verify the actual HTTPS
+response before release.
 
 ## Cloudflare deployment verification
 

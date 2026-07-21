@@ -39,6 +39,9 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Fixed
 
+- Precompile portable JSON Schema validators during the build so the deployed application starts
+  under the production Content Security Policy without unsafe JavaScript evaluation, while retaining
+  the narrow WebAssembly compilation permission required by local Argon2id backups.
 - Apply saved merchant aliases and deterministic rules during later imports instead of limiting rule evaluation to the review queue.
 - Keep confirmed and dismissed recurring decisions visible in recurring summaries.
 - Pass exact dashboard contribution IDs into ledger and cash-flow drilldown queries.

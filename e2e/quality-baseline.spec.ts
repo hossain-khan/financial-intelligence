@@ -6,6 +6,20 @@ import { installLocalNetworkGuard } from "./network-guard";
 const LOCAL_ORIGIN = "http://127.0.0.1:4173";
 const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"];
 
+test("boots under the production CSP without runtime code generation", async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+
+  const response = await page.goto("/");
+
+  expect(response?.headers()["content-security-policy"]).toContain(
+    "script-src 'self' 'wasm-unsafe-eval'",
+  );
+  expect(response?.headers()["content-security-policy"]).not.toContain("'unsafe-eval'");
+  await expect(page.getByText("No workspace exists on this device yet.")).toBeVisible();
+  expect(pageErrors).toEqual([]);
+});
+
 test("creates and reloads a workspace without unexpected network access", async ({
   context,
   page,
@@ -121,9 +135,7 @@ test("supports keyboard focus, narrow reflow, and reduced motion", async ({
 test("network guard fails closed for an unexpected endpoint", async ({ context, page }) => {
   const network = await installLocalNetworkGuard(context, LOCAL_ORIGIN);
   await page.goto("/");
-  await page.evaluate(async () => {
-    await fetch("https://unexpected.invalid/collect").catch(() => undefined);
-  });
+  await page.goto("https://unexpected.invalid/collect").catch(() => undefined);
 
   expect(network.unexpectedRequests).toEqual(["https://unexpected.invalid/collect"]);
   expect(() => network.assertClean()).toThrow("Unexpected local-mode network requests");

@@ -21,7 +21,7 @@ The application has no required backend. Optional remote AI providers are adapte
 | Routing | React Router | Client routes; route loaders must not imply a server dependency |
 | PWA | vite-plugin-pwa with Workbox `injectManifest` | Cache only versioned application assets and explicit model downloads |
 | Persistence | Dexie over IndexedDB | Use behind repository ports; never call it from domain code |
-| Portable validation | Ajv 2020 plus ajv-formats | The files in `/schemas` are the external contract source of truth |
+| Portable validation | Ajv 2020 standalone generation plus ajv-formats | The files in `/schemas` are the external contract source of truth; generated validators execute without runtime code generation |
 | Portable TypeScript types | json-schema-to-typescript | Generate from all root schemas; CI rejects stale artifacts |
 | Accessible UI | React Aria Components | Use unstyled accessible behavior with project-owned design tokens |
 | Styling | CSS Modules/custom properties or colocated plain CSS | No runtime CSS-in-JS; support forced colors, reduced motion, and content-driven breakpoints |
@@ -158,6 +158,9 @@ Worker protocols are versioned discriminated unions with operation ID, progress,
   pass through `Date`; UTC timestamps must use canonical uppercase `Z` notation.
 - Treat `/schemas` as the only hand-maintained portable contract. Run `pnpm schema:generate` after a
   schema change and `pnpm schema:check` in local verification and CI.
+- Keep Ajv and its format extensions in the build toolchain. Generate and bundle standalone
+  validator functions; application code must not compile schemas at runtime because the production
+  CSP forbids dynamic code evaluation.
 
 ## UI and accessibility
 
@@ -194,7 +197,9 @@ Model/runtime selection requires task quality, calibration, invalid-output, late
 
 ## Security guidelines
 
-- Deploy a restrictive CSP without unsafe evaluation or remote third-party scripts.
+- Deploy a restrictive CSP without JavaScript unsafe evaluation or remote third-party scripts. The
+  narrow `'wasm-unsafe-eval'` source expression exists only for reviewed local WebAssembly runtimes
+  such as the Argon2id backup adapter; see ADR-010.
 - Keep analytics, tag managers, remote fonts, and automatic diagnostics out of the default build.
 - Use Web Crypto authenticated encryption for backup payloads; select the memory-hard passphrase KDF through a reviewed ADR.
 - Use text nodes for all untrusted strings.

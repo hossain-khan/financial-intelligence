@@ -1,13 +1,11 @@
-import Ajv2020, { type ErrorObject, type ValidateFunction } from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
-
-import aiProviderSchema from "../../../schemas/ai-provider.schema.json";
-import categorySchema from "../../../schemas/category.schema.json";
-import dashboardSchema from "../../../schemas/dashboard.schema.json";
-import financialBrainSchema from "../../../schemas/financial-brain.schema.json";
-import importSchema from "../../../schemas/import.schema.json";
-import merchantSchema from "../../../schemas/merchant.schema.json";
-import transactionSchema from "../../../schemas/transaction.schema.json";
+import {
+  validateAiProviderSchema,
+  validateCategorySchema,
+  validateDashboardSchema,
+  validateFinancialBrainSchema,
+  validateImportSchema,
+  validateTransactionSchema,
+} from "./generated/validators";
 
 export type { AIProviderProfile } from "./generated/ai-provider";
 export type { Category } from "./generated/category";
@@ -27,45 +25,29 @@ export type ValidationResult =
   | { readonly valid: true; readonly errors: readonly [] }
   | { readonly valid: false; readonly errors: readonly ValidationFailure[] };
 
-const ajv = new Ajv2020({
-  allowUnionTypes: true,
-  allErrors: true,
-  strict: true,
-  strictRequired: false,
-});
-
-addFormats(ajv);
-
-for (const schema of [
-  aiProviderSchema,
-  categorySchema,
-  dashboardSchema,
-  financialBrainSchema,
-  importSchema,
-  merchantSchema,
-  transactionSchema,
-]) {
-  ajv.addSchema(schema);
+interface CompiledValidationError {
+  readonly instancePath: string;
+  readonly keyword: string;
+  readonly message?: string;
 }
 
-export const validateAiProvider = createValidator(aiProviderSchema.$id);
-export const validateCategory = createValidator(categorySchema.$id);
-export const validateDashboard = createValidator(dashboardSchema.$id);
-export const validateFinancialBrain = createValidator(financialBrainSchema.$id);
-export const validateImport = createValidator(importSchema.$id);
-export const validateTransaction = createValidator(transactionSchema.$id);
+interface CompiledValidator {
+  (value: unknown): boolean;
+  readonly errors?: readonly CompiledValidationError[] | null;
+}
 
-function createValidator(schemaId: string): (value: unknown) => ValidationResult {
-  const validate = ajv.getSchema(schemaId);
+export const validateAiProvider = createValidator(validateAiProviderSchema);
+export const validateCategory = createValidator(validateCategorySchema);
+export const validateDashboard = createValidator(validateDashboardSchema);
+export const validateFinancialBrain = createValidator(validateFinancialBrainSchema);
+export const validateImport = createValidator(validateImportSchema);
+export const validateTransaction = createValidator(validateTransactionSchema);
 
-  if (validate === undefined) {
-    throw new Error(`Schema was not registered: ${schemaId}`);
-  }
-
+function createValidator(validate: CompiledValidator): (value: unknown) => ValidationResult {
   return (value: unknown): ValidationResult => toResult(validate, value);
 }
 
-function toResult(validate: ValidateFunction, value: unknown): ValidationResult {
+function toResult(validate: CompiledValidator, value: unknown): ValidationResult {
   if (validate(value)) {
     return { valid: true, errors: [] };
   }
@@ -76,7 +58,7 @@ function toResult(validate: ValidateFunction, value: unknown): ValidationResult 
   };
 }
 
-function toFailure(error: ErrorObject): ValidationFailure {
+function toFailure(error: CompiledValidationError): ValidationFailure {
   return {
     instancePath: error.instancePath,
     keyword: error.keyword,
