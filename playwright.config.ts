@@ -19,9 +19,29 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
-    { name: "firefox", use: { ...devices["Desktop Firefox"] } },
-    { name: "webkit", use: { ...devices["Desktop Safari"] } },
+    // The functional browser gates run every spec except the performance smoke suite, which is a
+    // separate project so its timing runs are not mixed into cross-engine correctness checks.
+    {
+      name: "chromium",
+      testIgnore: /perf\//u,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "firefox",
+      testIgnore: /perf\//u,
+      use: { ...devices["Desktop Firefox"] },
+    },
+    {
+      name: "webkit",
+      testIgnore: /perf\//u,
+      use: { ...devices["Desktop Safari"] },
+    },
+    // Performance smoke: Chromium only, its own directory, run explicitly (`--project=perf`).
+    {
+      name: "perf",
+      testMatch: /perf\/.*\.spec\.ts$/u,
+      use: { ...devices["Desktop Chrome"] },
+    },
   ],
   webServer: {
     command:

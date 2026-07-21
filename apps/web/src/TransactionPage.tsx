@@ -27,6 +27,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import type { ApplicationServices } from "./infrastructure";
+import { mark, measure, PERF_MARKS } from "./perf-marks";
 import { BrainManagementView } from "./BrainManagementView";
 import { RecurringReviewSection } from "./RecurringReviewSection";
 import { TransferReviewSection } from "./TransferReviewSection";
@@ -80,6 +81,7 @@ export function TransactionPage({
   const accountInitialized = useRef(false);
 
   const refresh = useCallback(async () => {
+    mark(PERF_MARKS.ledgerRenderStart);
     const workspaces = await services.listWorkspaces.execute();
     const workspace = workspaces[0];
     const loadedAccounts =
@@ -157,6 +159,8 @@ export function TransactionPage({
     setRecurringProposals(loadedRecurring);
     accountInitialized.current = true;
     setStatus("ready");
+    mark(PERF_MARKS.ledgerRenderEnd);
+    measure("ledger-render", PERF_MARKS.ledgerRenderStart, PERF_MARKS.ledgerRenderEnd);
   }, [
     accountId,
     categoryId,

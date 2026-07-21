@@ -6,6 +6,16 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Added
 
+- Supported-browser, accessibility, and performance qualification harness: a new
+  `@financial-intelligence/qualification` package with a deterministic seeded workload generator
+  (reconciled decimal-safe totals, content-digest manifest, 1k/10k/50k tiers), a versioned
+  `PerfResult` schema that compares only matching environment profiles, and an artifact-privacy guard
+  that keeps descriptions/amounts/account labels out of any result. User-visible `performance.measure`
+  instrumentation (inert unless `?perf=1`), a Chromium `perf` Playwright project that measures the
+  NFR budgets and asserts bounded DOM, a `scripts/check-perf-result.mjs` validator, a non-blocking CI
+  `performance` job uploading a bounded artifact, and expanded axe coverage of the ledger, dashboard,
+  and backup/restore journeys. Core no-AI qualification passes without WebGPU (ADR-016,
+  docs/22-QUALIFICATION-MATRIX.md).
 - Production encrypted backup and restore: the workspace-backup payload gains a required
   authenticated manifest (per-section record counts, canonical byte lengths, and SHA-256 digests
   inside the AES-GCM payload) so truncated or tampered backups fail closed before any restore; the

@@ -110,3 +110,49 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+
+  performance:
+    # Informational qualification smoke: measures user-visible budgets on a synthetic workload and
+    # uploads a bounded, privacy-checked result artifact. It never fails the build while variance is
+    # being characterised; promotion to a blocking gate is a documented future review.
+    name: Performance smoke (informational)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run performance smoke (1k rows)
+        env:
+          PERF_ROWS: "1000"
+          PERF_ITERATIONS: "5"
+        run: pnpm exec playwright test --project=perf
+
+      - name: Validate perf result artifact
+        if: always()
+        run: node scripts/check-perf-result.mjs perf-results/qualification-1000.json
+
+      - name: Upload perf result
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: perf-results
+          path: perf-results/
+          retention-days: 14
