@@ -20,4 +20,12 @@ describe("buildClassifyPrompt", () => {
     );
     expect(prompt.toLowerCase()).toContain("untrusted");
   });
+
+  it("bounds the rationale length so the JSON does not truncate", () => {
+    const prompt = buildClassifyPrompt(
+      { descriptor: "x", direction: "outflow", allowedCategoryIds: ["a"] },
+      "1.0.0",
+    );
+    expect(prompt.toLowerCase()).toContain("one short sentence");
+  });
 });

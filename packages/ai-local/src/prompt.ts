@@ -12,6 +12,7 @@ export function buildClassifyPrompt(payload: unknown, promptVersion: string): st
     "Choose exactly one category id from the allowedCategoryIds provided in the DATA.",
     'Reply ONLY with JSON: {"categoryId": string, "confidence": number, "rationale": string}.',
     "The categoryId MUST be one of allowedCategoryIds. confidence is between 0 and 1.",
+    "Keep rationale to one short sentence (at most 20 words). Output only the JSON, nothing else.",
     `DATA: ${data}`,
   ].join("\n");
 }
