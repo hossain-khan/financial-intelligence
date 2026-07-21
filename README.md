@@ -55,10 +55,11 @@ Start with:
 - [Cash-flow summaries and filtered CSV export](docs/18-CASH-FLOW-AND-FILTERED-EXPORT.md)
 - [Phase 2 implementation and hardening](docs/20-PHASE-2-IMPLEMENTATION.md)
 - [Qualification matrix](docs/22-QUALIFICATION-MATRIX.md)
+- [Compatibility and recovery](docs/23-COMPATIBILITY-AND-RECOVERY.md)
 
 ## Project status
 
-**Phase 2 complete; Phase 3 in progress.** The offline PWA supports local CSV, OFX/QFX, and
+**Phase 2 and Phase 3 complete.** The offline PWA supports local CSV, OFX/QFX, and
 text-based PDF statement import, canonical ledger review, deterministic merchant/category learning,
 stale-safe Financial Brain
 apply/undo, recoverable transfer and recurring decisions, and revision-consistent financial
@@ -68,7 +69,9 @@ storage and cache controls, and a startup recovery path that never clears local 
 workspaces can be exported as authenticated encrypted backups and restored — as a new workspace, a
 replacement, or a conflict-free merge — with an atomic, staged, preview-first flow. A deterministic
 qualification harness measures browser, accessibility, and performance budgets on reconciled
-synthetic workloads and uploads privacy-checked result artifacts.
+synthetic workloads and uploads privacy-checked result artifacts. A compatibility registry, immutable
+released-format fixtures, and fresh-profile recovery drills prove that stored data, backups, and
+Financial Brains remain recoverable across supported version changes.
 
 ## Local development
 

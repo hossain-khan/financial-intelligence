@@ -1,0 +1,7 @@
+{
+  "canonical/import-1.0.0.json": "b98f91def6f4e136c79d3e53b4e44fe7a7e06ef3b508228ab2ca8a79abd40c23",
+  "canonical/transaction-1.0.0.json": "9a35a6596c361c970bdb3c4f6f82f6abac73fbec77759c06e72fedc7d2df2357",
+  "encrypted-backup/v1.0.0/passphrase.txt": "49af7a07bf90fdee47442f7664caaf9fcf59a816bf00ec02e842e3c4795aabaf",
+  "encrypted-backup/v1.0.0/workspace.fintbackup": "eb45493c10c33e016863d188abc940026b6f287a399478f2ebfefe227b3889cd",
+  "financial-brain/v1.0.0/brain.financial-brain.json": "dbd6c800ff5f90c37e499b609044e81cb5f5785dad430b8b4343af87152e27ac"
+}

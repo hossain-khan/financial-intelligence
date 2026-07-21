@@ -56,7 +56,8 @@ passed repository verification and the supported Chromium, Firefox, and WebKit b
 
 ## Phase 3 — Standard formats and resilient PWA
 
-**Status:** In progress.
+**Status:** Complete. All milestone issues (#25–#30) are merged; the format-contract, migration/
+recovery, performance, and WCAG 2.2 AA gates pass across the supported browser matrix.
 
 **Outcome:** Broader statement support and production-grade offline lifecycle.
 
@@ -90,7 +91,16 @@ passed repository verification and the supported Chromium, Firefox, and WebKit b
   qualification passes without WebGPU; capability recording is informational for Phase 4. See
   [Qualification matrix](22-QUALIFICATION-MATRIX.md).
 
-**Exit criteria:** Format contract suite, update/migration/recovery drills, performance and WCAG 2.2 AA gates pass.
+- Migration, format-compatibility, and disaster-recovery drills. **Done** (issue #30, ADR-017): a
+  machine-readable compatibility registry with a live-constant drift gate, an immutable released-
+  fixture corpus locked by SHA-256 digests, a version-matrix + fault-injection suite proving every
+  supported IndexedDB version upgrades losslessly (and aborts to the prior valid state on failure),
+  backup/Brain future-major/tamper/missing-section rejection against frozen bytes, fresh-profile
+  Playwright recovery drills, and a compatibility/recovery guide with user playbooks. Per-PR blocking
+  integrity + current/previous paths; scheduled full matrix. See
+  [Compatibility and recovery](23-COMPATIBILITY-AND-RECOVERY.md).
+
+**Exit criteria:** Format contract suite, update/migration/recovery drills, performance and WCAG 2.2 AA gates pass. **Met.**
 
 ## Phase 4 — Optional AI assistance
 

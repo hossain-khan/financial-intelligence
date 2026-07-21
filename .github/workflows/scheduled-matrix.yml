@@ -1,0 +1,94 @@
+name: Scheduled compatibility and qualification matrix
+
+# The full historical migration/compatibility matrix, the fresh-profile recovery drills, and the
+# larger performance workloads are run on a schedule (and on demand) rather than on every PR, to
+# bound PR duration. The high-signal current+previous compatibility paths, the registry-integrity
+# and immutable-fixture digest locks, and the PR performance smoke run in the per-PR workflow.
+on:
+  schedule:
+    - cron: "37 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compatibility-drills:
+    name: Recovery drills (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install browser
+        run: pnpm exec playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Run recovery drills
+        run: pnpm exec playwright test e2e/recovery-drills.spec.ts --project=${{ matrix.browser }}
+
+      - name: Upload drill report on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: recovery-drills-${{ matrix.browser }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  full-performance-matrix:
+    name: Performance (10k workload)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    continue-on-error: true
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run performance matrix (10k rows)
+        env:
+          PERF_ROWS: "10000"
+          PERF_ITERATIONS: "5"
+        run: pnpm exec playwright test --project=perf
+
+      - name: Upload perf result
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: perf-results-scheduled
+          path: perf-results/
+          retention-days: 30

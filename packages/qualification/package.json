@@ -11,5 +11,14 @@
   },
   "dependencies": {
     "@financial-intelligence/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "@financial-intelligence/backup": "workspace:*",
+    "@financial-intelligence/import-core": "workspace:*",
+    "@financial-intelligence/import-csv": "workspace:*",
+    "@financial-intelligence/import-ofx": "workspace:*",
+    "@financial-intelligence/import-pdf": "workspace:*",
+    "@financial-intelligence/schemas": "workspace:*",
+    "@financial-intelligence/storage-indexeddb": "workspace:*"
   }
 }

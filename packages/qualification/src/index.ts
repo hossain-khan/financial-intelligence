@@ -25,3 +25,15 @@ export type {
   ProfileComparison,
 } from "./result-schema";
 export { ArtifactPrivacyError, assertNoSensitiveContent } from "./privacy-guard";
+export {
+  COMPATIBILITY_REGISTRY,
+  COMPATIBILITY_REGISTRY_VERSION,
+  CompatibilityRegistryError,
+  assertRegistryIntegrity,
+  compatibilityAxis,
+} from "./compatibility-registry";
+export type {
+  CompatibilityAxis,
+  CompatibilityAxisId,
+  DowngradePolicy,
+} from "./compatibility-registry";

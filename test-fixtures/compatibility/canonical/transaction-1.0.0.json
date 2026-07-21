@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "018f6b80-0d62-7d2c-9a5c-7f5f59cda704",
+  "accountId": "018f6b80-0d62-7d2c-9a5c-7f5f59cda702",
+  "importId": "018f6b80-0d62-7d2c-9a5c-7f5f59cda703",
+  "postedDate": "2026-01-01",
+  "amount": "-12.34",
+  "currency": "CAD",
+  "description": "Fixture Merchant",
+  "tags": [],
+  "status": "posted",
+  "reviewState": "unreviewed",
+  "classifications": {},
+  "provenance": {
+    "parserId": "financial-intelligence/csv",
+    "parserVersion": "1.0.0",
+    "sourceLocation": "line:2",
+    "original": {},
+    "transformations": [
+      "mapping:1.0.0"
+    ]
+  },
+  "createdAt": "2026-01-02T00:00:00.000Z",
+  "updatedAt": "2026-01-02T00:00:00.000Z"
+}

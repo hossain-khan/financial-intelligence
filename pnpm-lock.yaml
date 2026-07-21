@@ -217,6 +217,28 @@ importers:
       "@financial-intelligence/domain":
         specifier: workspace:*
         version: link:../domain
+    devDependencies:
+      "@financial-intelligence/backup":
+        specifier: workspace:*
+        version: link:../backup
+      "@financial-intelligence/import-core":
+        specifier: workspace:*
+        version: link:../import-core
+      "@financial-intelligence/import-csv":
+        specifier: workspace:*
+        version: link:../import-csv
+      "@financial-intelligence/import-ofx":
+        specifier: workspace:*
+        version: link:../import-ofx
+      "@financial-intelligence/import-pdf":
+        specifier: workspace:*
+        version: link:../import-pdf
+      "@financial-intelligence/schemas":
+        specifier: workspace:*
+        version: link:../schemas
+      "@financial-intelligence/storage-indexeddb":
+        specifier: workspace:*
+        version: link:../storage-indexeddb
 
   packages/schemas:
     devDependencies:

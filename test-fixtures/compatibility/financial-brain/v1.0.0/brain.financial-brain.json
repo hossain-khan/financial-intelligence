@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0.0",
+  "brainId": "018f6b80-0d62-7d2c-9a5c-7f5f59cda705",
+  "createdAt": "2026-01-02T00:00:00.000Z",
+  "updatedAt": "2026-01-02T00:00:00.000Z",
+  "producer": {
+    "application": "Financial Intelligence",
+    "version": "0.1.0"
+  },
+  "categories": [],
+  "merchants": [],
+  "rules": [],
+  "recurringDecisions": [],
+  "preferences": {
+    "locale": "en-US",
+    "firstDayOfWeek": "monday",
+    "reviewConfidenceThreshold": 0.8
+  }
+}
