@@ -3,6 +3,7 @@ import type { Account, Merchant, TransactionReviewState } from "@financial-intel
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import type { ApplicationServices } from "./infrastructure";
+import { mark, measure, PERF_MARKS } from "./perf-marks";
 
 export interface DashboardFilterState {
   readonly accountId: string;
@@ -76,6 +77,7 @@ export function DashboardPage({
 
   useEffect(() => {
     let current = true;
+    mark(PERF_MARKS.dashboardQueryStart);
     void Promise.all([
       services.listWorkspaces.execute(),
       services.listMerchants.execute(),
@@ -90,6 +92,8 @@ export function DashboardPage({
         setMerchants(loadedMerchants.filter((merchant) => !merchant.archived));
         setReport(dashboard);
         setStatus("ready");
+        mark(PERF_MARKS.dashboardQueryEnd);
+        measure("dashboard-query", PERF_MARKS.dashboardQueryStart, PERF_MARKS.dashboardQueryEnd);
       })
       .catch((error: unknown) => {
         if (!current) return;

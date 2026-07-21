@@ -8,5 +8,6 @@ coverage/
 !.env.example
 playwright-report/
 test-results/
+perf-results/
 .vite/
 .wrangler/

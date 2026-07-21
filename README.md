@@ -54,6 +54,7 @@ Start with:
 - [Quality baseline and browser support](docs/17-QUALITY-BASELINE.md)
 - [Cash-flow summaries and filtered CSV export](docs/18-CASH-FLOW-AND-FILTERED-EXPORT.md)
 - [Phase 2 implementation and hardening](docs/20-PHASE-2-IMPLEMENTATION.md)
+- [Qualification matrix](docs/22-QUALIFICATION-MATRIX.md)
 
 ## Project status
 
@@ -65,7 +66,9 @@ dashboards with shared filters, accessible charts, exact drilldown, and design-s
 responsive presentation. It installs as an offline PWA with coordinated, data-safe updates,
 storage and cache controls, and a startup recovery path that never clears local data. Full
 workspaces can be exported as authenticated encrypted backups and restored — as a new workspace, a
-replacement, or a conflict-free merge — with an atomic, staged, preview-first flow.
+replacement, or a conflict-free merge — with an atomic, staged, preview-first flow. A deterministic
+qualification harness measures browser, accessibility, and performance budgets on reconciled
+synthetic workloads and uploads privacy-checked result artifacts.
 
 ## Local development
 

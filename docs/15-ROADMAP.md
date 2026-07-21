@@ -82,7 +82,13 @@ passed repository verification and the supported Chromium, Firefox, and WebKit b
   quota preflight, and atomic restore-as-new / replace / conflict-free merge with a metadata-only
   preview. Conflicting merges are rejected (documented v1 limitation) and there is no v1 backup
   reader.
-- Published browser support and reference workload benchmarks.
+- Published browser support and reference workload benchmarks. **Done** (issue #29, ADR-016): a
+  deterministic seeded-workload generator, a versioned performance-result schema with
+  environment-profile comparison and an artifact-privacy guard, user-visible timing instrumentation,
+  a Chromium perf-smoke Playwright project wired into CI as an informational (non-blocking) job, and
+  expanded axe coverage of the ledger, dashboard, and backup/restore journeys. Core no-AI
+  qualification passes without WebGPU; capability recording is informational for Phase 4. See
+  [Qualification matrix](22-QUALIFICATION-MATRIX.md).
 
 **Exit criteria:** Format contract suite, update/migration/recovery drills, performance and WCAG 2.2 AA gates pass.
 

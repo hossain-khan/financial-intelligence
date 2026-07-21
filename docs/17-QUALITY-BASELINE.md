@@ -153,9 +153,22 @@ For dependency changes:
 The generated inventories contain package metadata only and are not uploaded to a third-party
 analytics service. They are retained as bounded GitHub Actions artifacts.
 
+## Performance and qualification harness
+
+Issue #29 (ADR-016) adds a deterministic qualification harness on top of this baseline: seeded,
+reconciled synthetic workloads (`@financial-intelligence/qualification`), a versioned `PerfResult`
+schema with environment-profile-aware comparison, user-visible `performance.measure` instrumentation
+(inert unless `?perf=1`), a Chromium `perf` Playwright project, and expanded axe coverage of the
+ledger, dashboard, and backup/restore journeys. The CI `performance` job is **informational and
+non-blocking** while runner variance is characterised; it uploads a privacy-checked JSON artifact and
+never fails the build. Workload tiers, performance budgets (mapped to NFR-020..025), the capability
+matrix, and the manual release-evidence template live in [Qualification matrix](22-QUALIFICATION-MATRIX.md).
+Core no-AI qualification passes without WebGPU.
+
 ## Related documents
 
 - [Non-functional requirements](06-NON-FUNCTIONAL-REQUIREMENTS.md)
+- [Qualification matrix](22-QUALIFICATION-MATRIX.md)
 - [Security and privacy](12-SECURITY-AND-PRIVACY.md)
 - [UX guidelines](13-UX-GUIDELINES.md)
 - [Technology stack](16-TECHNOLOGY-STACK.md)
