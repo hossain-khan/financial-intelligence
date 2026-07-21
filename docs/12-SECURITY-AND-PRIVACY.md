@@ -131,7 +131,11 @@ Changing endpoint origin, disclosure template, or task scope invalidates prior c
 - Retaining source documents after extraction is opt-in.
 - Provenance retains only fields required to explain/repair the import and is length bounded.
 - Operation history is bounded and user-clearable.
-- Provider request/response bodies are not logged by default.
+- Provider request/response bodies are not logged by default. The AI execution audit
+  (`@financial-intelligence/ai-core`, [ADR-018](adr/ADR-018-Provider-Neutral-AI-Core.md)) records
+  only redacted input/output digests alongside task/schema/prompt version, profile/adapter/model
+  identity, execution location, consent state, outcome/error code, and a duration bucket — never the
+  prompt or response body.
 - Model artifacts are removable independently.
 - Financial Brain export contains reusable knowledge only; backup contains selected workspace data.
 - Learning and decision journals contain sensitive before/after state. They remain local, use

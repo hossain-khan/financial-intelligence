@@ -97,6 +97,8 @@ Model output must pass:
 
 Repair may retry once with validation errors but never guesses a category from malformed text. Repeated failure routes to review.
 
+The concrete contracts implementing this model live in `@financial-intelligence/ai-core` (issue #31, [ADR-018](adr/ADR-018-Provider-Neutral-AI-Core.md)): the four tasks share one generated wire schema (`schemas/ai-task.schema.json`); a router selects the single configured profile that supports the exact task version, validates request and response, enforces workspace-current allowed IDs at runtime, applies the one-shot repair policy, and settles exactly once under an `AbortSignal` and deadline. Providers expose only a payload-free `health()` and an `execute()` returning a typed envelope — they receive no repository or mutation capability. The default configuration is `kind: none`, and the rules-only path issues no AI network traffic.
+
 ## Explainability and confidence
 
 The UI exposes decision evidence, not hidden reasoning traces. Evidence examples: `matched_alias`, `matched_rule`, `similar_confirmed_merchant`, `model_category_candidate`, and `insufficient_evidence`. Confidence thresholds are task- and classifier-version-specific and calibrated on synthetic/public fixtures plus user-confirmed outcomes locally.
