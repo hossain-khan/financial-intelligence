@@ -56,11 +56,12 @@ passed repository verification and the supported Chromium, Firefox, and WebKit b
 
 ## Phase 3 — Standard formats and resilient PWA
 
-**Status:** Next planned phase.
+**Status:** Next planned phase. OFX/QFX parser adapters are implemented and merged; PDF adapters,
+PWA installability, and backup/restore recovery remain active work.
 
 **Outcome:** Broader statement support and production-grade offline lifecycle.
 
-- OFX/QFX parser adapters and fixtures.
+- ✅ OFX/QFX parser adapters and fixtures.
 - Selected text-PDF adapter(s) based on demand and fixture availability.
 - Installable PWA, coordinated updates, storage management, model/source cache controls.
 - Full backup encryption implementation, restore replacement/merge policy, and recovery documentation.

@@ -28,6 +28,9 @@ All notable changes to this project will be documented here. The format follows 
 - Atomic, stale-safe correction and Financial Brain operations with local before/after journals and conflict-safe undo.
 - Transactional transfer confirmation and recurring edit/split/merge/supersession/invalidation history with recoverable undo.
 - Revision-consistent dashboard snapshots, shared merchant/tag/review/recurring filters, URL-preserved navigation, accessible charts, and exact ledger drilldown.
+- OFX and QFX (OFX dialect) statement parser adapter in a dedicated worker with bounded SGML/XML
+  tokenization, transaction/account metadata extraction, format-neutral source mapping, and
+  supported-browser end-to-end tests.
 
 ### Changed
 

@@ -4,9 +4,11 @@ import {
   createCsvErrorReport,
   createFormatSignature,
   mapCsvSources,
+  mapStandardSources,
   sanitizeSpreadsheetCell,
   type CsvMapping,
   type CsvMappingSource,
+  type StandardMappingSource,
 } from "./mapping";
 
 const metadata = {
@@ -223,5 +225,110 @@ function mapping(overrides: Partial<CsvMapping> = {}): CsvMapping {
     dateFormat: "YYYY-MM-DD",
     numberFormat: { decimalSeparator: ".", groupSeparator: "," },
     ...overrides,
+  };
+}
+
+describe("mapStandardSources", () => {
+  it("maps OFX-style canonical fields to candidates", () => {
+    const result = mapStandardSources(
+      [
+        standardSource({
+          postedDate: "2026-07-18",
+          amount: "-4.25",
+          description: "Coffee",
+          currency: "CAD",
+          sourceTransactionId: "fitid-1",
+        }),
+      ],
+      { accountId: "account-1", accountCurrency: "CAD" },
+    );
+
+    expect(result.canContinue).toBe(true);
+    expect(result.candidates[0]).toMatchObject({
+      accountId: "account-1",
+      postedDate: "2026-07-18",
+      amount: "-4.25",
+      description: "Coffee",
+      currency: "CAD",
+      sourceTransactionId: "fitid-1",
+    });
+  });
+
+  it("rejects rows with currency mismatch", () => {
+    const result = mapStandardSources(
+      [
+        standardSource({
+          postedDate: "2026-07-18",
+          amount: "-4.25",
+          description: "Coffee",
+          currency: "USD",
+        }),
+      ],
+      { accountId: "account-1", accountCurrency: "CAD" },
+    );
+
+    expect(result.canContinue).toBe(false);
+    expect(result.issues.some((issue) => issue.code === "INVALID_CURRENCY")).toBe(true);
+  });
+
+  it("rejects invalid canonical dates", () => {
+    const result = mapStandardSources(
+      [
+        standardSource({
+          postedDate: "2026-02-30",
+          amount: "-4.25",
+          description: "Coffee",
+          currency: "CAD",
+        }),
+      ],
+      { accountId: "account-1", accountCurrency: "CAD" },
+    );
+
+    expect(result.canContinue).toBe(false);
+    expect(result.issues.some((issue) => issue.code === "INVALID_POSTED_DATE")).toBe(true);
+  });
+
+  it("rejects malformed canonical amounts", () => {
+    const result = mapStandardSources(
+      [
+        standardSource({
+          postedDate: "2026-07-18",
+          amount: "not money",
+          description: "Coffee",
+          currency: "CAD",
+        }),
+      ],
+      { accountId: "account-1", accountCurrency: "CAD" },
+    );
+
+    expect(result.canContinue).toBe(false);
+    expect(result.issues.some((issue) => issue.code === "INVALID_AMOUNT")).toBe(true);
+  });
+
+  it("rejects missing description", () => {
+    const result = mapStandardSources(
+      [
+        standardSource({
+          postedDate: "2026-07-18",
+          amount: "-4.25",
+          description: "",
+          currency: "CAD",
+        }),
+      ],
+      { accountId: "account-1", accountCurrency: "CAD" },
+    );
+
+    expect(result.canContinue).toBe(false);
+    expect(result.issues.some((issue) => issue.code === "INVALID_DESCRIPTION")).toBe(true);
+  });
+});
+
+function standardSource(fields: Record<string, string>): StandardMappingSource {
+  return {
+    metadata,
+    parserId: "financial-intelligence/ofx",
+    parserVersion: "1.0.0",
+    rows: [{ sourceLocation: "statement:1/transaction:1", fields }],
+    issues: [],
   };
 }

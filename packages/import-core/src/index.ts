@@ -90,6 +90,7 @@ export {
   createCsvErrorReport,
   createFormatSignature,
   mapCsvSources,
+  mapStandardSources,
   mappingPresetKey,
   sanitizeSpreadsheetCell,
 } from "./mapping";
@@ -104,4 +105,6 @@ export type {
   MappingPreset,
   MappingPreviewRow,
   NumberFormat,
+  StandardMapping,
+  StandardMappingSource,
 } from "./mapping";

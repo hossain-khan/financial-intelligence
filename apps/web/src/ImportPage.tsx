@@ -3,16 +3,19 @@ import {
   createCsvErrorReport,
   createFormatSignature,
   mapCsvSources,
+  mapStandardSources,
   type CsvMapping,
   type CsvMappingResult,
   type CsvMappingSource,
   type DateFormat,
+  type StandardMapping,
+  type StandardMappingSource,
 } from "@financial-intelligence/import-core";
 import { useEffect, useMemo, useState, type ChangeEvent, type DragEvent } from "react";
 
 import type { ApplicationServices } from "./infrastructure";
-import { parseCsvFiles } from "./csv-import";
 import { loadMappingPreset, saveMappingPreset } from "./mapping-presets";
+import { parseStatementFiles, type FileKind, type StatementSource } from "./statement-import";
 
 interface MappingDraft {
   readonly accountId: string;
@@ -54,20 +57,20 @@ const EMPTY_DRAFT: MappingDraft = {
 
 export interface ImportPageProperties {
   readonly services: ApplicationServices;
-  readonly parseFiles?: typeof parseCsvFiles;
+  readonly parseFiles?: typeof parseStatementFiles;
   readonly presetStorage?: Pick<Storage, "getItem" | "setItem">;
   readonly now?: () => string;
 }
 
 export function ImportPage({
   services,
-  parseFiles = parseCsvFiles,
+  parseFiles = parseStatementFiles,
   presetStorage = localStorage,
   now = () => new Date().toISOString(),
 }: ImportPageProperties) {
   const [workspaces, setWorkspaces] = useState<readonly Workspace[]>([]);
   const [accounts, setAccounts] = useState<readonly Account[]>([]);
-  const [sources, setSources] = useState<readonly CsvMappingSource[]>([]);
+  const [sources, setSources] = useState<readonly StatementSource[]>([]);
   const [draft, setDraft] = useState<MappingDraft>(EMPTY_DRAFT);
   const [status, setStatus] = useState<"loading" | "ready" | "parsing" | "error">("loading");
   const [message, setMessage] = useState<string>();
@@ -101,20 +104,28 @@ export function ImportPage({
     };
   }, [services]);
 
+  const sourceKind = useMemo(() => detectSourceKind(sources), [sources]);
   const headers = useMemo(() => {
+    if (sourceKind !== "csv") return [];
     const firstRow = sources[0]?.rows[0];
     return firstRow === undefined ? [] : Object.keys(firstRow.fields);
-  }, [sources]);
+  }, [sources, sourceKind]);
   const selectedAccount = accounts.find((account) => account.id === draft.accountId);
   const historyAccount = selectedAccount ?? accounts[0];
   const mapping = useMemo(
-    () => createMapping(draft, selectedAccount, headers),
-    [draft, selectedAccount, headers],
+    () => createMapping(draft, selectedAccount, headers, sourceKind),
+    [draft, selectedAccount, headers, sourceKind],
   );
-  const mapped = useMemo(
-    () => (mapping === undefined ? undefined : mapCsvSources(sources, mapping)),
-    [mapping, sources],
-  );
+  const mapped = useMemo(() => {
+    if (mapping === undefined) return undefined;
+    if (sourceKind === "ofx") {
+      return mapStandardSources(
+        sources as readonly StandardMappingSource[],
+        mapping as StandardMapping,
+      );
+    }
+    return mapCsvSources(sources as readonly CsvMappingSource[], mapping as CsvMapping);
+  }, [mapping, sources, sourceKind]);
 
   useEffect(() => {
     if (historyAccount === undefined) {
@@ -146,6 +157,11 @@ export function ImportPage({
       setSources(parsed);
       setStatus("ready");
       const first = parsed[0];
+      const detectedKind = detectSourceKind(parsed);
+      if (detectedKind === "ofx") {
+        setDraft({ ...EMPTY_DRAFT, accountId: draft.accountId });
+        return;
+      }
       const firstRow = first?.rows[0];
       const nextHeaders = firstRow === undefined ? [] : Object.keys(firstRow.fields);
       const suggested = suggestDraft(nextHeaders, draft.accountId);
@@ -169,7 +185,9 @@ export function ImportPage({
     } catch (error) {
       setStatus("error");
       setMessage(
-        error instanceof Error ? error.message : "The selected CSV files could not be parsed.",
+        error instanceof Error
+          ? error.message
+          : "The selected statement files could not be parsed.",
       );
     }
   };
@@ -233,16 +251,18 @@ export function ImportPage({
             original: { ...candidate.provenance.original },
           },
         })),
-        mapping: mappingSummary(mapping),
+        mapping: mappingSummary(mapping, sourceKind),
       });
-      const signature = createFormatSignature(headers, first.parserId, first.parserVersion);
-      saveMappingPreset(presetStorage, {
-        formatSignature: signature,
-        parserId: first.parserId,
-        parserVersion: first.parserVersion,
-        mapping,
-        now: now(),
-      });
+      if (sourceKind === "csv") {
+        const signature = createFormatSignature(headers, first.parserId, first.parserVersion);
+        saveMappingPreset(presetStorage, {
+          formatSignature: signature,
+          parserId: first.parserId,
+          parserVersion: first.parserVersion,
+          mapping: mapping as CsvMapping,
+          now: now(),
+        });
+      }
       setHistory(await services.listImportHistory.execute(mapping.accountId));
       setCommitStatus("committed");
       setPresetMessage(
@@ -261,7 +281,7 @@ export function ImportPage({
   return (
     <div className="import-page">
       <section className="import-heading" aria-labelledby="import-title">
-        <p className="eyebrow">Local CSV import</p>
+        <p className="eyebrow">Local statement import</p>
         <h1 id="import-title">Map every transaction before it enters your ledger.</h1>
         <p className="hero-copy">
           Files are parsed in a dedicated browser worker. This preview does not write canonical
@@ -273,7 +293,7 @@ export function ImportPage({
         <div className="section-heading">
           <div>
             <p className="eyebrow">Step 1</p>
-            <h2 id="source-title">Choose CSV statements</h2>
+            <h2 id="source-title">Choose CSV, OFX, or QFX statements</h2>
           </div>
           <span className="storage-chip">Local worker</span>
         </div>
@@ -284,11 +304,11 @@ export function ImportPage({
           onDragOver={(event) => event.preventDefault()}
           onDrop={onDrop}
         >
-          <label htmlFor="csv-files">Select one or more bounded CSV files</label>
+          <label htmlFor="statement-files">Select one or more bounded statement files</label>
           <input
-            id="csv-files"
+            id="statement-files"
             type="file"
-            accept=".csv,.tsv,text/csv,text/tab-separated-values"
+            accept=".csv,.tsv,.ofx,.qfx,text/csv,text/tab-separated-values,application/ofx,application/x-ofx,application/vnd.intu.qfx"
             multiple
             onChange={onFilesChanged}
           />
@@ -311,7 +331,7 @@ export function ImportPage({
         )}
       </section>
 
-      {sources.length > 0 && (
+      {sources.length > 0 && sourceKind === "csv" && (
         <MappingForm
           accounts={accounts}
           draft={draft}
@@ -321,10 +341,22 @@ export function ImportPage({
         />
       )}
 
+      {sources.length > 0 && sourceKind === "ofx" && (
+        <OfxMappingForm
+          accounts={accounts}
+          accountId={draft.accountId}
+          detectedMetadata={sources[0]?.detectedMetadata}
+          workspaceExists={workspaces.length > 0}
+          onChange={(accountId) => setDraft({ ...EMPTY_DRAFT, accountId })}
+        />
+      )}
+
       {sources.length > 0 && (
         <Preview
           result={mapped}
           mappingReady={mapping !== undefined}
+          sourceKind={sourceKind}
+          detectedMetadata={sources[0]?.detectedMetadata}
           isCommitting={commitStatus === "committing"}
           onConfirm={() => void confirmMapping()}
         />
@@ -570,14 +602,95 @@ function SelectField({
   );
 }
 
+function OfxMappingForm({
+  accounts,
+  accountId,
+  detectedMetadata,
+  workspaceExists,
+  onChange,
+}: {
+  readonly accounts: readonly Account[];
+  readonly accountId: string;
+  readonly detectedMetadata: Record<string, string | number | boolean> | undefined;
+  readonly workspaceExists: boolean;
+  readonly onChange: (accountId: string) => void;
+}) {
+  const currency =
+    typeof detectedMetadata?.currency === "string" ? detectedMetadata.currency : undefined;
+  const matchingAccount = accounts.find(
+    (account) => currency !== undefined && account.currency === currency,
+  );
+
+  return (
+    <section className="import-panel" aria-labelledby="mapping-title">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Step 2</p>
+          <h2 id="mapping-title">Confirm the target account</h2>
+        </div>
+        <span className="storage-chip">OFX parsed</span>
+      </div>
+      {!workspaceExists && (
+        <p className="error-message" role="alert">
+          Create a workspace and account before importing.
+        </p>
+      )}
+      {workspaceExists && accounts.length === 0 && (
+        <p className="error-message" role="alert">
+          Add an active account before importing.
+        </p>
+      )}
+      {detectedMetadata !== undefined && (
+        <dl className="ofx-metadata" aria-label="Detected OFX statement metadata">
+          <div>
+            <dt>Dialect</dt>
+            <dd>{String(detectedMetadata.dialect ?? "unknown")}</dd>
+          </div>
+          <div>
+            <dt>Account type</dt>
+            <dd>{String(detectedMetadata.accountType ?? "unknown")}</dd>
+          </div>
+          <div>
+            <dt>Account hint</dt>
+            <dd>{String(detectedMetadata.accountHint ?? "—")}</dd>
+          </div>
+          <div>
+            <dt>Statement currency</dt>
+            <dd>{String(detectedMetadata.currency ?? "—")}</dd>
+          </div>
+          <div>
+            <dt>Transactions</dt>
+            <dd>{String(detectedMetadata.transactionCount ?? "—")}</dd>
+          </div>
+        </dl>
+      )}
+      <form className="mapping-form" onSubmit={(event) => event.preventDefault()}>
+        <SelectField label="Target account" value={accountId} onChange={onChange} required>
+          <option value="">Choose an account</option>
+          {accounts.map((account) => (
+            <option key={account.id} value={account.id}>
+              {account.name} · {account.currency}
+              {account.id === matchingAccount?.id ? " (matches currency)" : ""}
+            </option>
+          ))}
+        </SelectField>
+      </form>
+    </section>
+  );
+}
+
 function Preview({
   result,
   mappingReady,
+  sourceKind,
+  detectedMetadata,
   isCommitting,
   onConfirm,
 }: {
   readonly result: CsvMappingResult | undefined;
   readonly mappingReady: boolean;
+  readonly sourceKind: FileKind | undefined;
+  readonly detectedMetadata: Record<string, string | number | boolean> | undefined;
   readonly isCommitting: boolean;
   readonly onConfirm: () => void;
 }) {
@@ -587,7 +700,9 @@ function Preview({
         <p className="eyebrow">Step 3</p>
         <h2 id="preview-title">Review the preview</h2>
         <p role="status">
-          Complete every required mapping and explicitly confirm date and amount direction.
+          {sourceKind === "ofx"
+            ? "Choose the target account and review the detected OFX statement."
+            : "Complete every required mapping and explicitly confirm date and amount direction."}
         </p>
       </section>
     );
@@ -626,6 +741,9 @@ function Preview({
           <dd>{result.totals.invalidRows}</dd>
         </div>
       </dl>
+      {sourceKind === "ofx" && detectedMetadata !== undefined && (
+        <OfxDetectedMetadata metadata={detectedMetadata} />
+      )}
       <div
         className="table-scroll"
         tabIndex={0}
@@ -740,17 +858,71 @@ function ImportHistory({
   );
 }
 
+function OfxDetectedMetadata({
+  metadata,
+}: {
+  readonly metadata: Record<string, string | number | boolean>;
+}) {
+  const ledgerBalance =
+    typeof metadata.ledgerBalanceAmount === "string" &&
+    typeof metadata.ledgerBalanceDate === "string"
+      ? `${metadata.ledgerBalanceAmount} as of ${metadata.ledgerBalanceDate}`
+      : undefined;
+  const availableBalance =
+    typeof metadata.availableBalanceAmount === "string" &&
+    typeof metadata.availableBalanceDate === "string"
+      ? `${metadata.availableBalanceAmount} as of ${metadata.availableBalanceDate}`
+      : undefined;
+  const unsupported =
+    typeof metadata.unsupportedSections === "string" ? metadata.unsupportedSections : undefined;
+
+  return (
+    <div className="ofx-reconciliation" aria-label="OFX reconciliation evidence">
+      <h3>Reconciliation evidence</h3>
+      <dl>
+        {ledgerBalance !== undefined && (
+          <div>
+            <dt>Ledger balance</dt>
+            <dd>{ledgerBalance}</dd>
+          </div>
+        )}
+        {availableBalance !== undefined && (
+          <div>
+            <dt>Available balance</dt>
+            <dd>{availableBalance}</dd>
+          </div>
+        )}
+        {unsupported !== undefined && (
+          <div>
+            <dt>Unsupported sections</dt>
+            <dd>{unsupported}</dd>
+          </div>
+        )}
+      </dl>
+      <p className="privacy-copy">Balances are shown as evidence, not as proof.</p>
+    </div>
+  );
+}
+
+function detectSourceKind(sources: readonly StatementSource[]): FileKind | undefined {
+  if (sources.length === 0) return undefined;
+  const parserId = sources[0]?.parserId;
+  if (parserId === "financial-intelligence/ofx") return "ofx";
+  if (parserId === "financial-intelligence/csv") return "csv";
+  return undefined;
+}
+
 function createMapping(
   draft: MappingDraft,
   account: Account | undefined,
   headers: readonly string[],
-): CsvMapping | undefined {
-  if (
-    account === undefined ||
-    draft.postedDateColumn === "" ||
-    draft.descriptionColumn === "" ||
-    draft.dateFormat === ""
-  )
+  kind: FileKind | undefined,
+): CsvMapping | StandardMapping | undefined {
+  if (account === undefined) return undefined;
+  if (kind === "ofx") {
+    return { accountId: account.id, accountCurrency: account.currency };
+  }
+  if (draft.postedDateColumn === "" || draft.descriptionColumn === "" || draft.dateFormat === "")
     return undefined;
   if (
     draft.amountKind === "signed" &&
@@ -849,24 +1021,34 @@ function draftFromPreset(
 }
 
 function mappingSummary(
-  mapping: CsvMapping,
+  mapping: CsvMapping | StandardMapping,
+  kind: FileKind | undefined,
 ): Readonly<Record<string, string | number | boolean | null>> {
+  if (kind === "ofx") {
+    return {
+      accountId: mapping.accountId,
+      accountCurrency: mapping.accountCurrency,
+    };
+  }
+  const csvMapping = mapping as CsvMapping;
   return {
-    postedDateColumn: mapping.postedDateColumn,
-    transactionDateColumn: mapping.transactionDateColumn ?? null,
-    descriptionColumn: mapping.descriptionColumn,
-    amountKind: mapping.amount.kind,
-    amountColumn: mapping.amount.kind === "signed" ? mapping.amount.column : null,
-    positiveDirection: mapping.amount.kind === "signed" ? mapping.amount.positiveDirection : null,
-    debitColumn: mapping.amount.kind === "debit-credit" ? mapping.amount.debitColumn : null,
-    creditColumn: mapping.amount.kind === "debit-credit" ? mapping.amount.creditColumn : null,
-    debitDirection: mapping.amount.kind === "debit-credit" ? mapping.amount.debitDirection : null,
-    currencyColumn: mapping.currencyColumn ?? null,
-    sourceTransactionIdColumn: mapping.sourceTransactionIdColumn ?? null,
-    statusColumn: mapping.statusColumn ?? null,
-    dateFormat: mapping.dateFormat,
-    decimalSeparator: mapping.numberFormat.decimalSeparator,
-    groupSeparator: mapping.numberFormat.groupSeparator,
+    postedDateColumn: csvMapping.postedDateColumn,
+    transactionDateColumn: csvMapping.transactionDateColumn ?? null,
+    descriptionColumn: csvMapping.descriptionColumn,
+    amountKind: csvMapping.amount.kind,
+    amountColumn: csvMapping.amount.kind === "signed" ? csvMapping.amount.column : null,
+    positiveDirection:
+      csvMapping.amount.kind === "signed" ? csvMapping.amount.positiveDirection : null,
+    debitColumn: csvMapping.amount.kind === "debit-credit" ? csvMapping.amount.debitColumn : null,
+    creditColumn: csvMapping.amount.kind === "debit-credit" ? csvMapping.amount.creditColumn : null,
+    debitDirection:
+      csvMapping.amount.kind === "debit-credit" ? csvMapping.amount.debitDirection : null,
+    currencyColumn: csvMapping.currencyColumn ?? null,
+    sourceTransactionIdColumn: csvMapping.sourceTransactionIdColumn ?? null,
+    statusColumn: csvMapping.statusColumn ?? null,
+    dateFormat: csvMapping.dateFormat,
+    decimalSeparator: csvMapping.numberFormat.decimalSeparator,
+    groupSeparator: csvMapping.numberFormat.groupSeparator,
   };
 }
 

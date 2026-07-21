@@ -91,9 +91,13 @@ After commit, run deterministic merchant/rule classification, duplicate review, 
 
 ## OFX/QFX behavior
 
-- Support documented SGML and XML variants chosen by implementation scope.
-- Prefer institution transaction ID for duplicate evidence but do not assume global uniqueness.
-- Preserve posted date and optional user/transaction date distinctly.
+- Support documented SGML (`OFX/1.x`) and XML (`OFX/2.x`) variants; treat QFX as an OFX dialect.
+- Parse in a dedicated worker with time/memory/output bounds and versioned parser metadata
+  (`financial-intelligence/ofx@1.0.0`).
+- Prefer institution transaction ID (`FITID`) for duplicate evidence but do not assume global
+  uniqueness; fall back to a deterministic fingerprint when `FITID` is absent.
+- Preserve posted date as the canonical date and carry an optional user/transaction date as source
+  metadata.
 - Map transaction type as source metadata, not directly to final category.
 - Never follow URLs or perform online-banking requests contained in the file.
 

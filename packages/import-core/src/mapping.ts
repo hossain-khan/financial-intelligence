@@ -45,6 +45,19 @@ export interface CsvMappingSource {
   readonly issues: readonly ImportIssue[];
 }
 
+export interface StandardMappingSource {
+  readonly metadata: SourceFileMetadata;
+  readonly parserId: string;
+  readonly parserVersion: string;
+  readonly rows: readonly SourceRow[];
+  readonly issues: readonly ImportIssue[];
+}
+
+export interface StandardMapping {
+  readonly accountId: string;
+  readonly accountCurrency: string;
+}
+
 export interface CandidateProvenance {
   readonly sourceFileSha256: string;
   readonly sourceLocation: string;
@@ -315,6 +328,149 @@ export function mapCsvSources(
   );
 }
 
+export function mapStandardSources(
+  sources: readonly StandardMappingSource[],
+  mapping: StandardMapping,
+): CsvMappingResult {
+  const configurationIssues = validateStandardMapping(sources, mapping);
+  const candidates: CanonicalTransactionCandidate[] = [];
+  const issues: CsvMappingIssue[] = [
+    ...sources.flatMap((source, sourceIndex) =>
+      source.issues.map((issue) =>
+        toMappingIssue(issue, sources.length === 1 ? undefined : sourceIndex + 1),
+      ),
+    ),
+    ...configurationIssues,
+  ];
+  const previewRows: MappingPreviewRow[] = [];
+  let inflowMinor = 0n;
+  let outflowMinor = 0n;
+  let invalidRows = 0;
+
+  if (configurationIssues.some((issue) => issue.severity === "error")) {
+    return result(candidates, issues, previewRows, mapping.accountCurrency, 0n, 0n, 0);
+  }
+
+  for (const [sourceIndex, source] of sources.entries()) {
+    for (const row of source.rows) {
+      const sourceLocation =
+        sources.length === 1
+          ? row.sourceLocation
+          : `source:${sourceIndex + 1}/${row.sourceLocation}`;
+      const rowIssues: CsvMappingIssue[] = [];
+      const postedDate = validateCanonicalDate(
+        row.fields["postedDate"],
+        "postedDate",
+        sourceLocation,
+        rowIssues,
+      );
+      const transactionDate = validateCanonicalDate(
+        row.fields["transactionDate"],
+        "transactionDate",
+        sourceLocation,
+        rowIssues,
+        true,
+      );
+      const originalDescription = row.fields["description"] ?? "";
+      const description = validateDescription(
+        originalDescription,
+        "description",
+        sourceLocation,
+        rowIssues,
+      );
+      const amountResult = parseCanonicalAmount(row.fields["amount"], sourceLocation, rowIssues);
+      const currency = validateCurrency(
+        row.fields["currency"] ?? mapping.accountCurrency,
+        mapping.accountCurrency,
+        sourceLocation,
+        rowIssues,
+      );
+      const sourceTransactionId = validateSourceTransactionId(
+        row.fields["sourceTransactionId"],
+        sourceLocation,
+        rowIssues,
+      );
+      const status = validateStatus(row.fields["status"], sourceLocation, rowIssues);
+
+      const rowErrors = rowIssues.filter((issue) => issue.severity === "error");
+      issues.push(...rowIssues);
+      if (
+        postedDate === undefined ||
+        description.length === 0 ||
+        amountResult === undefined ||
+        rowErrors.length > 0
+      ) {
+        invalidRows += 1;
+        previewRows.push({
+          sourceLocation,
+          status: "invalid",
+          ...(postedDate === undefined ? {} : { postedDate }),
+          ...(description.length === 0 ? {} : { description }),
+          ...(amountResult === undefined
+            ? {}
+            : { amount: minorToDecimal(amountResult.signedMinor) }),
+          ...(currency.length === 0 ? {} : { currency }),
+          issueCodes: rowIssues.map((issue) => issue.code),
+        });
+        continue;
+      }
+
+      const amount = minorToDecimal(amountResult.signedMinor);
+      const candidate: CanonicalTransactionCandidate = {
+        accountId: mapping.accountId,
+        postedDate,
+        ...(transactionDate === undefined ? {} : { transactionDate }),
+        description,
+        amount,
+        currency,
+        ...(sourceTransactionId === undefined ? {} : { sourceTransactionId }),
+        ...(status === undefined ? {} : { status: status as "pending" | "posted" | "void" }),
+        provenance: {
+          sourceFileSha256: source.metadata.sha256,
+          sourceLocation,
+          parserId: source.parserId,
+          parserVersion: source.parserVersion,
+          mappingVersion: MAPPING_VERSION,
+          original: {
+            postedDate: bounded(row.fields["postedDate"] ?? ""),
+            ...(row.fields["transactionDate"] === undefined
+              ? {}
+              : { transactionDate: bounded(row.fields["transactionDate"] ?? "") }),
+            description: bounded(originalDescription),
+            amount: bounded(amountResult.original),
+            ...(sourceTransactionId === undefined
+              ? {}
+              : { sourceTransactionId: bounded(sourceTransactionId) }),
+            ...(status === undefined ? {} : { status: bounded(row.fields["status"] ?? "") }),
+          },
+        },
+      };
+      candidates.push(candidate);
+      if (amountResult.signedMinor > 0n) inflowMinor += amountResult.signedMinor;
+      if (amountResult.signedMinor < 0n) outflowMinor += -amountResult.signedMinor;
+      previewRows.push({
+        sourceLocation,
+        status: "valid",
+        postedDate,
+        description,
+        amount,
+        currency,
+        issueCodes: rowIssues.map((issue) => issue.code),
+      });
+    }
+  }
+
+  return result(
+    candidates,
+    issues.slice(0, MAX_ISSUES),
+    representativePreview(previewRows),
+    mapping.accountCurrency,
+    inflowMinor,
+    outflowMinor,
+    invalidRows,
+  );
+}
+
 export function createFormatSignature(
   headers: readonly string[],
   parserId: string,
@@ -375,22 +531,7 @@ function validateMapping(
     });
     return issues;
   }
-  if (mapping.accountId.trim().length === 0) {
-    issues.push({
-      code: "ACCOUNT_REQUIRED",
-      severity: "error",
-      field: "accountId",
-      message: "Choose a target account.",
-    });
-  }
-  if (!/^[A-Z]{3}$/u.test(mapping.accountCurrency)) {
-    issues.push({
-      code: "ACCOUNT_CURRENCY_INVALID",
-      severity: "error",
-      field: "accountCurrency",
-      message: "The target account must have a valid currency.",
-    });
-  }
+  issues.push(...validateAccountMapping(mapping.accountId, mapping.accountCurrency));
   const mappedColumns = allMappedColumns(mapping);
   const duplicate = mappedColumns.find((column, index) => mappedColumns.indexOf(column) !== index);
   if (duplicate !== undefined) {
@@ -422,6 +563,47 @@ function validateMapping(
       severity: "error",
       field: "numberFormat",
       message: "Decimal and group separators must be different.",
+    });
+  }
+  return issues;
+}
+
+function validateStandardMapping(
+  sources: readonly StandardMappingSource[],
+  mapping: StandardMapping,
+): readonly CsvMappingIssue[] {
+  const issues: CsvMappingIssue[] = [];
+  if (sources.length === 0) {
+    issues.push({
+      code: "NO_SOURCE",
+      severity: "error",
+      message: "Choose at least one parsed statement file.",
+    });
+    return issues;
+  }
+  issues.push(...validateAccountMapping(mapping.accountId, mapping.accountCurrency));
+  return issues;
+}
+
+function validateAccountMapping(
+  accountId: string,
+  accountCurrency: string,
+): readonly CsvMappingIssue[] {
+  const issues: CsvMappingIssue[] = [];
+  if (accountId.trim().length === 0) {
+    issues.push({
+      code: "ACCOUNT_REQUIRED",
+      severity: "error",
+      field: "accountId",
+      message: "Choose a target account.",
+    });
+  }
+  if (!/^[A-Z]{3}$/u.test(accountCurrency)) {
+    issues.push({
+      code: "ACCOUNT_CURRENCY_INVALID",
+      severity: "error",
+      field: "accountCurrency",
+      message: "The target account must have a valid currency.",
     });
   }
   return issues;
@@ -575,6 +757,192 @@ function parseAmount(value: string, format: NumberFormat): bigint | undefined {
   let minor = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, "0"));
   if (parenthesized || explicitNegative) minor = -minor;
   return minor;
+}
+
+function validateCanonicalDate(
+  value: string | undefined,
+  field: string,
+  location: string,
+  issues: CsvMappingIssue[],
+  allowEmpty = false,
+): string | undefined {
+  const raw = value?.trim() ?? "";
+  if (allowEmpty && raw.length === 0) return undefined;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(raw);
+  if (match === null) {
+    issues.push(
+      fieldIssue(
+        location,
+        field,
+        "Date is not in YYYY-MM-DD format",
+        raw,
+        "Correct the value or use a parser that emits canonical dates.",
+      ),
+    );
+    return undefined;
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!validCalendarDate(year, month, day)) {
+    issues.push(
+      fieldIssue(
+        location,
+        field,
+        "Date is not a valid calendar date",
+        raw,
+        "Correct the day, month, or year in the source row.",
+      ),
+    );
+    return undefined;
+  }
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function parseCanonicalAmount(
+  value: string | undefined,
+  location: string,
+  issues: CsvMappingIssue[],
+): { readonly signedMinor: bigint; readonly original: string } | undefined {
+  const original = value?.trim() ?? "";
+  if (original.length === 0) {
+    issues.push(
+      fieldIssue(
+        location,
+        "amount",
+        "Amount is required",
+        original,
+        "Use a parser that emits signed decimal amounts.",
+      ),
+    );
+    return undefined;
+  }
+  const normalized = original.normalize("NFKC");
+  if (!/^[+-]?\d+\.\d{2}$/u.test(normalized)) {
+    issues.push(
+      fieldIssue(
+        location,
+        "amount",
+        "Amount is not a valid signed decimal with exactly two decimal places",
+        original,
+        "Correct the amount or use a parser that emits canonical decimal amounts.",
+      ),
+    );
+    return undefined;
+  }
+  const sign = normalized.startsWith("-") ? -1n : 1n;
+  const unsigned = normalized.replace(/^[+-]/u, "");
+  const [whole = "0", fraction = "00"] = unsigned.split(".");
+  const signedMinor = sign * (BigInt(whole) * 100n + BigInt(fraction));
+  return { signedMinor, original };
+}
+
+function validateDescription(
+  value: string,
+  field: string,
+  location: string,
+  issues: CsvMappingIssue[],
+): string {
+  const description = normalizeDescription(value);
+  if (description.length === 0) {
+    issues.push(
+      fieldIssue(
+        location,
+        field,
+        "A description is required",
+        value,
+        "Use a parser that populates the description field.",
+      ),
+    );
+  } else if (description.length > 1_000) {
+    issues.push(
+      fieldIssue(
+        location,
+        field,
+        "Description exceeds the 1,000 character limit",
+        value,
+        "Shorten the description in the source row before importing.",
+      ),
+    );
+  }
+  return description;
+}
+
+function validateCurrency(
+  value: string,
+  accountCurrency: string,
+  location: string,
+  issues: CsvMappingIssue[],
+): string {
+  const currency = normalizeCurrency(value);
+  if (!/^[A-Z]{3}$/u.test(currency)) {
+    issues.push(
+      fieldIssue(
+        location,
+        "currency",
+        "Currency must be a three-letter uppercase code",
+        currency,
+        "Choose the account currency or use a parser that emits valid ISO currency.",
+      ),
+    );
+  } else if (currency !== accountCurrency) {
+    issues.push(
+      fieldIssue(
+        location,
+        "currency",
+        `Row currency does not match target account currency ${accountCurrency}`,
+        currency,
+        "Choose an account with the same currency or correct the source currency.",
+      ),
+    );
+  }
+  return currency;
+}
+
+function validateSourceTransactionId(
+  value: string | undefined,
+  location: string,
+  issues: CsvMappingIssue[],
+): string | undefined {
+  if (value === undefined) return undefined;
+  const normalized = value.trim();
+  if (normalized.length === 0) return undefined;
+  if (normalized.length > 240) {
+    issues.push(
+      fieldIssue(
+        location,
+        "sourceTransactionId",
+        "Source transaction ID exceeds the 240 character limit",
+        normalized,
+        "Use a shorter source identifier or omit the source transaction ID.",
+      ),
+    );
+    return undefined;
+  }
+  return normalized;
+}
+
+function validateStatus(
+  value: string | undefined,
+  location: string,
+  issues: CsvMappingIssue[],
+): "pending" | "posted" | "void" | undefined {
+  if (value === undefined) return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (normalized.length === 0) return undefined;
+  if (!isTransactionStatus(normalized)) {
+    issues.push(
+      fieldIssue(
+        location,
+        "status",
+        "Status must be pending, posted, or void",
+        value,
+        "Correct the status value or leave it unmapped.",
+      ),
+    );
+    return undefined;
+  }
+  return normalized;
 }
 
 function result(

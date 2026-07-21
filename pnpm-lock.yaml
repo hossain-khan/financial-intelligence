@@ -85,6 +85,9 @@ importers:
       "@financial-intelligence/import-csv":
         specifier: workspace:*
         version: link:../../packages/import-csv
+      "@financial-intelligence/import-ofx":
+        specifier: workspace:*
+        version: link:../../packages/import-ofx
       "@financial-intelligence/schemas":
         specifier: workspace:*
         version: link:../../packages/schemas
@@ -169,6 +172,16 @@ importers:
       csv-parse:
         specifier: 7.0.1
         version: 7.0.1
+    devDependencies:
+      vite:
+        specifier: 8.1.5
+        version: 8.1.5(@types/node@26.1.1)(terser@5.49.0)
+
+  packages/import-ofx:
+    dependencies:
+      "@financial-intelligence/import-core":
+        specifier: workspace:*
+        version: link:../import-core
     devDependencies:
       vite:
         specifier: 8.1.5

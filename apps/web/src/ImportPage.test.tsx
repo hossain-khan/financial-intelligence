@@ -9,13 +9,13 @@ import {
   parseUtcTimestamp,
   parseWorkspaceId,
 } from "@financial-intelligence/domain";
-import type { CsvMappingSource } from "@financial-intelligence/import-core";
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ApplicationServices } from "./infrastructure";
 import { ImportPage } from "./ImportPage";
+import type { StatementSourceBase } from "./statement-import";
 
 afterEach(cleanup);
 
@@ -24,7 +24,7 @@ describe("ImportPage", () => {
     const parseFiles = vi.fn(async () => [validSource()]);
     const { commitExecute } = renderPage(parseFiles);
 
-    const picker = await screen.findByLabelText("Select one or more bounded CSV files");
+    const picker = await screen.findByLabelText("Select one or more bounded statement files");
     expect(picker).toHaveAttribute("multiple");
     fireEvent.change(picker, {
       target: { files: [new File(["safe"], "statement.csv", { type: "text/csv" })] },
@@ -68,7 +68,7 @@ describe("ImportPage", () => {
     const { commitExecute } = renderPage(async () => {
       throw new Error("Synthetic worker failure");
     });
-    const picker = await screen.findByLabelText("Select one or more bounded CSV files");
+    const picker = await screen.findByLabelText("Select one or more bounded statement files");
     fireEvent.change(picker, { target: { files: [new File(["safe"], "statement.csv")] } });
     expect(await screen.findByText("Synthetic worker failure")).toHaveAttribute("role", "alert");
     expect(commitExecute).not.toHaveBeenCalled();
@@ -82,7 +82,7 @@ describe("ImportPage", () => {
       Balance: "$0.00",
     });
     renderPage(async () => [invalid]);
-    const picker = await screen.findByLabelText("Select one or more bounded CSV files");
+    const picker = await screen.findByLabelText("Select one or more bounded statement files");
     fireEvent.change(picker, { target: { files: [new File(["safe"], "statement.csv")] } });
     await screen.findByText(/Parsed 1 source file/);
     fireEvent.change(screen.getByRole("combobox", { name: "Target account" }), {
@@ -106,7 +106,9 @@ describe("ImportPage", () => {
 const WORKSPACE_ID = "018f6b80-0d62-7d2c-9a5c-7f5f59cda2f1";
 const ACCOUNT_ID = "018f6b80-0d62-7d2c-9a5c-7f5f59cda2f2";
 
-function renderPage(parseFiles: (files: readonly File[]) => Promise<readonly CsvMappingSource[]>) {
+function renderPage(
+  parseFiles: (files: readonly File[]) => Promise<readonly StatementSourceBase[]>,
+) {
   const workspace = createWorkspace({
     id: parseWorkspaceId(WORKSPACE_ID),
     name: "Household",
@@ -182,7 +184,7 @@ function historyImport(account: ReturnType<typeof createAccount>) {
   });
 }
 
-function validSource(firstRow?: Record<string, string>): CsvMappingSource {
+function validSource(firstRow?: Record<string, string>): StatementSourceBase {
   return {
     metadata: {
       fileName: "statement.csv",
@@ -213,5 +215,6 @@ function validSource(firstRow?: Record<string, string>): CsvMappingSource {
       },
     ],
     issues: [],
+    detectedMetadata: undefined,
   };
 }
