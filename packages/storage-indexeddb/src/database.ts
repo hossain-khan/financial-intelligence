@@ -1,4 +1,5 @@
 import type {
+  AiProviderConfigRepository,
   AtomicImportCommitPlan,
   CancellationSignal,
   ImportCommitRepository,
@@ -24,6 +25,7 @@ import {
   WORKSPACE_BACKUP_VERSION,
   type WorkspaceBackupSnapshot,
 } from "@financial-intelligence/backup";
+import type { AIProviderProfile } from "@financial-intelligence/schemas";
 import {
   importFromCanonical,
   importToCanonical,
@@ -69,6 +71,7 @@ type TransactionFingerprintRecord = TransactionFingerprint;
 type CategoryRecord = Category;
 type MerchantRecord = Merchant;
 type ClassificationRuleRecord = ClassificationRule;
+type AiProviderProfileRecord = AIProviderProfile;
 export type TransferDecisionRecord = TransferLink;
 interface TransactionOperationRecord {
   readonly id: string;
@@ -117,6 +120,7 @@ export class FinancialDatabase extends Dexie {
   public decisionEvents!: EntityTable<DecisionEventRecord, "id">;
   public transactionOperations!: EntityTable<TransactionOperationRecord, "id">;
   public duplicateResolutionEvents!: EntityTable<DuplicateResolutionEventRecord, "id">;
+  public aiProviderProfiles!: EntityTable<AiProviderProfileRecord, "id">;
   public migrationJournal!: EntityTable<MigrationJournalRecord, "id">;
   public readonly declaredVersion: number;
 
@@ -275,6 +279,30 @@ export class IndexedDbWorkspaceRepository implements WorkspaceRepository {
     try {
       await openFinancialDatabase(this.database);
       return await this.database.workspaces.get(id);
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+}
+
+export class IndexedDbAiProviderProfileRepository implements AiProviderConfigRepository {
+  public constructor(private readonly database: FinancialDatabase) {}
+
+  public async findActive(): Promise<AIProviderProfile | undefined> {
+    try {
+      await openFinancialDatabase(this.database);
+      return await this.database.aiProviderProfiles.orderBy("updatedAt").last();
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  public async save(profile: AIProviderProfile): Promise<void> {
+    try {
+      await openFinancialDatabase(this.database);
+      await this.database.transaction("rw", this.database.aiProviderProfiles, async () => {
+        await this.database.aiProviderProfiles.put(profile);
+      });
     } catch (error) {
       throw normalizeStorageError(error);
     }

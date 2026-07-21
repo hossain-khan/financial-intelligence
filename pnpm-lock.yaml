@@ -285,6 +285,9 @@ importers:
       '@financial-intelligence/domain':
         specifier: workspace:*
         version: link:../domain
+      '@financial-intelligence/schemas':
+        specifier: workspace:*
+        version: link:../schemas
       dexie:
         specifier: 4.4.4
         version: 4.4.4

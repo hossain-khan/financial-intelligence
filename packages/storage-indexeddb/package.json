@@ -13,6 +13,7 @@
     "@financial-intelligence/application": "workspace:*",
     "@financial-intelligence/backup": "workspace:*",
     "@financial-intelligence/domain": "workspace:*",
+    "@financial-intelligence/schemas": "workspace:*",
     "dexie": "4.4.4"
   }
 }
