@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import { installLocalNetworkGuard } from "../network-guard";
 import { BUDGETS, buildMetric, digestLabel, perfReader, writePerfResult } from "./harness";
@@ -70,27 +70,21 @@ test("qualification smoke: import, ledger, and dashboard budgets on a synthetic 
 
   const reader = perfReader(page);
 
-  // Ledger: measure repeated loads (initial render + refilter path is the same instrumented call).
-  const ledgerSamples: number[] = [];
-  for (let iteration = 0; iteration < ITERATIONS; iteration += 1) {
-    await page.goto("/transactions?perf=1");
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    const durations = await reader.measures("ledger-render");
-    const latest = durations.at(-1);
-    if (latest !== undefined) ledgerSamples.push(latest);
-  }
+  // Ledger: measure repeated loads. The instrumented measure fires after the async load resolves,
+  // which can lag the heading becoming visible, so poll until at least one sample is recorded.
+  const ledgerSamples = await collectSamples(page, reader, "/transactions?perf=1", "ledger-render");
   const domRows = await reader.domRowCount();
 
   // Dashboard: repeated query→render.
-  const dashboardSamples: number[] = [];
-  for (let iteration = 0; iteration < ITERATIONS; iteration += 1) {
-    await page.goto("/dashboard?perf=1");
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    const durations = await reader.measures("dashboard-query");
-    const latest = durations.at(-1);
-    if (latest !== undefined) dashboardSamples.push(latest);
-  }
+  const dashboardSamples = await collectSamples(
+    page,
+    reader,
+    "/dashboard?perf=1",
+    "dashboard-query",
+  );
 
+  // Metrics with no captured samples are omitted rather than zero-filled (buildMetric returns
+  // undefined), so a measure that did not fire on a given run never fabricates a data point.
   const metrics = [
     buildMetric({
       id: "csv.throughput",
@@ -124,7 +118,7 @@ test("qualification smoke: import, ledger, and dashboard budgets on a synthetic 
       threshold: BUDGETS.maxDomRows,
       thresholdKind: "max",
     }),
-  ];
+  ].filter((metric): metric is NonNullable<typeof metric> => metric !== undefined);
 
   // Bounded DOM is a hard correctness assertion (NFR-025) regardless of the informational timing.
   expect(domRows, "ledger DOM row count must stay bounded").toBeLessThanOrEqual(BUDGETS.maxDomRows);
@@ -145,3 +139,34 @@ test("qualification smoke: import, ledger, and dashboard budgets on a synthetic 
   });
   network.assertClean();
 });
+
+/**
+ * Navigate to `url` `ITERATIONS` times and collect the latest value of the named measure each time,
+ * polling briefly so a measure that fires just after the heading renders is still captured. Returns
+ * only the samples that were actually recorded.
+ */
+async function collectSamples(
+  page: Page,
+  reader: ReturnType<typeof perfReader>,
+  url: string,
+  measureName: string,
+): Promise<number[]> {
+  const samples: number[] = [];
+  for (let iteration = 0; iteration < ITERATIONS; iteration += 1) {
+    await page.goto(url);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    let latest: number | undefined;
+    await expect
+      .poll(
+        async () => {
+          const durations = await reader.measures(measureName);
+          latest = durations.at(-1);
+          return latest ?? -1;
+        },
+        { timeout: 5_000 },
+      )
+      .toBeGreaterThanOrEqual(0);
+    if (latest !== undefined) samples.push(latest);
+  }
+  return samples;
+}

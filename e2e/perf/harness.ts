@@ -64,6 +64,11 @@ export function summarize(samples: readonly number[]): { median: number; p95: nu
   return { median: at(0.5), p95: at(0.95) };
 }
 
+/**
+ * Build a metric, or return undefined when no samples were captured. A measure that never fired on a
+ * given run is honestly omitted rather than reported as a fabricated zero (the issue forbids
+ * zero-filling an unavailable measure), which also keeps the result schema-valid (no NaN medians).
+ */
 export function buildMetric(input: {
   id: string;
   unit: PerfMetric["unit"];
@@ -71,16 +76,18 @@ export function buildMetric(input: {
   samples: readonly number[];
   threshold: number;
   thresholdKind: PerfMetric["thresholdKind"];
-}): PerfMetric {
-  const { median, p95 } = summarize(input.samples);
+}): PerfMetric | undefined {
+  const finiteSamples = input.samples.filter((sample) => Number.isFinite(sample));
+  if (finiteSamples.length === 0) return undefined;
+  const { median, p95 } = summarize(finiteSamples);
   const pass =
     input.thresholdKind === "max" ? median <= input.threshold : median >= input.threshold;
   return {
     id: input.id,
     unit: input.unit,
     mode: input.mode,
-    iterations: input.samples.length,
-    samples: [...input.samples],
+    iterations: finiteSamples.length,
+    samples: [...finiteSamples],
     median,
     p95,
     memoryBytes: null,
