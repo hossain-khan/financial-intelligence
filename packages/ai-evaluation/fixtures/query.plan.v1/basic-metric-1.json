@@ -1,0 +1,17 @@
+{
+  "id": "basic-metric-1",
+  "task": "query.plan.v1",
+  "schemaVersion": "1.0.0",
+  "locale": "en-CA",
+  "input": {
+    "question": "how much did i spend on dining last month",
+    "metrics": ["spend"],
+    "dimensions": ["category"]
+  },
+  "allowedVocabulary": ["spend"],
+  "expected": { "kind": "exact", "value": "spend" },
+  "ambiguity": "clear",
+  "expectedAbstention": false,
+  "privacyAssertions": { "mustNotEcho": [] },
+  "tags": ["query-plan"]
+}

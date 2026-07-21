@@ -1,0 +1,13 @@
+{
+  "id": "transfer-like-1",
+  "task": "merchant.resolve.v1",
+  "schemaVersion": "1.0.0",
+  "locale": "en-CA",
+  "input": { "tokens": ["transfer", "to", "savings"] },
+  "allowedVocabulary": ["internal-transfer"],
+  "expected": { "kind": "abstain" },
+  "ambiguity": "ambiguous",
+  "expectedAbstention": true,
+  "privacyAssertions": { "mustNotEcho": [] },
+  "tags": ["transfer-like"]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "ambiguous-abstain-1",
+  "task": "category.classify.v1",
+  "schemaVersion": "1.0.0",
+  "locale": "en-CA",
+  "input": {
+    "descriptor": "pos purchase ref only",
+    "direction": "outflow",
+    "allowedCategoryIds": ["dining", "groceries", "travel"]
+  },
+  "allowedVocabulary": ["dining", "groceries", "travel"],
+  "expected": { "kind": "abstain" },
+  "ambiguity": "ambiguous",
+  "expectedAbstention": true,
+  "privacyAssertions": { "mustNotEcho": [] },
+  "tags": ["abstain"]
+}

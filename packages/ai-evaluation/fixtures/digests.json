@@ -1,0 +1,14 @@
+{
+  "adversarial-prompt-1": "0b5733ada6fa8c74f5750faea01622cd8dfd39a36787db84f5482ef195074c20",
+  "ambiguous-abstain-1": "97bbc68fd2b63b1ed7b032a701dc1069883ed23d3777e6ddfb5ca0dcad80f657",
+  "ambiguous-date-1": "b13a2d3d3c47b4f9ec4a2260979f2703b21e31aa2be3a71801963b736549bf7f",
+  "basic-metric-1": "e8591eccb8ac01721d27ded6f1fc05073781b2afcbe7b5291ab6c1c109934040",
+  "category-collision-1": "39eaeb6d1310f9c471e2475d740b1d9708ad56d08bf5d25de47b35a88941dcc4",
+  "invalid-id-target-1": "fe81d58ae260ebdf78d56779b988830056016ca37a5467e12bc6db37ee3c0fbd",
+  "merchant-noise-1": "ef11007b042c04090acf69a82c1e1781d82607a574a675192622e25c9c69363a",
+  "merchant-noise-2": "8a512b032621337f441f7123af892d0103decf3993cc7d7ddb2211a5fb1a7f3f",
+  "multilingual-fr-1": "9b559d946099d37ad3ce05e0343f0bc3bdaf18a1fcfb92fd84b4ed02d1d02abd",
+  "transfer-like-1": "29d3309e3295f105cead32fd167422f4db751e10a45df71301d217f9b2441080",
+  "unseen-merchant-1": "d3be38f431e89fc2d7d41dc2ac69f8303b7f65435e6e58e2cbeab234a9a79d08",
+  "unsupported-intent-1": "80adb3a340ae613846922b045c1242a48dd6632fd9837fb0b438c45f5abfd474"
+}

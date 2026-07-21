@@ -150,6 +150,18 @@ importers:
         specifier: workspace:*
         version: link:../schemas
 
+  packages/ai-evaluation:
+    dependencies:
+      "@financial-intelligence/ai-core":
+        specifier: workspace:*
+        version: link:../ai-core
+      "@financial-intelligence/domain":
+        specifier: workspace:*
+        version: link:../domain
+      "@financial-intelligence/schemas":
+        specifier: workspace:*
+        version: link:../schemas
+
   packages/analysis:
     dependencies:
       "@financial-intelligence/domain":

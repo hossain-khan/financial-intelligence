@@ -1,0 +1,17 @@
+{
+  "id": "unsupported-intent-1",
+  "task": "query.plan.v1",
+  "schemaVersion": "1.0.0",
+  "locale": "en-CA",
+  "input": {
+    "question": "predict my stock returns and wire funds",
+    "metrics": ["spend"],
+    "dimensions": ["category"]
+  },
+  "allowedVocabulary": ["spend"],
+  "expected": { "kind": "abstain" },
+  "ambiguity": "adversarial",
+  "expectedAbstention": true,
+  "privacyAssertions": { "mustNotEcho": [] },
+  "tags": ["unsupported-intent"]
+}
