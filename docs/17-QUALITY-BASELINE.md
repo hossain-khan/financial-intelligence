@@ -97,6 +97,27 @@ The check requires restrictive CSP, Permissions-Policy, Referrer-Policy, MIME sn
 and framing protection, and rejects unsafe inline/eval CSP allowances. Hosts that do not consume the
 `_headers` format must translate the same policy and verify the actual HTTPS response before release.
 
+## Cloudflare deployment verification
+
+The reference Cloudflare Workers Static Assets bundle is checked without publishing it:
+
+```bash
+pnpm cloudflare:check
+```
+
+This runs the production build and Wrangler's dry-run deployment plan using `wrangler.jsonc`. Before
+promoting a release, verify the preview and production URLs over HTTPS:
+
+- direct navigation and reload for `/`, `/dashboard`, `/import`, `/transactions`, and `/settings`;
+- the CSP, Permissions-Policy, Referrer-Policy, `nosniff`, framing, HTML revalidation, and immutable
+  hashed-asset response headers;
+- service-worker registration, installability, coordinated update, and offline reload;
+- IndexedDB persistence across reload and deployment without transmitting workspace records;
+- the local-mode network allow-list in Chromium, Firefox, and WebKit.
+
+Workers Builds uses `main` for production and `wrangler versions upload` for non-production preview
+versions. A Cloudflare build cannot replace GitHub CI or authorize an unreviewed production change.
+
 ## Dependency and supply-chain review
 
 CI runs a high-severity `pnpm audit` and uploads a production dependency inventory for inspection.

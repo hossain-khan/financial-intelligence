@@ -54,6 +54,9 @@ jobs:
       - name: Check production security headers
         run: pnpm security:headers:check -- apps/web/dist/_headers
 
+      - name: Validate Cloudflare Workers asset bundle
+        run: pnpm exec wrangler deploy --dry-run --outdir .wrangler/dry-run
+
       - name: Audit high-severity dependency vulnerabilities
         run: pnpm audit --audit-level high
 

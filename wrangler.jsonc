@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "financial-intelligence",
+  "compatibility_date": "2026-07-20",
+  "send_metrics": false,
+  "dependencies_instrumentation": {
+    "enabled": false,
+  },
+  "observability": {
+    "enabled": false,
+  },
+  "assets": {
+    "directory": "./apps/web/dist",
+    "not_found_handling": "single-page-application",
+  },
+}

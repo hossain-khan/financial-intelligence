@@ -22,7 +22,10 @@
     "format:check": "prettier --check \"apps/**/*.{ts,tsx,css,html,json,mjs}\" \"e2e/**/*.{ts,tsx}\" \"packages/**/*.{ts,tsx,json,mjs}\" \"scripts/**/*.{js,mjs,ts}\" \"*.{ts,json,mjs,yaml,yml}\"",
     "schema:check": "pnpm --filter @financial-intelligence/schemas schema:check",
     "schema:generate": "pnpm --filter @financial-intelligence/schemas schema:generate",
-    "security:headers:check": "node apps/web/scripts/check-security-headers.mjs"
+    "security:headers:check": "node apps/web/scripts/check-security-headers.mjs",
+    "cloudflare:check": "pnpm build && wrangler deploy --dry-run --outdir .wrangler/dry-run",
+    "cloudflare:preview": "pnpm build && wrangler dev",
+    "cloudflare:deploy": "pnpm build && wrangler deploy"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.12.1",
@@ -43,6 +46,7 @@
     "prettier": "3.9.5",
     "typescript": "npm:@typescript/typescript6@6.0.2",
     "typescript-eslint": "8.64.0",
-    "vitest": "4.1.10"
+    "vitest": "4.1.10",
+    "wrangler": "4.112.0"
   }
 }

@@ -33,3 +33,4 @@ Status is one of `Proposed`, `Accepted`, `Deprecated`, or `Superseded by ADR-NNN
 - [ADR-006: TypeScript 7 native compiler with a TypeScript 6 compatibility API](ADR-006-TypeScript-7-Toolchain.md)
 - [ADR-007: Versioned encrypted workspace backup](ADR-007-Encrypted-Workspace-Backup.md)
 - [ADR-008: Atomic operation journals and revision-consistent snapshots](ADR-008-Atomic-Operation-Journals-And-Revision-Snapshots.md)
+- [ADR-009: Cloudflare Workers Static Assets as the reference host](ADR-009-Cloudflare-Workers-Static-Hosting.md)

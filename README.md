@@ -94,6 +94,36 @@ responsive patterns, and accessible interaction contracts.
 
 Workspace packages follow the dependency direction documented in the [technology stack](docs/16-TECHNOLOGY-STACK.md). New functionality should begin as a thin vertical slice through domain, application, adapter, and UI boundaries.
 
+## Cloudflare Workers deployment
+
+The reference production deployment uses Cloudflare Workers Static Assets. It serves the generated
+PWA without a Worker entrypoint, application backend, remote database, telemetry, or access to local
+financial records. Wrangler usage metrics, dependency instrumentation, and Worker observability are
+disabled in the repository configuration.
+
+Validate the deployable bundle locally:
+
+```bash
+pnpm cloudflare:check
+```
+
+Run the Cloudflare-hosted preview or deploy from an authenticated development environment:
+
+```bash
+pnpm cloudflare:preview
+pnpm cloudflare:deploy
+```
+
+For Git-connected Workers Builds, import this repository with the repository root as the build root,
+use `main` as the production branch, set the build command to `pnpm build`, and set the deploy command
+to `pnpm exec wrangler deploy`. Use `pnpm exec wrangler versions upload` for non-production branches.
+Set `NODE_VERSION=24` and `PNPM_VERSION=10.33.0` in the Cloudflare build variables so deployment uses
+the same supported toolchain as CI. The Cloudflare Worker name must match `financial-intelligence` in
+[`wrangler.jsonc`](wrangler.jsonc).
+
+See [ADR-009](docs/adr/ADR-009-Cloudflare-Workers-Static-Hosting.md) for the privacy boundary,
+alternatives, and production verification requirements.
+
 ## Development principles
 
 - Treat imported content as untrusted data.
