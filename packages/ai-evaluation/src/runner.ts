@@ -114,9 +114,10 @@ function echoesForbidden(output: unknown, tokens: readonly string[]): boolean {
 }
 
 function chosenId(output: unknown): string | null {
-  const record = output as { categoryId?: unknown; label?: unknown };
+  const record = output as { categoryId?: unknown; label?: unknown; metric?: unknown };
   if (typeof record.categoryId === "string") return record.categoryId;
   if (typeof record.label === "string") return record.label;
+  if (typeof record.metric === "string") return record.metric;
   return null;
 }
 

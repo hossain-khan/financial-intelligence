@@ -33,3 +33,4 @@ export { ArtifactPrivacyError, assertNoSensitiveContent } from "./privacy-guard"
 export { THRESHOLD_POLICY, THRESHOLD_POLICY_VERSION, evaluateGates } from "./thresholds";
 export type { GateResult, ThresholdPolicy } from "./thresholds";
 export { renderMarkdownSummary } from "./report";
+export { loadCorpusFromDisk } from "./corpus-fixtures";

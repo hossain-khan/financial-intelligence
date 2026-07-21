@@ -1,0 +1,13 @@
+{
+  "id": "ambiguous-date-1",
+  "task": "query.plan.v1",
+  "schemaVersion": "1.0.0",
+  "locale": "en-CA",
+  "input": { "question": "what about recently", "metrics": ["spend"], "dimensions": ["category"] },
+  "allowedVocabulary": ["spend"],
+  "expected": { "kind": "abstain" },
+  "ambiguity": "ambiguous",
+  "expectedAbstention": true,
+  "privacyAssertions": { "mustNotEcho": [] },
+  "tags": ["ambiguous-date"]
+}

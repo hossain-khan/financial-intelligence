@@ -1,0 +1,13 @@
+{
+  "id": "merchant-noise-1",
+  "task": "category.classify.v1",
+  "schemaVersion": "1.0.0",
+  "locale": "en-CA",
+  "input": { "descriptor": "sq coffee dt", "direction": "outflow", "allowedCategoryIds": ["dining", "travel"] },
+  "allowedVocabulary": ["dining", "travel"],
+  "expected": { "kind": "exact", "value": "dining" },
+  "ambiguity": "clear",
+  "expectedAbstention": false,
+  "privacyAssertions": { "mustNotEcho": [] },
+  "tags": ["merchant-noise"]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "unseen-merchant-1",
+  "task": "merchant.resolve.v1",
+  "schemaVersion": "1.0.0",
+  "locale": "en-CA",
+  "input": { "tokens": ["novacorp", "supplies", "ltd"] },
+  "allowedVocabulary": ["novacorp-supplies"],
+  "expected": { "kind": "exact", "value": "novacorp-supplies" },
+  "ambiguity": "clear",
+  "expectedAbstention": false,
+  "privacyAssertions": { "mustNotEcho": [] },
+  "tags": ["unseen-merchant"]
+}
