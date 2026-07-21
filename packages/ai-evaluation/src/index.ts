@@ -6,3 +6,11 @@ export { FixtureLintError, lintCase } from "./fixture-linter";
 export { computeMetrics } from "./metrics";
 export type { MetricSet } from "./metrics";
 export type { CaseOutcome, CaseOutcomeKind } from "./outcomes";
+export {
+  createAbstainingProvider,
+  createLeakyProvider,
+  createMalformedProvider,
+  createNondeterministicProvider,
+  createPerfectProvider,
+  createSlowProvider,
+} from "./fakes/index";
