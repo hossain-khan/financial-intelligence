@@ -64,7 +64,7 @@ function detectBom(
 
 export function normalizeEncoding(value: string): Exclude<OfxEncoding, "auto"> {
   const normalized = value.toLowerCase().replaceAll(/[_\s-]/gu, "");
-  if (normalized === "utf8" || normalized === "unicode-1-1-utf-8") return "utf-8";
+  if (normalized === "utf8" || normalized === "unicode11utf8") return "utf-8";
   if (normalized === "utf16le" || normalized === "utf16") return "utf-16le";
   if (normalized === "utf16be") return "utf-16be";
   if (

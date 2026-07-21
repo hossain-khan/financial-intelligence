@@ -15,11 +15,17 @@ describe("classifyFile", () => {
 
   it("classifies by media type when extension is ambiguous", () => {
     expect(classifyFile(new File([], "data", { type: "application/vnd.intu.qfx" }))).toBe("ofx");
+    expect(classifyFile(new File([], "data", { type: "application/ofx" }))).toBe("ofx");
+    expect(classifyFile(new File([], "data", { type: "application/x-ofx" }))).toBe("ofx");
+    expect(classifyFile(new File([], "data", { type: "text/ofx" }))).toBe("ofx");
     expect(classifyFile(new File([], "data", { type: "text/csv" }))).toBe("csv");
+    expect(classifyFile(new File([], "data", { type: "text/tab-separated-values" }))).toBe("csv");
+    expect(classifyFile(new File([], "data", { type: "text/plain" }))).toBe("csv");
   });
 
   it("returns unknown for unsupported files", () => {
     expect(classifyFile(new File([], "a.pdf"))).toBe("unknown");
+    expect(classifyFile(new File([], "data", { type: "application/pdf" }))).toBe("unknown");
   });
 });
 
