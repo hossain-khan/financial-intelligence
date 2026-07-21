@@ -6,6 +6,7 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Added
 
+- Pie-chart dollar favicon, Apple touch icon, and regular/maskable PWA install icons.
 - Cloudflare Workers Static Assets reference deployment with a pinned Wrangler toolchain,
   Git-connected production and preview guidance, SPA fallback, security-header reuse, and dry-run
   validation.

@@ -28,6 +28,56 @@ test("boots under the production CSP without runtime code generation", async ({ 
   expect(policyViolations).toEqual([]);
 });
 
+test("serves complete install metadata and brand icons", async ({ request, page }) => {
+  await page.goto("/");
+
+  await expect(page.locator('link[rel="icon"][type="image/svg+xml"]')).toHaveAttribute(
+    "href",
+    "/favicon.svg",
+  );
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute(
+    "href",
+    "/apple-touch-icon.png",
+  );
+
+  const manifestResponse = await request.get("/manifest.webmanifest");
+  expect(manifestResponse.ok()).toBe(true);
+  expect(await manifestResponse.json()).toMatchObject({
+    icons: [
+      {
+        src: "/icons/icon-192.png",
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icons/icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icons/icon-maskable-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
+      },
+    ],
+  });
+
+  for (const asset of [
+    "/favicon.svg",
+    "/favicon-32x32.png",
+    "/apple-touch-icon.png",
+    "/icons/icon-192.png",
+    "/icons/icon-512.png",
+    "/icons/icon-maskable-512.png",
+  ]) {
+    const response = await request.get(asset);
+    expect(response.ok(), asset).toBe(true);
+  }
+});
+
 test("creates and reloads a workspace without unexpected network access", async ({
   context,
   page,
