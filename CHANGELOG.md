@@ -6,6 +6,19 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Added
 
+- Migration, format-compatibility, and disaster-recovery drills that close Phase 3: a
+  machine-readable compatibility registry (in `@financial-intelligence/qualification`) enumerating
+  every independently-versioned portable format with a drift test that fails if a live version
+  constant diverges; an immutable released-fixture corpus under `test-fixtures/compatibility/`
+  (canonical documents, a Financial Brain export, and an encrypted backup) locked by committed
+  SHA-256 digests; a version-matrix migration suite proving every supported IndexedDB version (1–9)
+  upgrades losslessly and idempotently, aborts a mid-upgrade failure to the prior valid state, and
+  fails closed on a too-new database; backup and Brain compatibility drills that reject
+  wrong-passphrase, tampered, future-major, and missing-required-section variants against the frozen
+  bytes; fresh-profile Playwright recovery drills (restore-as-new, unopenable-database recovery
+  screen); a scheduled full-matrix CI workflow with the high-signal integrity and current/previous
+  paths blocking per PR; and a compatibility/recovery guide with user playbooks (ADR-017,
+  docs/23-COMPATIBILITY-AND-RECOVERY.md).
 - Supported-browser, accessibility, and performance qualification harness: a new
   `@financial-intelligence/qualification` package with a deterministic seeded workload generator
   (reconciled decimal-safe totals, content-digest manifest, 1k/10k/50k tiers), a versioned

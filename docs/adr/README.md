@@ -41,3 +41,4 @@ Status is one of `Proposed`, `Accepted`, `Deprecated`, or `Superseded by ADR-NNN
 - [ADR-014: Explicit PWA update lifecycle, cache namespaces, and startup recovery](ADR-014-PWA-Update-And-Cache-Lifecycle.md)
 - [ADR-015: Production encrypted backup with authenticated manifest and staged atomic restore](ADR-015-Production-Encrypted-Backup-Restore.md)
 - [ADR-016: Deterministic qualification harness for browser, accessibility, and performance](ADR-016-Qualification-Matrix.md)
+- [ADR-017: Compatibility registry, immutable fixtures, and disaster-recovery drills](ADR-017-Compatibility-And-Recovery.md)
