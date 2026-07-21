@@ -3,6 +3,8 @@ import type {
   AiProvider,
   AiProviderProfileIdentity,
   AiResultEnvelope,
+  AiTaskRequest,
+  ExecuteOptions,
   HealthReport,
 } from "./provider";
 
@@ -25,7 +27,7 @@ export class NoAiProvider implements AiProvider {
     return Promise.resolve({ ok: true });
   }
 
-  public execute(): Promise<AiResultEnvelope> {
+  public execute(_request: AiTaskRequest, _options: ExecuteOptions): Promise<AiResultEnvelope> {
     return Promise.resolve({
       ok: false,
       error: aiError("unsupported", "No AI provider is configured."),
