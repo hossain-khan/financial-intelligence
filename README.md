@@ -63,7 +63,9 @@ stale-safe Financial Brain
 apply/undo, recoverable transfer and recurring decisions, and revision-consistent financial
 dashboards with shared filters, accessible charts, exact drilldown, and design-system-consistent
 responsive presentation. It installs as an offline PWA with coordinated, data-safe updates,
-storage and cache controls, and a startup recovery path that never clears local data.
+storage and cache controls, and a startup recovery path that never clears local data. Full
+workspaces can be exported as authenticated encrypted backups and restored — as a new workspace, a
+replacement, or a conflict-free merge — with an atomic, staged, preview-first flow.
 
 ## Local development
 

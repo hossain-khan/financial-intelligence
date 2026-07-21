@@ -144,6 +144,16 @@ Changing endpoint origin, disclosure template, or task scope invalidates prior c
 
 Onboarding and storage settings explain that clearing browser/site data can destroy the workspace. Remind users to back up after material imports/corrections without dark patterns. Verify backups before reporting success. Restore decrypts and validates in a temporary area, previews impact, and commits atomically.
 
+Implemented in Phase 3 (issue #28, ADR-015): every backup payload carries a required manifest,
+authenticated inside the AES-GCM tag, with per-section record counts, canonical byte lengths, and
+SHA-256 digests, so a truncated or tampered backup fails closed before restore. Cryptography runs in
+a short-lived off-thread worker; wrong passphrase and tampering are indistinguishable generic
+failures. Restore stages the snapshot in a uniquely-named temporary IndexedDB database, runs a quota
+preflight (an estimate is never permission to partially write), shows a metadata-only preview and
+conflict plan, and applies restore-as-new, replace, or a conflict-free merge as one atomic
+transaction that leaves the original workspace intact on failure. Conflicting merges are rejected
+rather than overwritten; abandoned staging databases are cleaned up on startup.
+
 ## Deletion
 
 Granular deletion covers source file, import, account, provider profile/secret, rules, model asset, diagnostics, and workspace. Complete deletion clears application-controlled IndexedDB, Cache Storage, service worker state where appropriate, and stored handles. The app cannot delete independent files already downloaded or provider-side data; it says so and links to provider controls when known.

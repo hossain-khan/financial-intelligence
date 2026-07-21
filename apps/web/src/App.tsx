@@ -24,6 +24,7 @@ import {
   type DatabaseHealth,
 } from "./infrastructure";
 import { RecoveryScreen } from "./RecoveryScreen";
+import { RestorePanel } from "./RestorePanel";
 import { StoragePanel } from "./StoragePanel";
 import { usePwaStatus } from "./pwa/use-pwa-status";
 import { getPwaController } from "./pwa/register";
@@ -997,6 +998,7 @@ function SettingsPage({ services }: AppProperties) {
           {status}
         </p>
       )}
+      <RestorePanel services={services} />
     </div>
   );
 }

@@ -8,16 +8,18 @@ import {
 import {
   WORKSPACE_BACKUP_FORMAT,
   WORKSPACE_BACKUP_VERSION,
+  buildSnapshotWithManifest,
   parseSnapshot,
   serializeSnapshot,
   type WorkspaceBackupSnapshot,
 } from "./snapshot";
+import { webCryptoDigest } from "./manifest";
 
 const PASSPHRASE = "correct horse battery staple";
 
 describe("encrypted workspace backups", () => {
   it("round trips a snapshot and returns metadata only", async () => {
-    const encrypted = await encryptWorkspaceBackup(snapshot(), PASSPHRASE);
+    const encrypted = await encryptWorkspaceBackup(await snapshot(), PASSPHRASE);
 
     await expect(previewEncryptedWorkspaceBackup(encrypted, PASSPHRASE)).resolves.toEqual({
       workspaceName: "Family budget",
@@ -69,7 +71,7 @@ describe("encrypted workspace backups", () => {
   ])(
     "rejects a modified %s without revealing content",
     async (_name, mutate, passphrase) => {
-      const encrypted = await encryptWorkspaceBackup(snapshot(), PASSPHRASE);
+      const encrypted = await encryptWorkspaceBackup(await snapshot(), PASSPHRASE);
       const changed = JSON.stringify(mutate(JSON.parse(encrypted) as Container));
 
       const failure = await previewEncryptedWorkspaceBackup(changed, passphrase).catch(
@@ -83,13 +85,13 @@ describe("encrypted workspace backups", () => {
   );
 
   it("rejects truncation and unsupported container versions before decryption", async () => {
-    const encrypted = await encryptWorkspaceBackup(snapshot(), PASSPHRASE);
+    const encrypted = await encryptWorkspaceBackup(await snapshot(), PASSPHRASE);
     await expect(
       previewEncryptedWorkspaceBackup(encrypted.slice(0, -10), PASSPHRASE),
     ).rejects.toMatchObject({
       code: "INVALID_CONTAINER",
     });
-    const unsupported = { ...(JSON.parse(encrypted) as Container), version: "2.0.0" };
+    const unsupported = { ...(JSON.parse(encrypted) as Container), version: "9.0.0" };
     await expect(
       previewEncryptedWorkspaceBackup(JSON.stringify(unsupported), PASSPHRASE),
     ).rejects.toMatchObject({
@@ -99,12 +101,13 @@ describe("encrypted workspace backups", () => {
 });
 
 describe("workspace snapshot validation", () => {
-  it("round trips valid UTF-8 JSON", () => {
-    expect(parseSnapshot(serializeSnapshot(snapshot()))).toEqual(snapshot());
+  it("round trips valid UTF-8 JSON", async () => {
+    const value = await snapshot();
+    expect(parseSnapshot(serializeSnapshot(value))).toEqual(value);
   });
 
-  it("rejects an unsupported payload version", () => {
-    const value = { ...snapshot(), version: "2.0.0" };
+  it("rejects an unsupported payload version", async () => {
+    const value = { ...(await snapshot()), version: "9.0.0" };
     expect(() => parseSnapshot(new TextEncoder().encode(JSON.stringify(value)))).toThrowError(
       expect.objectContaining({ code: "UNSUPPORTED_VERSION" }),
     );
@@ -123,29 +126,33 @@ function flip(value: string): string {
   return `${value[0] === "A" ? "B" : "A"}${value.slice(1)}`;
 }
 
-function snapshot(): WorkspaceBackupSnapshot {
-  return {
-    format: WORKSPACE_BACKUP_FORMAT,
-    version: WORKSPACE_BACKUP_VERSION,
-    exportedAt: "2026-07-20T12:00:00.000Z",
-    databaseVersion: 5,
-    workspace: {
-      id: "019829f0-4da4-7ae0-8a9c-383af22d7da1" as never,
-      name: "Family budget",
-      schemaVersion: 1,
-      revision: 4,
-      createdAt: "2026-07-01T00:00:00.000Z" as never,
-      updatedAt: "2026-07-20T00:00:00.000Z" as never,
+async function snapshot(): Promise<WorkspaceBackupSnapshot> {
+  return buildSnapshotWithManifest(
+    {
+      format: WORKSPACE_BACKUP_FORMAT,
+      version: WORKSPACE_BACKUP_VERSION,
+      exportedAt: "2026-07-20T12:00:00.000Z",
+      databaseVersion: 5,
+      workspace: {
+        id: "019829f0-4da4-7ae0-8a9c-383af22d7da1" as never,
+        name: "Family budget",
+        schemaVersion: 1,
+        revision: 4,
+        createdAt: "2026-07-01T00:00:00.000Z" as never,
+        updatedAt: "2026-07-20T00:00:00.000Z" as never,
+      },
+      accounts: [],
+      imports: [],
+      transactions: [],
+      categories: [],
+      merchants: [],
+      classificationRules: [],
+      transferDecisions: [],
+      recurringDecisions: [],
+      transactionOperations: [],
+      duplicateResolutionEvents: [],
     },
-    accounts: [],
-    imports: [],
-    transactions: [],
-    categories: [],
-    merchants: [],
-    classificationRules: [],
-    transferDecisions: [],
-    recurringDecisions: [],
-    transactionOperations: [],
-    duplicateResolutionEvents: [],
-  };
+    { buildId: "test" },
+    (bytes) => webCryptoDigest(bytes, crypto),
+  );
 }

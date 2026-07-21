@@ -15,6 +15,8 @@ export {
   IndexedDbWorkspaceBackupRepository,
   openFinancialDatabase,
 } from "./database";
+export { IndexedDbRestoreRepository } from "./restore";
+export type { RestoreStagingOptions } from "./restore";
 export type { OpenDatabaseOptions, TransferDecisionRecord } from "./database";
 export type { ImportCommitStage, IndexedDbImportCommitHooks } from "./database";
 export { normalizeStorageError, StorageError } from "./errors";

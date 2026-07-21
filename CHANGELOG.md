@@ -6,6 +6,15 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Added
 
+- Production encrypted backup and restore: the workspace-backup payload gains a required
+  authenticated manifest (per-section record counts, canonical byte lengths, and SHA-256 digests
+  inside the AES-GCM payload) so truncated or tampered backups fail closed before any restore; the
+  Argon2id/AES-GCM work runs in a short-lived off-thread worker; and restore stages the decrypted
+  snapshot in a temporary database with a quota preflight, shows a metadata-only preview and conflict
+  plan, and applies restore-as-new, replace, or a conflict-free merge as one atomic transaction that
+  leaves the original workspace intact on failure. Conflicting merges are rejected rather than
+  overwritten, abandoned staging databases are cleaned up on startup, and there is no v1 backup
+  reader (snapshot format bumped to v2; ADR-015).
 - PWA install, offline-update, storage, and cache-lifecycle hardening: an explicit service-worker
   lifecycle state machine that downloads updates in the background and activates only after the user
   confirms at a safe boundary, defers activation while an import, backup, bulk edit, or migration is

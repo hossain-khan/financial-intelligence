@@ -1671,6 +1671,37 @@ table select {
     margin: 1.25rem 0;
   }
 
+  .restore-plan {
+    margin-top: 1rem;
+    display: grid;
+    gap: 1rem;
+  }
+
+  .restore-modes {
+    display: grid;
+    gap: 0.6rem;
+    padding: 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+
+  .restore-modes legend {
+    padding: 0 0.4rem;
+    font-weight: 700;
+  }
+
+  .restore-modes label {
+    display: flex;
+    gap: 0.5rem;
+    align-items: start;
+    line-height: 1.4;
+  }
+
+  .restore-replace-confirm {
+    display: grid;
+    gap: 0.4rem;
+  }
+
   .update-banner {
     position: fixed;
     z-index: 10;
