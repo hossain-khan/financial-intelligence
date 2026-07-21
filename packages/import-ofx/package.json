@@ -1,0 +1,20 @@
+{
+  "name": "@financial-intelligence/import-ofx",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./worker": "./src/worker.ts"
+  },
+  "scripts": {
+    "build": "vite build && node scripts/check-worker-bundle.mjs",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@financial-intelligence/import-core": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "8.1.5"
+  }
+}

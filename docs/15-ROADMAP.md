@@ -56,11 +56,13 @@ passed repository verification and the supported Chromium, Firefox, and WebKit b
 
 ## Phase 3 — Standard formats and resilient PWA
 
-**Status:** Next planned phase.
+**Status:** In progress.
 
 **Outcome:** Broader statement support and production-grade offline lifecycle.
 
-- OFX/QFX parser adapters and fixtures.
+- OFX/QFX parser adapters and fixtures. **Done** for OFX 1.x SGML and OFX 2.x XML bank and
+  credit-card statements (issue #25, ADR-012); investment, loan, bill-pay, and online-banking
+  message sets remain out of scope and surface bounded unsupported-section warnings.
 - Selected text-PDF adapter(s) based on demand and fixture availability.
 - Installable PWA, coordinated updates, storage management, model/source cache controls.
 - Git-connected Cloudflare Workers Static Assets reference deployment with SPA routing, security

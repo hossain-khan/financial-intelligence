@@ -36,3 +36,4 @@ Status is one of `Proposed`, `Accepted`, `Deprecated`, or `Superseded by ADR-NNN
 - [ADR-009: Cloudflare Workers Static Assets as the reference host](ADR-009-Cloudflare-Workers-Static-Hosting.md)
 - [ADR-010: CSP-safe generated validators and narrow WebAssembly execution](ADR-010-CSP-Safe-Generated-Validators-And-WebAssembly.md)
 - [ADR-011: Persistent Cloudflare invocation logging](ADR-011-Cloudflare-Invocation-Logging.md)
+- [ADR-012: Purpose-built bounded OFX/QFX parser](ADR-012-OFX-Parser.md)

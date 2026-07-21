@@ -141,7 +141,9 @@ Worker protocols are versioned discriminated unions with operation ID, progress,
 ## Import implementation
 
 - CSV: stream through a maintained parser in a dedicated worker; preserve row provenance.
-- OFX/QFX: bounded SGML normalization followed by a streaming XML parser.
+- OFX/QFX: a purpose-built bounded tokenizer covering both OFX 1.x SGML (unclosed leaves) and OFX
+  2.x XML with no third-party OFX or XML dependency; DTDs, entities, and external references are
+  rejected (ADR-012).
 - PDF: PDF.js text extraction only for explicitly supported layout adapters.
 - Every parser implements `StatementParser` from `import-core`.
 - Boundary data is `unknown` until validated.
