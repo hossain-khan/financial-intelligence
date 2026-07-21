@@ -6,6 +6,16 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Added
 
+- Pinned browser-local model profile (issue #33): the `gemma-3n-e2b-q4-classifier-v1` profile pins
+  `onnx-community/gemma-3n-E2B-it-ONNX` at an immutable revision with dtype `q4` and per-file SHA-256
+  digests, enabling model selection in the Settings "Local AI" panel. The runtime/model spike found
+  the `q4f16` export crashes ONNX Runtime Web (a float16/float32 mismatch in Gemma 3n's AltUp block),
+  so `q4` is pinned; the engine now reads dtype from the profile. Two output fixes came from the
+  spike: the provider strips markdown code fences before parsing the model's JSON, and the output
+  token budget was raised (with a one-sentence-rationale prompt) so classifications no longer
+  truncate. The sideloader matches picked files by basename so a model's `onnx/` subfolder layout
+  loads without manual path juggling. A full #32 corpus evaluation of the pinned model is still
+  pending (see the evaluation baseline report).
 - Browser-local AI provider scaffold (issue #33, ADR-020): a new
   `@financial-intelligence/ai-local` package implementing `ai-core`'s `AiProvider` with the
   `@huggingface/transformers` (transformers.js / ONNX Runtime Web) runtime isolated in a module
