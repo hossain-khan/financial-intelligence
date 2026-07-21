@@ -14,3 +14,5 @@ export {
   createPerfectProvider,
   createSlowProvider,
 } from "./fakes/index";
+export { classifyOutcome, runEvaluation } from "./runner";
+export type { RunnerOptions } from "./runner";
