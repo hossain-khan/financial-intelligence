@@ -9,6 +9,12 @@ test("downloads and verifies an encrypted backup without restoring data", async 
   context,
   page,
 }) => {
+  const passwordFormWarnings: string[] = [];
+  page.on("console", (message) => {
+    if (message.text().includes("Password forms should have")) {
+      passwordFormWarnings.push(message.text());
+    }
+  });
   const network = await installLocalNetworkGuard(context, LOCAL_ORIGIN);
   await page.goto("/");
   const workspaceName = page.getByRole("textbox", { name: "Workspace name" });
@@ -16,6 +22,7 @@ test("downloads and verifies an encrypted backup without restoring data", async 
   await workspaceName.press("Enter");
 
   await page.getByRole("link", { name: "Settings" }).click();
+  await expect(page.locator('form input[autocomplete="username"]')).toHaveCount(2);
   await page.getByLabel("Passphrase", { exact: true }).first().fill(PASSPHRASE);
   await page.getByLabel("Confirm passphrase").fill(PASSPHRASE);
   const downloadPromise = page.waitForEvent("download");
@@ -43,4 +50,5 @@ test("downloads and verifies an encrypted backup without restoring data", async 
     }),
   ).toHaveCount(1);
   network.assertClean();
+  expect(passwordFormWarnings).toEqual([]);
 });

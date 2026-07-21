@@ -167,7 +167,10 @@ Worker protocols are versioned discriminated unions with operation ID, progress,
 
 ## UI and accessibility
 
-Use React Aria Components for interactive primitives. Project CSS owns visual design through tokens for color, typography, spacing, focus, motion, elevation, and chart semantics.
+Use React Aria Components for interactive primitives when their behavior is compatible with the
+production CSP. Use the shared native `Button` for ordinary actions because React Aria press handling
+mutates inline `user-select` styles. Project CSS owns visual design through tokens for color,
+typography, spacing, focus, motion, elevation, and chart semantics.
 The normative visual language, reuse rules, component expectations, and UI review checklist are in
 the [design system](21-DESIGN-SYSTEM.md).
 

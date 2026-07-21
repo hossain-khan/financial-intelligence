@@ -25,7 +25,9 @@ Reference performance is measured on a currently supported mid-range laptop with
 ## Security
 
 - **NFR-010:** Treat source files, transaction descriptions, model output, imported JSON, and plugin content as untrusted.
-- **NFR-011:** Enforce a restrictive Content Security Policy with no unsafe evaluation in production.
+- **NFR-011:** Enforce a restrictive Content Security Policy with no unsafe JavaScript evaluation or
+  unapproved inline script/style execution in production. Interaction primitives MUST operate under
+  the deployed policy without requiring broad CSP exceptions.
 - **NFR-012:** Remote endpoints MUST use secure transport except explicitly confirmed loopback development endpoints.
 - **NFR-013:** Backups MUST use authenticated encryption; no plaintext recovery hint may reveal the passphrase.
 - **NFR-014:** Dependencies, model assets, plugin packages, and migrations MUST have integrity/provenance controls appropriate to their distribution channel.
