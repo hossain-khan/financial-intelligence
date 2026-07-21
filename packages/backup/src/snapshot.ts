@@ -1,3 +1,4 @@
+import { buildManifest, verifyManifest, type DigestFunction } from "./manifest";
 import {
   importFromCanonical,
   transactionFromCanonical,
@@ -15,7 +16,12 @@ import {
 } from "@financial-intelligence/domain";
 
 export const WORKSPACE_BACKUP_FORMAT = "financial-intelligence.workspace-backup";
-export const WORKSPACE_BACKUP_VERSION = "1.0.0";
+/**
+ * Version 2 embeds an authenticated manifest (per-section counts + digests + inventory) inside the
+ * payload. There is intentionally no v1 compatibility path: a backup without a valid manifest is
+ * rejected rather than read on faith.
+ */
+export const WORKSPACE_BACKUP_VERSION = "2.0.0";
 export const MAX_BACKUP_BYTES = 64 * 1024 * 1024;
 export const MAX_BACKUP_TRANSACTIONS = 250_000;
 
@@ -55,6 +61,12 @@ export interface WorkspaceBackupSnapshot {
   readonly decisionEvents?: readonly BackupOperationDocument[];
   readonly transactionOperations: readonly BackupTransactionOperationDocument[];
   readonly duplicateResolutionEvents: readonly BackupDuplicateResolutionEventDocument[];
+  /**
+   * Authenticated inventory of the sections above. Present on every v2 snapshot; it is built during
+   * serialization and verified during parsing. Typed as `unknown` here to avoid a circular import
+   * with `manifest.ts`; `verifyManifest` narrows it.
+   */
+  readonly manifest: unknown;
 }
 
 export interface WorkspaceBackupPreview {
@@ -81,6 +93,28 @@ export interface BackupOperationDocument {
   readonly id: string;
 }
 
+/**
+ * Attach a freshly-built authenticated manifest to a snapshot that does not yet have one. This is
+ * the only supported way to produce a v2 snapshot for serialization; callers pass the sections and
+ * the producing build id, and the manifest's per-section digests are computed here.
+ */
+export async function buildSnapshotWithManifest(
+  snapshot: Omit<WorkspaceBackupSnapshot, "manifest">,
+  context: { readonly buildId: string },
+  digest: DigestFunction,
+): Promise<WorkspaceBackupSnapshot> {
+  const manifest = await buildManifest({ ...snapshot, manifest: undefined }, context, digest);
+  return { ...snapshot, manifest };
+}
+
+/** Verify a parsed snapshot against its embedded manifest (counts + per-section digests). */
+export async function verifySnapshotManifest(
+  snapshot: WorkspaceBackupSnapshot,
+  digest: DigestFunction,
+): Promise<void> {
+  await verifyManifest(snapshot.manifest, snapshot, digest);
+}
+
 export function serializeSnapshot(snapshot: WorkspaceBackupSnapshot): Uint8Array {
   validateSnapshot(snapshot);
   const bytes = new TextEncoder().encode(JSON.stringify(snapshot));
@@ -98,9 +132,8 @@ export function parseSnapshot(bytes: Uint8Array): WorkspaceBackupSnapshot {
   } catch {
     throw new BackupValidationError("INVALID_PAYLOAD");
   }
-  const normalized = normalizeLegacySnapshot(value);
-  validateSnapshot(normalized);
-  return normalized;
+  validateSnapshot(value);
+  return value;
 }
 
 export function previewSnapshot(snapshot: WorkspaceBackupSnapshot): WorkspaceBackupPreview {
@@ -153,7 +186,9 @@ function validateSnapshot(value: unknown): asserts value is WorkspaceBackupSnaps
     (value.learningOperations !== undefined && !Array.isArray(value.learningOperations)) ||
     (value.decisionEvents !== undefined && !Array.isArray(value.decisionEvents)) ||
     !Array.isArray(value.transactionOperations) ||
-    !Array.isArray(value.duplicateResolutionEvents)
+    !Array.isArray(value.duplicateResolutionEvents) ||
+    typeof value.manifest !== "object" ||
+    value.manifest === null
   )
     invalid();
   if (value.transactions.length > MAX_BACKUP_TRANSACTIONS) {
@@ -226,17 +261,6 @@ function validateSnapshot(value: unknown): asserts value is WorkspaceBackupSnaps
     if (error instanceof BackupValidationError) throw error;
     invalid();
   }
-}
-
-function normalizeLegacySnapshot(value: unknown): unknown {
-  if (!isObject(value)) return value;
-  return {
-    ...value,
-    merchants: value.merchants === undefined ? [] : value.merchants,
-    classificationRules: value.classificationRules === undefined ? [] : value.classificationRules,
-    transferDecisions: value.transferDecisions === undefined ? [] : value.transferDecisions,
-    recurringDecisions: value.recurringDecisions === undefined ? [] : value.recurringDecisions,
-  };
 }
 
 function invalid(): never {

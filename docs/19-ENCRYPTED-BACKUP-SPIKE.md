@@ -6,6 +6,12 @@ Phase 1 proves that a complete local workspace can be exported, encrypted, downl
 authenticated, and previewed in a browser without writing restored data. This is an experimental
 recovery artifact, not a production restore promise.
 
+**Superseded by production restore (Phase 3, issue #28, ADR-015).** The production format is snapshot
+v2 with a required authenticated per-section manifest (record counts, canonical byte lengths, SHA-256
+digests), worker-isolated cryptography, and a staged atomic restore with restore-as-new / replace /
+conflict-free merge modes. There is no v1 snapshot reader. The measurements and threat notes below
+remain the baseline; see ADR-015 for the production decision.
+
 ## User flow
 
 1. Open **Settings → Create encrypted backup**.

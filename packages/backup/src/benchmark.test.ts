@@ -33,7 +33,7 @@ describe("encrypted backup browser-spike bounds", () => {
   }, 45_000);
 });
 
-function syntheticSnapshot(count: number): WorkspaceBackupSnapshot {
+function syntheticSnapshot(count: number): Omit<WorkspaceBackupSnapshot, "manifest"> {
   const timestamp = "2026-07-20T12:00:00.000Z";
   const workspaceId = "019829f0-4da4-7ae0-8a9c-383af22d7da1" as never;
   const accountId = "019829f0-4da4-7ae0-8a9c-383af22d7db1" as never;

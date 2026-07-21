@@ -61,7 +61,21 @@ export type { CashFlowFilter, CashFlowReport, TransactionCsvExport } from "./sum
 export { ListCategories, RenameCategory, SetCategoryArchived } from "./categories";
 export type { CategoryRepository } from "./categories";
 export { CreateEncryptedWorkspaceBackup, PreviewEncryptedWorkspaceBackup } from "./backups";
-export type { EncryptedWorkspaceBackup, WorkspaceBackupRepository } from "./backups";
+export type {
+  BackupEncryptor,
+  EncryptedWorkspaceBackup,
+  WorkspaceBackupRepository,
+  WorkspaceBackupSnapshotSource,
+} from "./backups";
+export { ApplyWorkspaceRestore, PlanWorkspaceRestore, RestoreError } from "./restore";
+export type {
+  BackupDecryptor,
+  RestoreConflict,
+  RestoreMode,
+  RestorePlan,
+  RestoreRepository,
+  RestoreResult,
+} from "./restore";
 export {
   AddMerchantAliasUseCase,
   CreateMerchantUseCase,

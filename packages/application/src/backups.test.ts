@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import type { WorkspaceBackupSnapshot } from "@financial-intelligence/backup";
 import {
   ENCRYPTED_BACKUP_MEDIA_TYPE,
   encryptWorkspaceBackup,
@@ -10,7 +9,7 @@ import {
 import { parseUtcTimestamp, parseWorkspaceId } from "@financial-intelligence/domain";
 
 import type { ApplicationClock } from "./workspaces";
-import type { WorkspaceBackupRepository } from "./backups";
+import type { WorkspaceBackupRepository, WorkspaceBackupSnapshotSource } from "./backups";
 import { CreateEncryptedWorkspaceBackup, PreviewEncryptedWorkspaceBackup } from "./backups";
 
 const NOW = parseUtcTimestamp("2026-07-20T10:00:00Z");
@@ -22,7 +21,7 @@ class FixedClock implements ApplicationClock {
   }
 }
 
-const mockSnapshot: WorkspaceBackupSnapshot = {
+const mockSnapshot: WorkspaceBackupSnapshotSource = {
   format: WORKSPACE_BACKUP_FORMAT,
   version: WORKSPACE_BACKUP_VERSION,
   exportedAt: "2026-07-20T10:00:00Z",
@@ -48,7 +47,7 @@ const mockSnapshot: WorkspaceBackupSnapshot = {
 };
 
 class MockBackupRepo implements WorkspaceBackupRepository {
-  public async readSnapshot(): Promise<WorkspaceBackupSnapshot> {
+  public async readSnapshot(): Promise<WorkspaceBackupSnapshotSource> {
     return mockSnapshot;
   }
 }

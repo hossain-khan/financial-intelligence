@@ -76,7 +76,12 @@ passed repository verification and the supported Chromium, Firefox, and WebKit b
   Model and source cache namespaces are declared for #28/#38 but not yet populated.
 - Git-connected Cloudflare Workers Static Assets reference deployment with SPA routing, security
   headers, preview versions, and production verification.
-- Full backup encryption implementation, restore replacement/merge policy, and recovery documentation.
+- Full backup encryption implementation, restore replacement/merge policy, and recovery
+  documentation. **Done** (issue #28, ADR-015): production snapshot v2 with an authenticated
+  per-section manifest, worker-isolated Argon2id/AES-GCM, staged temporary-database validation with
+  quota preflight, and atomic restore-as-new / replace / conflict-free merge with a metadata-only
+  preview. Conflicting merges are rejected (documented v1 limitation) and there is no v1 backup
+  reader.
 - Published browser support and reference workload benchmarks.
 
 **Exit criteria:** Format contract suite, update/migration/recovery drills, performance and WCAG 2.2 AA gates pass.

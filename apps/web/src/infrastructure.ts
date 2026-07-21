@@ -8,6 +8,8 @@ import {
   CreateWorkspace,
   CommitAcceptedImport,
   CreateEncryptedWorkspaceBackup,
+  ApplyWorkspaceRestore,
+  PlanWorkspaceRestore,
   FindDuplicateCandidates,
   ExportFilteredTransactions,
   ListAccounts,
@@ -74,7 +76,9 @@ import {
   IndexedDbTransferDecisionRepository,
   IndexedDbWorkspaceRepository,
   IndexedDbWorkspaceBackupRepository,
+  IndexedDbRestoreRepository,
 } from "@financial-intelligence/storage-indexeddb";
+import { decryptBackupInWorker, encryptBackupInWorker } from "./backup-worker-client";
 
 export interface ApplicationServices {
   readonly createWorkspace: CreateWorkspace;
@@ -103,6 +107,8 @@ export interface ApplicationServices {
   readonly listDuplicateResolutions: ListDuplicateResolutions;
   readonly createEncryptedWorkspaceBackup: CreateEncryptedWorkspaceBackup;
   readonly previewEncryptedWorkspaceBackup: PreviewEncryptedWorkspaceBackup;
+  readonly planWorkspaceRestore: PlanWorkspaceRestore;
+  readonly applyWorkspaceRestore: ApplyWorkspaceRestore;
 
   // Merchant, Rule & Review Queue services
   readonly listMerchants: ListMerchants;
@@ -158,6 +164,14 @@ const transferDecisionRepository = new IndexedDbTransferDecisionRepository(datab
 const recurringDecisionRepository = new IndexedDbRecurringDecisionRepository(database);
 const dashboardSnapshotRepository = new IndexedDbDashboardSnapshotRepository(database);
 const atomicLearningRepository = new IndexedDbAtomicLearningRepository(database);
+const restoreRepository = new IndexedDbRestoreRepository(database);
+const appBuildId = typeof __APP_BUILD_ID__ === "string" ? __APP_BUILD_ID__ : "unknown";
+// Offload the heavy Argon2id/AES-GCM work to a short-lived worker so it never blocks the UI thread.
+const backupEncryptor = {
+  encrypt: (snapshot: Parameters<typeof encryptBackupInWorker>[0], passphrase: string) =>
+    encryptBackupInWorker(snapshot, passphrase, appBuildId),
+};
+const backupDecryptor = { decrypt: decryptBackupInWorker };
 const clock = { now: () => new Date() };
 const ids = { generate: () => crypto.randomUUID() };
 const digest = {
@@ -211,8 +225,15 @@ export const applicationServices: ApplicationServices = {
   resolveDuplicate: new ResolveDuplicate(duplicateResolutionRepository, clock, ids),
   undoDuplicateResolution: new UndoDuplicateResolution(duplicateResolutionRepository, clock, ids),
   listDuplicateResolutions: new ListDuplicateResolutions(duplicateResolutionRepository),
-  createEncryptedWorkspaceBackup: new CreateEncryptedWorkspaceBackup(backupRepository, clock),
+  createEncryptedWorkspaceBackup: new CreateEncryptedWorkspaceBackup(
+    backupRepository,
+    clock,
+    appBuildId,
+    backupEncryptor,
+  ),
   previewEncryptedWorkspaceBackup: new PreviewEncryptedWorkspaceBackup(),
+  planWorkspaceRestore: new PlanWorkspaceRestore(restoreRepository, backupDecryptor),
+  applyWorkspaceRestore: new ApplyWorkspaceRestore(restoreRepository),
 
   listMerchants: new ListMerchants(merchantRepository),
   createMerchantUseCase: new CreateMerchantUseCase(merchantRepository, clock, ids),
@@ -369,6 +390,18 @@ export const applicationServices: ApplicationServices = {
  */
 export type DatabaseHealth =
   { readonly ok: true } | { readonly ok: false; readonly code: string; readonly message: string };
+
+/**
+ * Remove staging databases left behind by an interrupted restore. Best-effort and bounded by age;
+ * never deletes anything outside the restore-staging namespace. Safe to call at startup.
+ */
+export async function cleanupAbandonedRestoreStaging(): Promise<void> {
+  try {
+    await restoreRepository.cleanupAbandonedStaging();
+  } catch {
+    // Cleanup is opportunistic; a failure never blocks startup.
+  }
+}
 
 export async function checkDatabaseHealth(): Promise<DatabaseHealth> {
   try {

@@ -1,9 +1,12 @@
+import { ManifestValidationError, webCryptoDigest } from "./manifest";
 import {
   BackupValidationError,
   MAX_BACKUP_BYTES,
+  buildSnapshotWithManifest,
   parseSnapshot,
   previewSnapshot,
   serializeSnapshot,
+  verifySnapshotManifest,
   type WorkspaceBackupPreview,
   type WorkspaceBackupSnapshot,
 } from "./snapshot";
@@ -67,17 +70,26 @@ export class EncryptedBackupError extends Error {
 }
 
 export async function encryptWorkspaceBackup(
-  snapshot: WorkspaceBackupSnapshot,
+  input: WorkspaceBackupSnapshot | Omit<WorkspaceBackupSnapshot, "manifest">,
   passphrase: string,
   options: {
     readonly crypto?: Crypto;
     readonly parameters?: Argon2idParameters;
+    readonly buildId?: string;
   } = {},
 ): Promise<string> {
   validatePassphrase(passphrase);
   const cryptoProvider = options.crypto ?? crypto;
   const parameters = options.parameters ?? DEFAULT_ARGON2ID_PARAMETERS;
   validateParameters(parameters);
+  // Build the authenticated manifest here when the caller has not already attached one, so every
+  // produced backup carries verified per-section digests regardless of the call site.
+  const snapshot: WorkspaceBackupSnapshot =
+    "manifest" in input && input.manifest !== undefined
+      ? input
+      : await buildSnapshotWithManifest(input, { buildId: options.buildId ?? "unknown" }, (bytes) =>
+          webCryptoDigest(bytes, cryptoProvider),
+        );
   const plaintext = serializeSnapshot(snapshot);
   const salt = cryptoProvider.getRandomValues(new Uint8Array(16));
   const nonce = cryptoProvider.getRandomValues(new Uint8Array(12));
@@ -118,11 +130,16 @@ export async function encryptWorkspaceBackup(
   return JSON.stringify({ ...header, ciphertext: toBase64Url(new Uint8Array(ciphertext)) });
 }
 
-export async function previewEncryptedWorkspaceBackup(
+/**
+ * Decrypt, parse, and fully validate a backup into a snapshot, verifying the authenticated manifest.
+ * This is the single trusted entry point used by both preview (metadata only) and restore staging;
+ * wrong passphrase and tampering are indistinguishable `DECRYPTION_FAILED` failures.
+ */
+export async function decryptWorkspaceBackup(
   content: string,
   passphrase: string,
   options: { readonly crypto?: Crypto } = {},
-): Promise<WorkspaceBackupPreview> {
+): Promise<WorkspaceBackupSnapshot> {
   validatePassphrase(passphrase);
   if (new TextEncoder().encode(content).byteLength > MAX_BACKUP_BYTES * 2) {
     throw new EncryptedBackupError("RESOURCE_LIMIT");
@@ -165,8 +182,15 @@ export async function previewEncryptedWorkspaceBackup(
     ) {
       throw new EncryptedBackupError("INVALID_PAYLOAD");
     }
-    return previewSnapshot(snapshot);
+    // The manifest is authenticated (it lives inside the AES-GCM payload); verifying its per-section
+    // counts and digests turns a partially-written or internally-inconsistent backup into a clean
+    // failure before any metadata is trusted or any restore staging begins.
+    await verifySnapshotManifest(snapshot, (input) => webCryptoDigest(input, cryptoProvider));
+    return snapshot;
   } catch (error) {
+    if (error instanceof ManifestValidationError) {
+      throw new EncryptedBackupError("INVALID_PAYLOAD");
+    }
     if (error instanceof BackupValidationError) {
       throw new EncryptedBackupError(
         error.code === "RESOURCE_LIMIT"
@@ -181,6 +205,15 @@ export async function previewEncryptedWorkspaceBackup(
   } finally {
     bytes.fill(0);
   }
+}
+
+export async function previewEncryptedWorkspaceBackup(
+  content: string,
+  passphrase: string,
+  options: { readonly crypto?: Crypto } = {},
+): Promise<WorkspaceBackupPreview> {
+  const snapshot = await decryptWorkspaceBackup(content, passphrase, options);
+  return previewSnapshot(snapshot);
 }
 
 function parseContainer(content: string): EncryptedBackupContainer {

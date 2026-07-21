@@ -287,7 +287,7 @@ export class IndexedDbWorkspaceBackupRepository implements WorkspaceBackupReposi
   public async readSnapshot(
     workspaceId: WorkspaceId,
     exportedAt: string,
-  ): Promise<WorkspaceBackupSnapshot> {
+  ): Promise<Omit<WorkspaceBackupSnapshot, "manifest">> {
     try {
       await openFinancialDatabase(this.database);
       return await this.database.transaction(

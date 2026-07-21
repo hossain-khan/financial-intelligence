@@ -4,6 +4,7 @@ export {
   ENCRYPTED_BACKUP_MEDIA_TYPE,
   ENCRYPTED_BACKUP_VERSION,
   EncryptedBackupError,
+  decryptWorkspaceBackup,
   encryptWorkspaceBackup,
   previewEncryptedWorkspaceBackup,
 } from "./encryption";
@@ -14,9 +15,11 @@ export {
   MAX_BACKUP_TRANSACTIONS,
   WORKSPACE_BACKUP_FORMAT,
   WORKSPACE_BACKUP_VERSION,
+  buildSnapshotWithManifest,
   parseSnapshot,
   previewSnapshot,
   serializeSnapshot,
+  verifySnapshotManifest,
 } from "./snapshot";
 export type {
   BackupDuplicateResolutionEventDocument,
@@ -24,3 +27,19 @@ export type {
   WorkspaceBackupPreview,
   WorkspaceBackupSnapshot,
 } from "./snapshot";
+export {
+  BACKUP_MANIFEST_VERSION,
+  ManifestValidationError,
+  REQUIRED_SECTIONS,
+  SNAPSHOT_SECTIONS,
+  buildManifest,
+  canonicalJson,
+  verifyManifest,
+  webCryptoDigest,
+} from "./manifest";
+export type {
+  BackupManifest,
+  DigestFunction,
+  ManifestSectionInventory,
+  SnapshotSection,
+} from "./manifest";
