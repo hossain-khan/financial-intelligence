@@ -68,6 +68,26 @@ describe("ModelSideloader", () => {
     expect(await loader.isReady(profile())).toBe(true);
   });
 
+  it("matches picked files by basename against a profile with subfolder paths", async () => {
+    const { cache, stores } = memoryCache();
+    const subfolderProfile = {
+      ...profile(),
+      files: [
+        { path: "onnx/a.onnx", sha256: "d-AAA", byteSize: 3 },
+        { path: "b.json", sha256: "d-BBB", byteSize: 3 },
+      ],
+    };
+    const loader = new ModelSideloader(cache, fakeDigest);
+    // The user picks bare-name files; the profile pins them under onnx/.
+    await loader.sideload(subfolderProfile, [
+      { path: "a.onnx", bytes: bytesOf("AAA") },
+      { path: "b.json", bytes: bytesOf("BBB") },
+    ]);
+    // Published under the profile path (the key the runtime requests), not the picked name.
+    expect(stores.get(readyCacheName("p1"))?.has("onnx/a.onnx")).toBe(true);
+    expect(await loader.isReady(subfolderProfile)).toBe(true);
+  });
+
   it("rejects a digest mismatch and leaves nothing ready", async () => {
     const { cache, stores } = memoryCache();
     const loader = new ModelSideloader(cache, fakeDigest);

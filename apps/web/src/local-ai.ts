@@ -63,7 +63,12 @@ export async function sideloadModelFiles(
   const loader = new ModelSideloader(browserCache(), sha256Hex);
   try {
     const files: SideloadFile[] = await Promise.all(
-      fileList.map(async (file) => ({ path: file.name, bytes: await file.arrayBuffer() })),
+      fileList.map(async (file) => ({
+        // Prefer the relative path from a folder pick (e.g. "onnx/embed_tokens_q4.onnx"); the
+        // sideloader matches by basename either way.
+        path: file.webkitRelativePath.length > 0 ? file.webkitRelativePath : file.name,
+        bytes: await file.arrayBuffer(),
+      })),
     );
     await loader.sideload(LOCAL_AI_PROFILE, files, onProgress);
     return { ready: true };
