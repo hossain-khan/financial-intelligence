@@ -57,7 +57,8 @@ export class ModelSideloader {
       }
     }
     for (const [name, spec] of expected) {
-      if (!provided.has(name)) throw new SideloadError("MISSING_FILE", `Missing file: ${spec.path}`);
+      if (!provided.has(name))
+        throw new SideloadError("MISSING_FILE", `Missing file: ${spec.path}`);
     }
 
     const staging = await this.cache.open(stagingCacheName(profile.profileId));
