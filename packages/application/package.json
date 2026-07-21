@@ -12,6 +12,7 @@
   "dependencies": {
     "@financial-intelligence/analysis": "workspace:*",
     "@financial-intelligence/backup": "workspace:*",
-    "@financial-intelligence/domain": "workspace:*"
+    "@financial-intelligence/domain": "workspace:*",
+    "@financial-intelligence/schemas": "workspace:*"
   }
 }

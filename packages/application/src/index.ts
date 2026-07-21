@@ -9,6 +9,13 @@ export {
   SetAccountArchived,
 } from "./accounts";
 export type { AccountRepository, CreateAccountCommand } from "./accounts";
+export {
+  AiProviderConfigValidationError,
+  GetAiProviderConfig,
+  SetAiProviderProfile,
+  createDefaultNoAiProfile,
+} from "./ai-provider-config";
+export type { AiProviderConfigDeps, AiProviderConfigRepository } from "./ai-provider-config";
 export { CreateWorkspace, ListWorkspaces } from "./workspaces";
 export type { ApplicationClock, IdGenerator, WorkspaceRepository } from "./workspaces";
 export {
