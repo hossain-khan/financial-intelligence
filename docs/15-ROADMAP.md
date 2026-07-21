@@ -107,7 +107,7 @@ recovery, performance, and WCAG 2.2 AA gates pass across the supported browser m
 **Outcome:** AI improves uncertain tasks without weakening local correctness.
 
 - Task-based AI core, no-AI adapter, structured validation, evaluation harness. (Core landed in #31: `@financial-intelligence/ai-core` with versioned task schemas, router, `NoAiProvider`, and a persisted `kind: none` default. Evaluation harness landed in #32: `@financial-intelligence/ai-evaluation` with a digest-locked synthetic corpus, task-specific metrics, fake providers, profile-keyed results, and hard safety gates; #33–#35 register their adapters into it.)
-- Browser-local provider selected after capability/license/quality benchmarks.
+- Browser-local provider selected after capability/license/quality benchmarks. (Landed in #33: `@financial-intelligence/ai-local` using transformers.js in a worker, sideload-only acquisition with SHA-256 integrity, capability preflight, and offline execution; the specific model profile is pinned after the maintainer's WebGPU benchmark. See ADR-020.)
 - Self-hosted and one BYOK provider adapter; disclosure, consent, key handling, cost/resource controls.
 - Merchant/category suggestions and natural-language query planning with deterministic execution.
 - Model management, cancellation, error recovery, and classifier versioning.

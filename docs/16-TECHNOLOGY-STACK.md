@@ -202,8 +202,10 @@ Build the transaction table with controlled TanStack row models and add virtuali
 
 AI is not part of the first vertical slice. Phase 4 adds the task-based `AiProvider` interface only after deterministic imports, rules, review, and dashboards are complete.
 
-- WebLLM is the leading candidate for browser-local structured generative tasks.
-- Transformers.js may be evaluated for smaller classifier/embedding tasks.
+- `@huggingface/transformers` (transformers.js, ONNX Runtime Web) is the selected browser-local
+  runtime as of #33 ([ADR-020](adr/ADR-020-Browser-Local-AI-Runtime.md)). WebLLM was evaluated and
+  rejected because its prebuilt models cannot run the target Gemma 3n edge family. Models are
+  sideloaded from local files (no CDN), so `connect-src 'self'` is unchanged.
 - Remote providers use task-specific fetch adapters; a general chat SDK does not enter the domain.
 - Every output passes strict JSON Schema and allowed-ID validation.
 - The local query engine calculates every financial number.

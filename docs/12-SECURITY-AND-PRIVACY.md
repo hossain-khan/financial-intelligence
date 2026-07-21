@@ -104,6 +104,10 @@ The app does not claim protection against a fully compromised device, malicious 
 - Restrict `connect-src` to required static origins; user endpoints require deliberate policy handling.
 - No sensitive values in URLs, referrers, DNS-derived hostnames, headers other than required auth, or analytics.
 - Remote AI payloads are minimized per task and not cached by service workers.
+- The browser-local AI provider (#33, [ADR-020](adr/ADR-020-Browser-Local-AI-Runtime.md)) does not
+  relax `connect-src 'self'`: models are sideloaded from local files, SHA-256-verified against a
+  pinned profile, and served from Cache Storage, so the runtime never reaches the network. The
+  offline zero-network assertion covers model load and inference.
 
 ### Authorization and plugins
 

@@ -9,7 +9,13 @@ export default defineConfig({
   },
   test: {
     coverage: {
-      exclude: ["packages/schemas/src/generated/**"],
+      exclude: [
+        "packages/schemas/src/generated/**",
+        // Runtime-only: require WebGPU + real model weights, validated by the maintainer spike
+        // rather than in CI. Their LocalEngine contract is covered via FakeLocalEngine.
+        "packages/ai-local/src/worker.ts",
+        "packages/ai-local/src/transformers-engine.ts",
+      ],
       provider: "v8",
       reporter: ["text", "json", "html"],
       thresholds: {

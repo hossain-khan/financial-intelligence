@@ -6,6 +6,18 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Added
 
+- Browser-local AI provider scaffold (issue #33, ADR-020): a new
+  `@financial-intelligence/ai-local` package implementing `ai-core`'s `AiProvider` with the
+  `@huggingface/transformers` (transformers.js / ONNX Runtime Web) runtime isolated in a module
+  worker, driven by a versioned `load`/`warmup`/`execute`/`cancel`/`unload`/`dispose` protocol.
+  Model acquisition is local-file sideload only — files are SHA-256-verified against a pinned model
+  profile, staged, and atomically published into the clearable `model` Cache Storage namespace — so
+  `connect-src 'self'` is unchanged and the runtime never reaches the network. Includes a capability
+  preflight (`unsupported`/`constrained`/`recommended`), strict schema validation of model output,
+  cancellation and GPU device-loss handling, registration into the #32 evaluation harness, a
+  Settings "Local AI" panel with a size/license disclosure, and an offline no-network regression.
+  WebLLM was rejected because it cannot run the target Gemma 3n edge models. The specific model is
+  pinned after a maintainer benchmark; model selection is disabled in the UI until then.
 - AI evaluation harness and release thresholds (issue #32, ADR-019): a new
   `@financial-intelligence/ai-evaluation` package that imports only `ai-core` contracts and drives
   providers through the same `AiProvider` interface the app uses. It ships a versioned, SHA-256

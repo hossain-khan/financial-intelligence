@@ -48,6 +48,8 @@ Always available. Returns unsupported for model tasks while leaving rules, revie
 
 Runs an explicitly downloaded model using a compatible browser runtime, potentially WebGPU with a WASM/CPU fallback if practical. The model package has a declared source, license, size, digest, memory estimate, supported tasks, and deletion control. WebGPU is an optimization, not a core requirement; see [ADR-003](adr/ADR-003-Why-WebGPU.md).
 
+Implemented in #33 as `@financial-intelligence/ai-local` ([ADR-020](adr/ADR-020-Browser-Local-AI-Runtime.md)): the runtime is `@huggingface/transformers` (transformers.js, ONNX Runtime Web) isolated in a module worker, driven through a versioned `load`/`warmup`/`execute`/`cancel`/`unload`/`dispose` protocol. Model acquisition is **local-file sideload only** — the user selects ONNX files from disk, each is SHA-256-verified against a pinned `ModelProfile`, staged, and atomically published into the `model` Cache Storage namespace. This keeps `connect-src 'self'` unchanged: the app has no model origin and never fetches weights, and load/warmup/execute pass the no-network test. Capability preflight returns `unsupported`/`constrained`/`recommended`; failure preserves rules-only mode with no remote fallback. The specific model is pinned after a maintainer benchmark; classification (`category.classify.v1`) ships first, query planning follows once it passes the #32 gates.
+
 ### Self-hosted
 
 Targets a user-specified compatible endpoint. Loopback and LAN endpoints still count as remote from the browser privacy boundary. Connection tests send only a health/capability request. CORS and TLS limitations are explained rather than bypassed.

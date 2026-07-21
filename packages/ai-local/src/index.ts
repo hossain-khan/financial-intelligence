@@ -1,0 +1,17 @@
+export { CLASSIFIER_PROFILE } from "./model-profile";
+export type { ModelProfile, ModelProfileFile } from "./model-profile";
+export { detectCapability } from "./capability";
+export type { CapabilityEnvironment, CapabilityReport, CapabilityTier } from "./capability";
+export { FakeLocalEngine } from "./fake-engine";
+export type { FakeEngineScript } from "./fake-engine";
+export { createLocalAiWorkerHandler } from "./worker-handler";
+export type { LocalAiWorkerHandler, WorkerResponseTarget } from "./worker-handler";
+export type { EngineDecoding, LocalEngine } from "./engine";
+export type { EngineDecodingMessage, LocalAiRequest, LocalAiResponse } from "./protocol";
+export { MODEL_CACHE_PREFIX, readyCacheName, stagingCacheName } from "./model-cache";
+export { ModelSideloader, SideloadError } from "./sideloader";
+export type { CacheLike, CacheStoreLike, SideloadFile } from "./sideloader";
+export { buildClassifyPrompt } from "./prompt";
+export { createLocalAiWorker } from "./worker-client";
+export { LocalAiProvider } from "./provider";
+export type { LocalAiProviderDeps, LocalWorker } from "./provider";
