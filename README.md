@@ -57,10 +57,11 @@ Start with:
 
 ## Project status
 
-**Phase 2 hardening.** The offline PWA supports local CSV import, canonical ledger review,
-deterministic merchant/category learning, stale-safe Financial Brain apply/undo, recoverable transfer
-and recurring decisions, and revision-consistent financial dashboards with shared filters, accessible
-charts, exact drilldown, and design-system-consistent responsive presentation.
+**Phase 2 complete; Phase 3 is next.** The offline PWA supports local CSV import, canonical ledger
+review, deterministic merchant/category learning, stale-safe Financial Brain apply/undo,
+recoverable transfer and recurring decisions, and revision-consistent financial dashboards with
+shared filters, accessible charts, exact drilldown, and design-system-consistent responsive
+presentation.
 
 ## Local development
 

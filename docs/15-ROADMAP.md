@@ -39,10 +39,10 @@ Sequence delivery by risk-reducing vertical slices. Dates are intentionally abse
 
 ## Phase 2 — Financial Brain and deterministic learning
 
-**Status:** Follow-up hardening for atomic learning, decision lifecycle recovery, and
-revision-consistent dashboards is implemented on the Phase 2 completion branch. See
-[Phase 2 implementation and hardening](20-PHASE-2-IMPLEMENTATION.md). Final CI and supported-browser
-evidence remain required before the milestone exits.
+**Status: Complete.** The core slices and follow-up hardening for atomic learning, decision
+lifecycle recovery, and revision-consistent dashboards are merged. The combined qualification
+passed repository verification and the supported Chromium, Firefox, and WebKit browser jobs. See
+[Phase 2 implementation and hardening](20-PHASE-2-IMPLEMENTATION.md).
 
 **Outcome:** Returning imports require materially fewer corrections.
 
@@ -55,6 +55,8 @@ evidence remain required before the milestone exits.
 **Exit criteria:** Repeat-correction target is met on representative synthetic journeys; Brain round-trip/merge and rule conflict tests pass; every aggregate drills down.
 
 ## Phase 3 — Standard formats and resilient PWA
+
+**Status:** Next planned phase.
 
 **Outcome:** Broader statement support and production-grade offline lifecycle.
 
