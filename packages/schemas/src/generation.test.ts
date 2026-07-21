@@ -11,7 +11,7 @@ describe("generated portable schema types", () => {
       .filter((fileName) => fileName.endsWith(".schema.json"))
       .sort();
     const generatedFiles = (await readdir(generatedDirectory))
-      .filter((fileName) => fileName.endsWith(".ts"))
+      .filter((fileName) => fileName.endsWith(".ts") && fileName !== "validators.ts")
       .sort();
 
     expect(schemaFiles).toHaveLength(7);
@@ -26,5 +26,23 @@ describe("generated portable schema types", () => {
         expect(source).toMatch(/export (?:interface|type) /);
       }),
     );
+  });
+
+  it("generates CSP-safe standalone validators for every root schema", async () => {
+    const source = await readFile(new URL("validators.ts", generatedDirectory), "utf8");
+
+    expect(source).toContain("This file is generated from the canonical JSON Schema");
+    expect(source).not.toMatch(/\b(?:eval|Function)\s*\(/u);
+    for (const exportName of [
+      "validateAiProviderSchema",
+      "validateCategorySchema",
+      "validateDashboardSchema",
+      "validateFinancialBrainSchema",
+      "validateImportSchema",
+      "validateMerchantSchema",
+      "validateTransactionSchema",
+    ]) {
+      expect(source).toContain(exportName);
+    }
   });
 });

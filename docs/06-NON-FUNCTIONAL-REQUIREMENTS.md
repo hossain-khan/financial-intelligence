@@ -15,7 +15,10 @@ Reference performance is measured on a currently supported mid-range laptop with
 ## Privacy
 
 - **NFR-001:** Local/no-AI mode MUST make zero application-initiated network requests after static assets and user-chosen model assets are installed.
-- **NFR-002:** No telemetry, crash upload, advertising, fingerprinting, or third-party analytics may be enabled by default.
+- **NFR-002:** No client/application telemetry, crash upload, advertising, fingerprinting, or
+  third-party analytics may be enabled by default. Static-host invocation logging requires explicit
+  maintainer approval, a documented retention/data boundary, and must not include custom financial
+  or user-authored application log fields.
 - **NFR-003:** Sensitive data MUST NOT appear in URLs, service-worker cache keys, console logs, unredacted diagnostics, or notification content.
 - **NFR-004:** Exported Financial Brain documents MUST exclude raw transactions, source documents, account numbers, secrets, and model transcripts.
 

@@ -6,7 +6,11 @@ Define the threat model, data boundaries, security controls, consent model, rete
 
 ## Privacy promise
 
-Core use is local. The application does not require an account, bank credentials, telemetry, or remote AI. When a user enables a network capability, the product identifies the destination and data classes before transmission. This document is a product/engineering specification, not a substitute for a release-specific privacy notice.
+Core use is local. The application does not require an account, bank credentials, client-side
+telemetry, or remote AI. The reference static host persists invocation metadata as documented below;
+it cannot access origin-local financial records. When a user enables another network capability,
+the product identifies the destination and data classes before transmission. This document is a
+product/engineering specification, not a substitute for a release-specific privacy notice.
 
 ## Data classification
 
@@ -29,6 +33,12 @@ Exact amounts and merchant combinations can reveal health, religion, location, r
 6. **Extension boundary:** plugins and their UI/network capabilities.
 7. **Export boundary:** files downloaded outside application control.
 
+The reference static host persists 100% sampled Worker invocation logs. Cloudflare can retain
+request URLs and platform request/response metadata according to the account plan and service
+configuration. The application emits no custom financial logs and tracing remains disabled, but URL
+query values are inside this network boundary. Never put source text, descriptions, exact amounts,
+account labels, filenames, prompts, secrets, or backup contents in a URL.
+
 ## Threat actors and scenarios
 
 - Malicious statement content attempts script, HTML, formula, prompt, parser, or resource-exhaustion attacks.
@@ -47,6 +57,11 @@ The app does not claim protection against a fully compromised device, malicious 
 ### Application and content security
 
 - Strict CSP; avoid inline scripts and unsafe evaluation.
+- Compile JSON Schema validators into checked generated modules at build time; never use runtime
+  schema compilation, `eval`, or `Function` construction in the browser bundle.
+- Limit the production script policy to same-origin code plus `'wasm-unsafe-eval'` for the reviewed
+  local Argon2id adapter. This WebAssembly-specific source expression must not be replaced with the
+  broader `'unsafe-eval'` permission.
 - Render imported/model/plugin text as text, never raw HTML.
 - Trusted Types where browser/tooling support is practical.
 - Lock dependencies and verify build provenance; review high-risk parser/crypto/model dependencies.

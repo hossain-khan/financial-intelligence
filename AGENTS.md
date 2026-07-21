@@ -13,8 +13,9 @@ as exceptionally sensitive.
 - Keep raw financial data on the device by default.
 - Preserve user ownership, portability, provenance, and explainability.
 - Prefer deterministic rules and decimal-safe domain logic over probabilistic behavior.
-- Do not introduce required accounts, cloud services, telemetry, advertisements, bank connections,
-  or remote AI calls into the default path.
+- Do not introduce required accounts, cloud services, client/application telemetry, advertisements,
+  bank connections, or remote AI calls into the default path. Provider access/invocation logging
+  requires explicit maintainer approval, a privacy boundary, retention disclosure, and an ADR.
 - Never commit or expose real statements, account identifiers, user names, API keys, secrets,
   prompts, model transcripts, or production data. Tests and examples use synthetic data only.
 - Treat files, imported text, backup containers, model output, plugin output, and portable JSON as

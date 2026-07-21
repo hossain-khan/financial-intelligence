@@ -34,11 +34,16 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Changed
 
+- Enable persistent Cloudflare Worker invocation logs at 100% sampling while keeping distributed
+  traces disabled and application financial data local.
 - Mark Phase 2 complete after its delivery and hardening issues passed repository verification and
   supported-browser qualification; identify Phase 3 as the next planned phase.
 
 ### Fixed
 
+- Precompile portable JSON Schema validators during the build so the deployed application starts
+  under the production Content Security Policy without unsafe JavaScript evaluation, while retaining
+  the narrow WebAssembly compilation permission required by local Argon2id backups.
 - Apply saved merchant aliases and deterministic rules during later imports instead of limiting rule evaluation to the review queue.
 - Keep confirmed and dismissed recurring decisions visible in recurring summaries.
 - Pass exact dashboard contribution IDs into ledger and cash-flow drilldown queries.

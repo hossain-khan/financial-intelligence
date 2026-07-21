@@ -2,6 +2,10 @@ import { env } from "node:process";
 
 import { defineConfig, devices } from "@playwright/test";
 
+const webServerEnvironment = Object.fromEntries(
+  Object.entries(env).filter((entry): entry is [string, string] => entry[1] !== undefined),
+);
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
@@ -21,7 +25,8 @@ export default defineConfig({
   ],
   webServer: {
     command:
-      "pnpm build && pnpm --filter @financial-intelligence/web exec vite preview --host 127.0.0.1 --port 4173",
+      "pnpm build && pnpm exec wrangler dev --ip 127.0.0.1 --port 4173 --show-interactive-dev-session=false --log-level warn",
+    env: { ...webServerEnvironment, WRANGLER_LOG_PATH: ".wrangler/logs" },
     url: "http://127.0.0.1:4173",
     reuseExistingServer: !env.CI,
     timeout: 120_000,
