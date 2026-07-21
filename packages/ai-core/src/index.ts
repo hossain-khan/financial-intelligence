@@ -21,3 +21,5 @@ export type {
 export type { AiExecutionAudit, AiOutcome, AiSuggestion } from "./suggestion";
 export { FakeProvider } from "./testing/fake-provider";
 export type { FakeProviderScript } from "./testing/fake-provider";
+export { AiRouter } from "./router";
+export type { RouterDeps, RouterExecuteInput, RouterResult } from "./router";
