@@ -12,6 +12,12 @@ export interface ModelProfile {
   readonly runtimeVersion: string;
   readonly modelRepo: string;
   readonly modelRevision: string;
+  /**
+   * Base URL the app fetches the pinned files from during the one-click download. Files live at
+   * `${downloadBaseUrl}/${file.path}`. This is a project-controlled mirror (see ADR-023), decoupled
+   * from `modelRepo`/`modelRevision`, which remain the provenance record of the upstream source.
+   */
+  readonly downloadBaseUrl: string;
   readonly quantization: string;
   readonly tokenizerId: string;
   readonly files: readonly ModelProfileFile[];
@@ -30,13 +36,19 @@ export interface ModelProfile {
 // float16/float32 type mismatch in Gemma 3n's AltUp block. Only the text components are pinned
 // (embed_tokens + decoder); the audio/vision encoders are unused for classification. The revision is
 // an immutable commit, never the mutable `main` tag. File digests were captured from a verified
-// in-browser load; every sideloaded file is checked against them before use.
+// in-browser load; every downloaded/sideloaded file is checked against them before use.
+//
+// Download host: a project-controlled Cloudflare R2 mirror (ADR-023) that holds byte-identical copies
+// of the pinned files, so acquisition is fast and not gated by Hugging Face. `modelRepo`/`modelRevision`
+// remain the upstream provenance record; integrity is still enforced by the per-file SHA-256 digests,
+// so a compromised or wrong mirror cannot substitute a different model.
 export const CLASSIFIER_PROFILE: ModelProfile = {
   profileId: "gemma-3n-e2b-q4-classifier-v1",
   runtime: "transformers.js",
   runtimeVersion: "4.2.0",
   modelRepo: "onnx-community/gemma-3n-E2B-it-ONNX",
   modelRevision: "d3068b2ea2b9e9de85b33cb356121c4ca0510c0c",
+  downloadBaseUrl: "https://light-llm-storage.gohk.xyz/gemma-3n-E2B-it-ONNX",
   quantization: "q4",
   tokenizerId: "onnx-community/gemma-3n-E2B-it-ONNX",
   files: [

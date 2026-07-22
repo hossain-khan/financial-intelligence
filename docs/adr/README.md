@@ -45,5 +45,6 @@ Status is one of `Proposed`, `Accepted`, `Deprecated`, or `Superseded by ADR-NNN
 - [ADR-018: Provider-neutral AI core, task contracts, and no-AI default](ADR-018-Provider-Neutral-AI-Core.md)
 - [ADR-019: AI evaluation harness and release thresholds](ADR-019-AI-Evaluation-Harness.md)
 - [ADR-020: Browser-local AI runtime and sideload-only acquisition](ADR-020-Browser-Local-AI-Runtime.md) (acquisition superseded by ADR-021)
-- [ADR-021: One-click browser-local model download](ADR-021-One-Click-Model-Download.md)
+- [ADR-021: One-click browser-local model download](ADR-021-One-Click-Model-Download.md) (download host superseded by ADR-023)
 - [ADR-022: AI-assisted suggestions persisted separately, with provenance](ADR-022-AI-Suggestions-And-Provenance.md)
+- [ADR-023: Project-controlled model download mirror](ADR-023-Project-Controlled-Model-Mirror.md) (download host supersedes ADR-021)

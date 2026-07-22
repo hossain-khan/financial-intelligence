@@ -38,6 +38,7 @@ function profile(files: readonly ModelProfileFile[]): ModelProfile {
     runtimeVersion: "4.2.0",
     modelRepo: "org/model",
     modelRevision: "rev123",
+    downloadBaseUrl: "https://mirror.example.com/model",
     quantization: "q4",
     tokenizerId: "org/model",
     files,
@@ -52,9 +53,9 @@ function profile(files: readonly ModelProfileFile[]): ModelProfile {
 }
 
 describe("modelFileUrl", () => {
-  it("builds a pinned resolve URL", () => {
+  it("builds a URL on the profile's download mirror", () => {
     expect(modelFileUrl(profile([]), "onnx/a.onnx")).toBe(
-      "https://huggingface.co/org/model/resolve/rev123/onnx/a.onnx",
+      "https://mirror.example.com/model/onnx/a.onnx",
     );
   });
 });

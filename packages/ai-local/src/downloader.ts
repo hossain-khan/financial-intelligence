@@ -41,9 +41,9 @@ export interface DownloadDeps {
   readonly createHasher?: () => Promise<IncrementalHasher>;
 }
 
-/** The pinned, immutable-revision resolve URL for a model file. */
+/** URL of a pinned model file on the profile's download mirror (see ADR-023). */
 export function modelFileUrl(profile: ModelProfile, path: string): string {
-  return `https://huggingface.co/${profile.modelRepo}/resolve/${profile.modelRevision}/${path}`;
+  return `${profile.downloadBaseUrl}/${path}`;
 }
 
 /**

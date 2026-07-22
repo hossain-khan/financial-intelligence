@@ -166,6 +166,14 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Changed
 
+- Download the browser-local model from a single project-controlled Cloudflare R2 mirror
+  (`https://light-llm-storage.gohk.xyz/…`) instead of Hugging Face (ADR-023, supersedes ADR-021's
+  download host): faster, more predictable first-run downloads not gated by Hugging Face. `connect-src`
+  tightens from `'self' https://huggingface.co https://*.hf.co` to `'self'
+  https://light-llm-storage.gohk.xyz` — one exact host, no wildcard — a net reduction in allowed
+  network surface. The files, pinned revision provenance, and per-file SHA-256 integrity checks are
+  unchanged, so a wrong or compromised mirror still cannot substitute a different model; sideload
+  remains the offline fallback.
 - Scope 1.0 AI to **browser-local only** in the specs: with self-hosted (#34) and BYOK remote (#35)
   provider adapters descoped, the product/functional requirements, vision, UX guidelines, roadmap,
   AI-architecture, and evaluation baseline now mark self-hosted/remote/BYOK AI as deferred past 1.0.
