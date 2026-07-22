@@ -18,6 +18,8 @@ export {
   stageVerifiedStream,
 } from "./model-store";
 export type { IncrementalHasher } from "./model-store";
+export { DownloadError, downloadModel, modelFileUrl } from "./downloader";
+export type { DownloadDeps, DownloadErrorCode, DownloadProgress } from "./downloader";
 export { buildClassifyPrompt } from "./prompt";
 export { createLocalAiWorker } from "./worker-client";
 export { LocalAiProvider } from "./provider";
