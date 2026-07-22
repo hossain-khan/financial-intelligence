@@ -1,3 +1,5 @@
+[![CI](https://github.com/hossain-khan/financial-intelligence/actions/workflows/ci.yml/badge.svg)](https://github.com/hossain-khan/financial-intelligence/actions/workflows/ci.yml) 
+
 # Financial Intelligence
 
 > Privacy-first, offline-first personal finance analysis that turns bank statements into understandable, portable insights.
