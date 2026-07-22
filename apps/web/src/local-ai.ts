@@ -2,10 +2,12 @@ import {
   CLASSIFIER_PROFILE,
   ModelSideloader,
   detectCapability,
+  downloadModel,
   readyCacheName,
   stagingCacheName,
   type CacheLike,
   type CapabilityReport,
+  type DownloadProgress,
   type ModelProfile,
   type SideloadFile,
 } from "@financial-intelligence/ai-local";
@@ -79,6 +81,42 @@ export async function sideloadModelFiles(
 
 export function isModelReady(): Promise<boolean> {
   return new ModelSideloader(browserCache(), sha256Hex).isReady(LOCAL_AI_PROFILE);
+}
+
+export type ModelState = "not-downloaded" | "ready" | "incomplete";
+
+/**
+ * Whether the pinned model is fully cached, partially downloaded (interrupted), or absent. Drives
+ * the panel's primary state without any network access.
+ */
+export async function readModelState(): Promise<ModelState> {
+  if (await isModelReady()) return "ready";
+  const names = await caches.keys();
+  return names.includes(stagingCacheName(LOCAL_AI_PROFILE.profileId))
+    ? "incomplete"
+    : "not-downloaded";
+}
+
+/**
+ * One-click acquisition: fetch the pinned files from the allow-listed host, verify digests, and
+ * publish to the model cache. This is the only code path that touches the network; inference runs
+ * from cache with the runtime's remote fetching disabled (see the worker engine).
+ */
+export async function downloadPinnedModel(
+  onProgress?: (progress: DownloadProgress) => void,
+  signal?: AbortSignal,
+): Promise<SideloadOutcome> {
+  try {
+    await downloadModel(LOCAL_AI_PROFILE, {
+      cache: browserCache(),
+      fetch: fetch.bind(globalThis),
+      ...(onProgress ? { onProgress } : {}),
+      ...(signal ? { signal } : {}),
+    });
+    return { ready: true };
+  } catch (error) {
+    return { ready: false, error: error instanceof Error ? error.message : "Download failed." };
+  }
 }
 
 export { readyCacheName, stagingCacheName };
