@@ -85,6 +85,17 @@ A canonical merchant has explicit aliases. Aliases use normalized exact/token-pr
 
 Generation may use heuristics or AI to propose conditions, but the stored rule is a typed deterministic object. The proposal includes rationale and expected scope. No hidden prompt, embedding, or model-specific state is required to execute it later.
 
+## Optional AI suggestions
+
+The optional on-device model (see [ADR-018](adr/ADR-018-Provider-Neutral-AI-Core.md) and [ADR-022](adr/ADR-022-AI-Suggestions-And-Provenance.md)) can propose a merchant or category for transactions that remain unresolved after everything above it in the precedence order. It sits second-to-last, above only `unclassified`: locks, overrides, explicit rules, confirmed merchant mappings, and built-in heuristics all win over an AI suggestion.
+
+- **Eligibility** reuses the same precedence oracle as the review queue, so anything already resolved, locked, or previously rejected for the current classifier version is never proposed.
+- **Suggestions are proposals, not classifications.** They persist in a separate `aiSuggestions` store with bounded provenance (versions, evidence codes, short rationale, provider identity) — never raw prompts or model output — and default to review; nothing auto-applies.
+- **Accepting** a suggestion re-checks eligibility, then applies through the same atomic correction path and the same **only this / similar / all from merchant** scopes as a manual correction. The applied field records `localAi`/`remoteAi` provenance and stays unlocked and overridable. Accepting "similar" creates a narrow deterministic rule, so future imports are classified without the model.
+- **Rejecting** records a bounded `(normalized-description digest, classifier version)` key so the identical candidate is not re-proposed until the classifier version changes.
+
+Auto-apply is intentionally out of scope until a corpus-backed support verdict and explicit user opt-in exist; the pinned model is `experimental` until then.
+
 ## Confidence and review
 
 Deterministic exact matches may have evidence strength rather than artificial probability. Heuristics and AI provide calibrated confidence. Review priority combines uncertainty, amount magnitude, rule conflict, novelty, and effect on major aggregates. Magnitude prioritization must not imply that small transactions are unimportant; users can change sorting.

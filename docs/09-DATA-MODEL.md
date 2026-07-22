@@ -142,6 +142,12 @@ Defined by [dashboard.schema.json](../schemas/dashboard.schema.json). Stores lay
 
 Defined by [ai-provider.schema.json](../schemas/ai-provider.schema.json). Stores provider kind, endpoint origin where applicable, model/task configuration, consent metadata, and optional secret reference. It never contains an API key. Persisted in the IndexedDB `aiProviderProfiles` store (schema v10), keyed by profile id so multiple named profiles can coexist. The application seeds a default `kind: none` profile on first read; see [ADR-018](adr/ADR-018-Provider-Neutral-AI-Core.md).
 
+## AI suggestion
+
+A `PersistedSuggestion` is a reviewable AI proposal held **separately from canonical classifications** in the IndexedDB `aiSuggestions` store (schema v11), keyed by suggestion id. Each record targets one transaction and carries: the target's `updatedAt` as a staleness anchor (transactions have no numeric revision); the normalized-description digest the model saw; the task/task-version/prompt/minimizer/classifier versions; the proposal (a merchant label, a grounded category id, or an abstention); confidence; bounded user-facing evidence codes and a short rationale; the provider identity (profile, adapter, reported model, execution location); a redacted request-audit id; a status (`pending | accepted | rejected | stale | invalid`); and created/expiry timestamps. It **never** stores raw prompts, model responses, or hidden reasoning.
+
+Suggestions are proposals, not classifications: AI never mutates a canonical record directly. Accepting one re-checks eligibility and applies through the atomic correction path with `localAi`/`remoteAi` provenance; rejecting records a `(digest, classifier version)` key so the identical candidate is not re-proposed until the classifier version changes. See [ADR-022](adr/ADR-022-AI-Suggestions-And-Provenance.md) and [`docs/10-LEARNING-ENGINE.md`](10-LEARNING-ENGINE.md).
+
 ## Financial Brain
 
 Defined by [financial-brain.schema.json](../schemas/financial-brain.schema.json). Includes metadata, categories, merchants, rules, recurring decisions, and safe preferences. It excludes:

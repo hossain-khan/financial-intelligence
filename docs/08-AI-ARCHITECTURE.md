@@ -34,9 +34,9 @@ Raw source documents, account identifiers, unrelated transactions, notes, and fu
 5. Apply versioned heuristics.
 6. If unresolved and eligible, invoke the selected provider.
 7. Validate response schema, allowed IDs, confidence range, and safety constraints.
-8. Store the inference with method/version/evidence, or route to review.
+8. Persist the validated inference as a reviewable **suggestion** (never a direct canonical write), or route to review/abstain.
 
-A model cannot overwrite stages 1–4. A provider error yields `unclassified` or preserves the best deterministic candidate.
+A model cannot overwrite stages 1–4. A provider error yields `unclassified` or preserves the best deterministic candidate. Suggestions are held separately and become a canonical `localAi`/`remoteAi` classification only through an explicit, eligibility-rechecked accept; see [`docs/10-LEARNING-ENGINE.md`](10-LEARNING-ENGINE.md) and [ADR-022](adr/ADR-022-AI-Suggestions-And-Provenance.md).
 
 ## Provider types
 

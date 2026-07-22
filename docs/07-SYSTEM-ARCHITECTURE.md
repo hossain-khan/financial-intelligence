@@ -61,6 +61,7 @@ IndexedDB is the primary store (see [ADR-002](adr/ADR-002-Why-IndexedDB.md)). Su
 - `meta`: workspace and database versions;
 - `accounts`, `imports`, `transactions`, `categories`, `merchants`;
 - `rules`, `corrections`, `recurringSeries`, `aiProviderProfiles` (schema v10, keyed by profile id);
+- `aiSuggestions` (schema v11, keyed by suggestion id): reviewable AI proposals held separately from canonical classifications — see [ADR-022](adr/ADR-022-AI-Suggestions-And-Provenance.md);
 - `operationJournal`, `auditEvents`;
 - rebuildable indexes/projections keyed by time, account, category, and merchant.
 
@@ -231,6 +232,10 @@ Database version 9 adds `learningOperations` and `decisionEvents`. Cross-store l
 transfer confirmation, and recurring supersession write canonical records and their bounded journal
 inside one IndexedDB transaction. Commands compare an expected revision or exact before-state; undo
 compares the journaled after-state and refuses to overwrite a later edit.
+
+Version 10 adds the `aiProviderProfiles` store and version 11 the `aiSuggestions` store. Both
+migrations are additive; upgrades from every prior version preserve canonical data (matrix and
+per-version preservation tests).
 
 Each operation journal retains at most 1,000 records during ordinary command writes; older entries
 are pruned chronologically inside the same transaction. Full backup captures the retained window.
