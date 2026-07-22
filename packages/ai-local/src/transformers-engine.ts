@@ -34,22 +34,33 @@ export class TransformersLocalEngine implements LocalEngine {
     if (signal.aborted) throw new DOMException("aborted", "AbortError");
     // dtype comes from the pinned profile. Gemma 3n must use `q4`, not `q4f16`: the q4f16 export
     // crashes ORT Web session creation with a float16/float32 mismatch in the AltUp block (#33).
+    // AISPIKE: temporary instrumentation to locate the main-thread hang (investigate/ai-suggest-hang).
+    const t0 = performance.now();
+    // eslint-disable-next-line no-console
+    console.log("[AISPIKE] engine.load start", { device: "webgpu", dtype: profile.quantization });
     this.generator = (await pipeline("text-generation", profile.modelRepo, {
       revision: profile.modelRevision,
       device: "webgpu",
       dtype: profile.quantization as "q4" | "q4f16" | "fp16",
       progress_callback: (report: ProgressInfo) => {
         if ("progress" in report && typeof report.progress === "number") {
+          // eslint-disable-next-line no-console
+          console.log("[AISPIKE] load progress", report.progress.toFixed(1), (report as { file?: string }).file);
           onProgress(report.progress / 100);
         }
       },
     })) as TextGenerationPipeline;
+    // eslint-disable-next-line no-console
+    console.log("[AISPIKE] engine.load done in", Math.round(performance.now() - t0), "ms; backend:", detectBackend(this.generator));
   }
 
   public async warmup(signal: AbortSignal): Promise<void> {
     if (this.generator === undefined) throw new Error("engine not loaded");
     if (signal.aborted) throw new DOMException("aborted", "AbortError");
+    const t0 = performance.now();
     await this.generator("ping", { max_new_tokens: 1 });
+    // eslint-disable-next-line no-console
+    console.log("[AISPIKE] warmup done in", Math.round(performance.now() - t0), "ms");
   }
 
   public async generate(
@@ -59,12 +70,15 @@ export class TransformersLocalEngine implements LocalEngine {
   ): Promise<string> {
     if (this.generator === undefined) throw new Error("engine not loaded");
     if (signal.aborted) throw new DOMException("aborted", "AbortError");
+    const t0 = performance.now();
     const output = (await this.generator(prompt, {
       max_new_tokens: decoding.maxOutputTokens,
       temperature: decoding.temperature,
       do_sample: decoding.temperature > 0,
       return_full_text: false,
     })) as { generated_text: string }[];
+    // eslint-disable-next-line no-console
+    console.log("[AISPIKE] generate done in", Math.round(performance.now() - t0), "ms; out chars:", (output[0]?.generated_text ?? "").length);
     return output[0]?.generated_text ?? "";
   }
 
@@ -75,5 +89,21 @@ export class TransformersLocalEngine implements LocalEngine {
 
   public async dispose(): Promise<void> {
     await this.unload();
+  }
+}
+
+// AISPIKE: best-effort peek at which ORT execution provider actually ran. transformers.js stores the
+// ONNX session(s) under the model; if WebGPU init failed it silently falls back to the wasm (CPU,
+// main-thread) backend — the prime suspect for a "Page Unresponsive" freeze. Throwaway.
+function detectBackend(gen: unknown): string {
+  try {
+    const model = (gen as { model?: Record<string, unknown> }).model ?? {};
+    const sessionKey = Object.keys(model).find((k) => k.toLowerCase().includes("session"));
+    const session = sessionKey ? (model[sessionKey] as Record<string, unknown> | undefined) : undefined;
+    const handler = session?.["handler"] as Record<string, unknown> | undefined;
+    const ep = handler?.["_executionProviders"] ?? handler?.["executionProviders"];
+    return JSON.stringify({ sessionKey, ep }) || "unknown";
+  } catch (error) {
+    return `detect-failed: ${(error as Error).message}`;
   }
 }
