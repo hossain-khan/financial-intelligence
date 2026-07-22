@@ -72,9 +72,9 @@ export const COMPATIBILITY_REGISTRY: readonly CompatibilityAxis[] = Object.freez
   {
     id: "indexeddb-schema",
     label: "IndexedDB schema (Dexie)",
-    currentVersion: "10",
-    readableVersions: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
-    writableVersions: ["10"],
+    currentVersion: "11",
+    readableVersions: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"],
+    writableVersions: ["11"],
     lossless: true,
     downgradePolicy: "export-only",
     unsupportedRecovery:

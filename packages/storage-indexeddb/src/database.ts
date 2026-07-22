@@ -362,7 +362,10 @@ export class IndexedDbAiSuggestionRepository implements AiSuggestionRepository {
   public async listRejectedKeys(): Promise<readonly string[]> {
     try {
       await openFinancialDatabase(this.database);
-      const rejected = await this.database.aiSuggestions.where("status").equals("rejected").toArray();
+      const rejected = await this.database.aiSuggestions
+        .where("status")
+        .equals("rejected")
+        .toArray();
       return rejected.map((s) => rejectionKey(s.normalizedDigest, s.classifierVersion));
     } catch (error) {
       throw normalizeStorageError(error);

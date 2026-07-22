@@ -145,12 +145,7 @@ export function selectEligibleTransactions(
 
     // Reuse the existing precedence: unresolved-after-rules/mapping/heuristics only.
     const accountType = context.accountTypes?.get(transaction.accountId);
-    const item = deriveReviewQueueItem(
-      transaction,
-      context.rules,
-      context.merchants,
-      accountType,
-    );
+    const item = deriveReviewQueueItem(transaction, context.rules, context.merchants, accountType);
     // `undefined` means precedence resolved it — not a candidate.
     if (item === undefined) continue;
     // Never touch a locked decision.
@@ -186,7 +181,15 @@ export interface SuggestionBatchEntry {
 export function buildSuggestionBatch(
   transactions: readonly Transaction[],
 ): readonly SuggestionBatchEntry[] {
-  const byDigest = new Map<string, { descriptor: string; direction: "inflow" | "outflow"; ids: string[]; updatedAt: Map<string, string> }>();
+  const byDigest = new Map<
+    string,
+    {
+      descriptor: string;
+      direction: "inflow" | "outflow";
+      ids: string[];
+      updatedAt: Map<string, string>;
+    }
+  >();
   for (const transaction of transactions) {
     const descriptor = normalizeMerchantDescription(transaction.description);
     const direction = transaction.money.isInflow() ? "inflow" : "outflow";
@@ -267,15 +270,24 @@ export class SuggestClassifications {
     for (const entry of batch) {
       // Merchant resolution pass.
       const merchantResult = await provider.execute(
-        { task: "merchant.resolve.v1", payload: { tokens: entry.descriptor.split(" ").filter(Boolean) } },
+        {
+          task: "merchant.resolve.v1",
+          payload: { tokens: entry.descriptor.split(" ").filter(Boolean) },
+        },
         options,
       );
       const merchantLabel = this.readMerchantLabel(merchantResult);
       if (merchantLabel !== null) {
-        created += await this.writeProposal(entry, "merchant.resolve.v1", {
-          kind: "merchant",
-          merchantLabel,
-        }, this.readConfidence(merchantResult), this.readEvidence(merchantResult));
+        created += await this.writeProposal(
+          entry,
+          "merchant.resolve.v1",
+          {
+            kind: "merchant",
+            merchantLabel,
+          },
+          this.readConfidence(merchantResult),
+          this.readEvidence(merchantResult),
+        );
       } else {
         abstained += entry.transactionIds.length;
       }
@@ -294,10 +306,16 @@ export class SuggestClassifications {
       );
       const categoryId = this.readGroundedCategory(categoryResult, input.allowedCategoryIds);
       if (categoryId !== null) {
-        created += await this.writeProposal(entry, "category.classify.v1", {
-          kind: "category",
-          categoryId,
-        }, this.readConfidence(categoryResult), this.readEvidence(categoryResult));
+        created += await this.writeProposal(
+          entry,
+          "category.classify.v1",
+          {
+            kind: "category",
+            categoryId,
+          },
+          this.readConfidence(categoryResult),
+          this.readEvidence(categoryResult),
+        );
       } else {
         abstained += entry.transactionIds.length;
       }
@@ -353,7 +371,14 @@ export class SuggestClassifications {
 
   private readMerchantLabel(envelope: AiResultEnvelope): string | null {
     if (!envelope.ok) return null;
-    if (!validateAiTask({ schemaVersion: "1.0.0", task: "merchant.resolve.v1", direction: "response", payload: envelope.output }).valid) {
+    if (
+      !validateAiTask({
+        schemaVersion: "1.0.0",
+        task: "merchant.resolve.v1",
+        direction: "response",
+        payload: envelope.output,
+      }).valid
+    ) {
       return null;
     }
     const label = (envelope.output as { label?: unknown }).label;
@@ -365,7 +390,14 @@ export class SuggestClassifications {
     allowed: readonly string[],
   ): string | null {
     if (!envelope.ok) return null;
-    if (!validateAiTask({ schemaVersion: "1.0.0", task: "category.classify.v1", direction: "response", payload: envelope.output }).valid) {
+    if (
+      !validateAiTask({
+        schemaVersion: "1.0.0",
+        task: "category.classify.v1",
+        direction: "response",
+        payload: envelope.output,
+      }).valid
+    ) {
       return null;
     }
     const id = (envelope.output as { categoryId?: unknown }).categoryId;
@@ -410,7 +442,11 @@ export interface AcceptSuggestionInput {
   /** For a merchant suggestion, the resolved/created merchant id the UI chose for the label. */
   readonly merchantId?: string;
   readonly createRule?: ApplyReviewCorrectionInputCreateRule;
-  readonly createMerchantAlias?: { readonly merchantId: string; readonly pattern: string; readonly matchMode: "exact" | "tokenPrefix" | "contains" };
+  readonly createMerchantAlias?: {
+    readonly merchantId: string;
+    readonly pattern: string;
+    readonly matchMode: "exact" | "tokenPrefix" | "contains";
+  };
 }
 
 // Structural mirror of ApplyReviewCorrectionInput["createRule"] so callers can pass a rule to create.
@@ -459,17 +495,21 @@ export class AcceptSuggestion {
     }
 
     const provenance = {
-      method: suggestion.provider.executionLocation === "local" ? ("localAi" as const) : ("remoteAi" as const),
+      method:
+        suggestion.provider.executionLocation === "local"
+          ? ("localAi" as const)
+          : ("remoteAi" as const),
       classifierId: suggestion.provider.adapterId,
       classifierVersion: suggestion.classifierVersion,
       ...(suggestion.confidence === null ? {} : { confidence: suggestion.confidence }),
       evidence: suggestion.evidenceCodes,
     };
 
-    const merchantId =
-      suggestion.proposal.kind === "merchant" ? input.merchantId : undefined;
+    const merchantId = suggestion.proposal.kind === "merchant" ? input.merchantId : undefined;
     if (suggestion.proposal.kind === "merchant" && merchantId === undefined) {
-      throw new SuggestionStaleError("A merchant suggestion requires a resolved merchant id to accept");
+      throw new SuggestionStaleError(
+        "A merchant suggestion requires a resolved merchant id to accept",
+      );
     }
 
     const result = await this.deps.applyReviewCorrection.execute({

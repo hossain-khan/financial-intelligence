@@ -35,7 +35,13 @@ function txn(over: Partial<Parameters<typeof createTransaction>[0]> = {}): Trans
     postedDate: parseDateOnly("2026-07-20"),
     money: Money.from("-12.50", "CAD"),
     description: "UNKNOWN COFFEE SHOP",
-    provenance: { parserId: "csv", parserVersion: "1.0.0", sourceLocation: "l", original: {}, transformations: [] },
+    provenance: {
+      parserId: "csv",
+      parserVersion: "1.0.0",
+      sourceLocation: "l",
+      original: {},
+      transformations: [],
+    },
     now: NOW,
     ...over,
   });
@@ -57,7 +63,12 @@ function suggestion(over: Partial<PersistedSuggestion> = {}): PersistedSuggestio
     confidence: 0.9,
     evidenceCodes: ["model_category_candidate"],
     rationale: "",
-    provider: { profileId: "p", adapterId: "ai-local", reportedModel: "m", executionLocation: "local" },
+    provider: {
+      profileId: "p",
+      adapterId: "ai-local",
+      reportedModel: "m",
+      executionLocation: "local",
+    },
     requestAuditId: "audit-1",
     status: "pending",
     createdAt: NOW,
@@ -92,7 +103,11 @@ function ledger(transactions: readonly Transaction[]): TransactionLedgerReposito
   return { list: () => Promise.resolve(transactions) } as unknown as TransactionLedgerRepository;
 }
 
-function deps(repo: MemoryRepo, transactions: readonly Transaction[], apply: { execute: ReturnType<typeof vi.fn> }) {
+function deps(
+  repo: MemoryRepo,
+  transactions: readonly Transaction[],
+  apply: { execute: ReturnType<typeof vi.fn> },
+) {
   return {
     repository: repo,
     applyReviewCorrection: apply as unknown as ApplyReviewCorrectionUseCase,
@@ -106,7 +121,9 @@ describe("AcceptSuggestion", () => {
   it("applies a category suggestion with localAi provenance", async () => {
     const repo = new MemoryRepo([suggestion()]);
     const apply = { execute: vi.fn().mockResolvedValue({ operationId: "op-1", updatedCount: 1 }) };
-    const result = await new AcceptSuggestion(deps(repo, [txn()], apply)).execute({ suggestionId: "sug-1" });
+    const result = await new AcceptSuggestion(deps(repo, [txn()], apply)).execute({
+      suggestionId: "sug-1",
+    });
     expect(result.applied).toBe(true);
     const call = apply.execute.mock.calls[0]![0];
     expect(call.provenance.method).toBe("localAi");
@@ -134,7 +151,9 @@ describe("AcceptSuggestion", () => {
   });
 
   it("refuses a merchant suggestion without a resolved merchant id", async () => {
-    const repo = new MemoryRepo([suggestion({ proposal: { kind: "merchant", merchantLabel: "coffee co" } })]);
+    const repo = new MemoryRepo([
+      suggestion({ proposal: { kind: "merchant", merchantLabel: "coffee co" } }),
+    ]);
     const apply = { execute: vi.fn() };
     await expect(
       new AcceptSuggestion(deps(repo, [txn()], apply)).execute({ suggestionId: "sug-1" }),

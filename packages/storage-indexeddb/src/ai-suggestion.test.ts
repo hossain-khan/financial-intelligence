@@ -34,7 +34,12 @@ function suggestion(over: Partial<PersistedSuggestion> = {}): PersistedSuggestio
     confidence: 0.9,
     evidenceCodes: ["model_category_candidate"],
     rationale: "",
-    provider: { profileId: "p", adapterId: "ai-local", reportedModel: "m", executionLocation: "local" },
+    provider: {
+      profileId: "p",
+      adapterId: "ai-local",
+      reportedModel: "m",
+      executionLocation: "local",
+    },
     requestAuditId: "audit-1",
     status: "pending",
     createdAt: "2026-07-20T00:00:00.000Z",
@@ -71,7 +76,11 @@ describe("IndexedDbAiSuggestionRepository", () => {
     const repo = new IndexedDbAiSuggestionRepository(new FinancialDatabase(dbName()));
     await repo.save(suggestion({ status: "pending" }));
     await repo.save(
-      suggestion({ status: "rejected", normalizedDigest: "tim hortons", classifierVersion: "1.0.0" }),
+      suggestion({
+        status: "rejected",
+        normalizedDigest: "tim hortons",
+        classifierVersion: "1.0.0",
+      }),
     );
 
     expect(await repo.listRejectedKeys()).toEqual(["tim hortons::1.0.0"]);

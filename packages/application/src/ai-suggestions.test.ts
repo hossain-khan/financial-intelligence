@@ -79,7 +79,9 @@ describe("selectEligibleTransactions", () => {
   });
 
   it("excludes a void transaction", () => {
-    expect(selectEligibleTransactions([transaction({ status: "void" })], context())).toHaveLength(0);
+    expect(selectEligibleTransactions([transaction({ status: "void" })], context())).toHaveLength(
+      0,
+    );
   });
 
   it("excludes a description already rejected for this classifier version", () => {
