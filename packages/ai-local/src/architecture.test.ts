@@ -46,6 +46,7 @@ describe("ai-local runtime isolation", () => {
       "@financial-intelligence/domain",
       "@financial-intelligence/schemas",
       "@huggingface/transformers",
+      "hash-wasm",
     ]);
   });
 });

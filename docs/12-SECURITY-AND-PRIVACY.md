@@ -104,10 +104,14 @@ The app does not claim protection against a fully compromised device, malicious 
 - Restrict `connect-src` to required static origins; user endpoints require deliberate policy handling.
 - No sensitive values in URLs, referrers, DNS-derived hostnames, headers other than required auth, or analytics.
 - Remote AI payloads are minimized per task and not cached by service workers.
-- The browser-local AI provider (#33, [ADR-020](adr/ADR-020-Browser-Local-AI-Runtime.md)) does not
-  relax `connect-src 'self'`: models are sideloaded from local files, SHA-256-verified against a
-  pinned profile, and served from Cache Storage, so the runtime never reaches the network. The
-  offline zero-network assertion covers model load and inference.
+- The browser-local AI provider acquires its model with **one-click download** from allow-listed
+  Hugging Face hosts (#33, [ADR-021](adr/ADR-021-One-Click-Model-Download.md)). `connect-src` is
+  `'self' https://huggingface.co https://*.hf.co` — the `*.hf.co` wildcard covers the region-specific
+  Xet weight CDN, and the security-headers check asserts this token set exactly so it cannot be
+  broadened. These origins are contacted **only** during an explicit, user-initiated download; each
+  file is SHA-256-verified against the pinned profile before use, and the runtime loads with remote
+  fetching disabled so model load and inference make zero network requests (offline e2e-enforced).
+  Manual file load (sideload) remains as a secondary, fully-offline acquisition path.
 
 ### Authorization and plugins
 

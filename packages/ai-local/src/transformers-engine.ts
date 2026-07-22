@@ -23,6 +23,10 @@ export class TransformersLocalEngine implements LocalEngine {
     onProgress: (fraction: number) => void,
     signal: AbortSignal,
   ): Promise<void> {
+    // Remote fetching is disabled for every load: acquisition happens up front via the app's
+    // ModelDownloader (app-driven fetch → verify → cache), never through the runtime. So load and
+    // inference read only from the verified cache and cannot reach the network. This is the offline
+    // half of the one-click flow (see ADR-021).
     env.allowRemoteModels = false;
     env.allowLocalModels = true;
     env.useBrowserCache = true;

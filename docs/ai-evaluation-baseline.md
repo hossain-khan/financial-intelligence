@@ -57,6 +57,8 @@ accuracy numbers before running the baseline" rule.
 
 The `gemma-3n-e2b-q4-classifier-v1` profile (transformers.js 4.2.0, ONNX Runtime Web; see
 [ADR-020](adr/ADR-020-Browser-Local-AI-Runtime.md)) is **pinned** from the #33 runtime/model spike.
+Acquisition is one-click download from Hugging Face
+([ADR-021](adr/ADR-021-One-Click-Model-Download.md)), with sideload as a secondary offline path.
 
 ### Spike findings (manual, single-example)
 

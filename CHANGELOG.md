@@ -6,6 +6,15 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Added
 
+- One-click browser-local model download (issue #33, ADR-021, supersedes ADR-020's sideload-only
+  stance): the Settings "Local AI" panel now downloads the pinned model in one click — streamed file
+  by file, SHA-256-verified against the profile, and published to the clearable `model` cache — with
+  per-file + overall progress, a cancel control, a cached/ready indicator (and Remove) on return, a
+  resume path for interrupted downloads, and plain-language errors. Manual file load is kept under an
+  "Advanced" disclosure for offline/air-gapped users. `connect-src` gains
+  `https://huggingface.co https://*.hf.co` (the region-specific Xet weight CDN), contacted only
+  during the explicit download; the security-headers check asserts this set exactly. Model load and
+  inference run with remote fetching disabled and make zero network requests (offline e2e-enforced).
 - Pinned browser-local model profile (issue #33): the `gemma-3n-e2b-q4-classifier-v1` profile pins
   `onnx-community/gemma-3n-E2B-it-ONNX` at an immutable revision with dtype `q4` and per-file SHA-256
   digests, enabling model selection in the Settings "Local AI" panel. The runtime/model spike found

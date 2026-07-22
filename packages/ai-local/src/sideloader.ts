@@ -1,28 +1,19 @@
-import { readyCacheName, stagingCacheName } from "./model-cache";
+import {
+  SideloadError,
+  readyCacheName,
+  stagingCacheName,
+  type CacheLike,
+  type CacheStoreLike,
+} from "./model-cache";
 import type { ModelProfile } from "./model-profile";
+import { publishStagingToReady } from "./model-store";
 
-export interface CacheStoreLike {
-  put(key: string, bytes: ArrayBuffer): Promise<void>;
-  match(key: string): Promise<ArrayBuffer | undefined>;
-}
-export interface CacheLike {
-  open(name: string): Promise<CacheStoreLike>;
-  delete(name: string): Promise<boolean>;
-  keys(): Promise<string[]>;
-}
+export { SideloadError };
+export type { CacheLike, CacheStoreLike };
+
 export interface SideloadFile {
   readonly path: string;
   readonly bytes: ArrayBuffer;
-}
-
-export class SideloadError extends Error {
-  public constructor(
-    public readonly code: string,
-    message: string,
-  ) {
-    super(message);
-    this.name = "SideloadError";
-  }
 }
 
 /**
@@ -76,15 +67,11 @@ export class ModelSideloader {
       onProgress?.(done, profile.files.length);
     }
 
-    const ready = await this.cache.open(readyCacheName(profile.profileId));
-    for (const spec of profile.files) {
-      const bytes = await staging.match(spec.path);
-      if (bytes === undefined) {
-        throw new SideloadError("STAGING_LOST", `Staged file lost: ${spec.path}`);
-      }
-      await ready.put(spec.path, bytes);
-    }
-    await this.cache.delete(stagingCacheName(profile.profileId));
+    await publishStagingToReady(
+      this.cache,
+      profile.profileId,
+      profile.files.map((file) => file.path),
+    );
   }
 
   public async isReady(profile: ModelProfile): Promise<boolean> {
