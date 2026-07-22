@@ -56,7 +56,12 @@ export interface SuggestionView {
   readonly evidenceCodes: readonly string[];
   /** Human-readable provenance, e.g. "Gemma 3n · on-device". */
   readonly provenance: string;
+  /** Normalized description the model saw; used to build a "similar" rule on accept. */
+  readonly normalizedDigest: string;
 }
+
+/** How widely to apply an accepted category suggestion. */
+export type AcceptScope = "this-only" | "similar";
 
 export interface SuggestOutcome {
   readonly created: number;
@@ -83,6 +88,22 @@ export interface AiSuggestionsControllerDeps {
   readonly newId?: () => string;
 }
 
+/**
+ * Optional end-to-end test seam. Real WebGPU inference cannot run headless, so an e2e may set
+ * `globalThis.__FI_AI_TEST__` to a scripted provider before the section mounts, exercising the real
+ * orchestrator, persistence, and accept-to-rule path without a model. It is never set in
+ * production (nothing writes it), so the default local provider is used unchanged.
+ */
+interface AiTestSeam {
+  readonly provider: AiProvider;
+  readonly ready?: boolean;
+}
+
+function readTestSeam(): AiTestSeam | undefined {
+  const seam = (globalThis as { __FI_AI_TEST__?: AiTestSeam }).__FI_AI_TEST__;
+  return seam !== undefined && typeof seam === "object" ? seam : undefined;
+}
+
 function providerModelLabel(provider: AiProvider): string {
   const reported = provider.profile.reportedModel;
   const location =
@@ -104,14 +125,18 @@ export class AiSuggestionsController {
   private readonly newId: () => string;
 
   public constructor(private readonly deps: AiSuggestionsControllerDeps) {
+    const seam = deps.provider === undefined ? readTestSeam() : undefined;
     this.provider =
       deps.provider ??
+      seam?.provider ??
       new LocalAiProvider({
         createWorker: (): LocalWorker => createLocalAiWorker(),
         profile: LOCAL_AI_PROFILE,
         isReady: () => isModelReady(),
       });
-    this.ready = deps.isReady ?? isModelReady;
+    this.ready =
+      deps.isReady ??
+      (seam !== undefined ? () => Promise.resolve(seam.ready ?? true) : isModelReady);
     this.now = deps.now ?? (() => new Date().toISOString());
     this.newId = deps.newId ?? (() => crypto.randomUUID());
   }
@@ -169,11 +194,30 @@ export class AiSuggestionsController {
   }
 
   /**
-   * Accept a category suggestion. Merchant suggestions require resolving the label to a merchant id
-   * first (a later refinement); this path applies grounded category proposals.
+   * Accept a category suggestion. With scope `similar`, also create a deterministic classification
+   * rule (matching the normalized description) so future imports are classified without AI — the
+   * accept-to-rule path. Merchant suggestions require resolving the label to a merchant id first (a
+   * later refinement); this path applies grounded category proposals.
    */
-  public async accept(suggestionId: string): Promise<void> {
-    await this.deps.acceptSuggestion.execute({ suggestionId });
+  public async accept(view: SuggestionView, scope: AcceptScope = "this-only"): Promise<void> {
+    const createRule =
+      scope === "similar" && view.kind === "category" && view.categoryId !== undefined
+        ? {
+            name: `AI: ${view.proposedLabel}`,
+            conditions: [
+              {
+                field: "normalizedDescription" as const,
+                operator: "equals" as const,
+                value: view.normalizedDigest,
+              },
+            ],
+            actions: [{ type: "setCategory" as const, value: view.categoryId }],
+          }
+        : undefined;
+    await this.deps.acceptSuggestion.execute({
+      suggestionId: view.id,
+      ...(createRule === undefined ? {} : { createRule }),
+    });
   }
 
   public async reject(suggestionId: string): Promise<void> {
@@ -197,6 +241,7 @@ function toView(
     rationale: s.rationale,
     evidenceCodes: s.evidenceCodes,
     provenance,
+    normalizedDigest: s.normalizedDigest,
   };
   if (s.proposal.kind === "merchant") {
     return {

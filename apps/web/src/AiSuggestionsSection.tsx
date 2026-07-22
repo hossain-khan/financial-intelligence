@@ -1,8 +1,23 @@
+import type { Transaction } from "@financial-intelligence/domain";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { AiSuggestionsController, type SuggestionView } from "./ai-suggestions";
+import { AiSuggestionsController, type AcceptScope, type SuggestionView } from "./ai-suggestions";
 import { Button } from "./Button";
 import type { ApplicationServices } from "./infrastructure";
+
+/** The ledger query caps a page at 1000 rows, so read the whole ledger in bounded pages. */
+async function listAllLedgerTransactions(
+  services: ApplicationServices,
+): Promise<readonly Transaction[]> {
+  const pageSize = 1000;
+  const all: Transaction[] = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const page = await services.queryTransactionLedger.execute({ limit: pageSize, offset });
+    all.push(...page.items);
+    if (all.length >= page.total || page.items.length === 0) break;
+  }
+  return all;
+}
 
 export interface AiSuggestionsSectionProps {
   readonly services: ApplicationServices;
@@ -38,9 +53,7 @@ export function AiSuggestionsSection({
         repository: services.aiSuggestionRepository,
         acceptSuggestion: services.acceptSuggestion,
         rejectSuggestion: services.rejectSuggestion,
-        // Large page so eligibility sees the whole ledger, not the default first page.
-        listTransactions: () =>
-          services.queryTransactionLedger.execute({ limit: 100_000 }).then((page) => page.items),
+        listTransactions: () => listAllLedgerTransactions(services),
         listCategories: () => services.listCategories.execute(),
         listRules: () => services.listRules.execute(),
         listMerchants: () => services.listMerchants.execute(),
@@ -98,13 +111,15 @@ export function AiSuggestionsSection({
     }
   };
 
-  const onAccept = async (view: SuggestionView) => {
+  const onAccept = async (view: SuggestionView, scope: AcceptScope) => {
     setBusyId(view.id);
     try {
-      await controllerRef.current.accept(view.id);
+      await controllerRef.current.accept(view, scope);
       setSuggestions((current) => current.filter((s) => s.id !== view.id));
       setStatus(
-        `Applied “${view.proposedLabel}”. It is recorded as an AI-assisted classification you can change.`,
+        scope === "similar"
+          ? `Applied “${view.proposedLabel}” and created a rule so similar transactions classify automatically.`
+          : `Applied “${view.proposedLabel}”. It is recorded as an AI-assisted classification you can change.`,
       );
       await onApplied?.();
     } catch {
@@ -203,11 +218,21 @@ export function AiSuggestionsSection({
                       <Button
                         className="ai-suggestions-run"
                         isDisabled={isBusy || view.kind === "merchant"}
-                        onClick={() => void onAccept(view)}
-                        aria-label={`Accept suggestion: ${view.proposedLabel}`}
+                        onClick={() => void onAccept(view, "this-only")}
+                        aria-label={`Accept suggestion for this transaction: ${view.proposedLabel}`}
                       >
                         Accept
                       </Button>
+                      {view.kind === "category" && (
+                        <Button
+                          className="secondary-button"
+                          isDisabled={isBusy}
+                          onClick={() => void onAccept(view, "similar")}
+                          aria-label={`Accept and create a rule for similar transactions: ${view.proposedLabel}`}
+                        >
+                          Accept for similar
+                        </Button>
+                      )}
                       <Button
                         className="secondary-button"
                         isDisabled={isBusy}

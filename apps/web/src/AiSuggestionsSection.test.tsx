@@ -20,6 +20,7 @@ const categoryView: SuggestionView = {
   rationale: "Description resembles a restaurant.",
   evidenceCodes: ["model_category_candidate"],
   provenance: "Gemma 3n · on-device",
+  normalizedDigest: "restaurant xyz",
 };
 
 const merchantView: SuggestionView = {
@@ -32,6 +33,7 @@ const merchantView: SuggestionView = {
   rationale: "",
   evidenceCodes: [],
   provenance: "Gemma 3n · on-device",
+  normalizedDigest: "coffee co",
 };
 
 /** A hand-rolled controller stub; the section only calls these four methods. */
@@ -82,10 +84,27 @@ describe("AiSuggestionsSection", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Suggest categories/i }));
     await screen.findByText("Dining");
 
-    fireEvent.click(screen.getByRole("button", { name: /Accept suggestion: Dining/i }));
-    await waitFor(() => expect(controller.accept).toHaveBeenCalledWith("sug-cat"));
+    fireEvent.click(
+      screen.getByRole("button", { name: /Accept suggestion for this transaction: Dining/i }),
+    );
+    await waitFor(() => expect(controller.accept).toHaveBeenCalledWith(categoryView, "this-only"));
     await waitFor(() => expect(screen.queryByText("Dining")).not.toBeInTheDocument());
     expect(onApplied).toHaveBeenCalled();
+  });
+
+  it("accepts for similar, asking the controller to create a rule", async () => {
+    const controller = fakeController();
+    render(<AiSuggestionsSection services={services} controller={controller} />);
+    fireEvent.click(await screen.findByRole("button", { name: /Suggest categories/i }));
+    await screen.findByText("Dining");
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Accept and create a rule for similar transactions: Dining/i,
+      }),
+    );
+    await waitFor(() => expect(controller.accept).toHaveBeenCalledWith(categoryView, "similar"));
+    await waitFor(() => expect(screen.getAllByText(/created a rule/i).length).toBeGreaterThan(0));
   });
 
   it("rejects a suggestion, calling the use case and removing the row", async () => {
@@ -105,7 +124,9 @@ describe("AiSuggestionsSection", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Suggest categories/i }));
     await screen.findByText("Coffee Co");
 
-    const acceptMerchant = screen.getByRole("button", { name: /Accept suggestion: Coffee Co/i });
+    const acceptMerchant = screen.getByRole("button", {
+      name: /Accept suggestion for this transaction: Coffee Co/i,
+    });
     expect(acceptMerchant).toBeDisabled();
   });
 });
