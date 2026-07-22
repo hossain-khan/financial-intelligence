@@ -1,4 +1,4 @@
-[![CI](https://github.com/hossain-khan/financial-intelligence/actions/workflows/ci.yml/badge.svg)](https://github.com/hossain-khan/financial-intelligence/actions/workflows/ci.yml) 
+[![CI](https://github.com/hossain-khan/financial-intelligence/actions/workflows/ci.yml/badge.svg)](https://github.com/hossain-khan/financial-intelligence/actions/workflows/ci.yml) [![codecov](https://codecov.io/github/hossain-khan/financial-intelligence/graph/badge.svg?token=RGZOKVX2SR)](https://codecov.io/github/hossain-khan/financial-intelligence)
 
 # Financial Intelligence
 
