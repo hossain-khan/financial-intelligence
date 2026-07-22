@@ -74,6 +74,23 @@ describe("LocalAiProvider", () => {
     expect(result).toEqual({ ok: true, output: valid });
   });
 
+  it("accepts JSON wrapped in a markdown code fence", async () => {
+    // Gemma 3n wraps its JSON in ```json … ``` fences (observed in the #33 spike).
+    const worker = new FakeWorker();
+    worker.reply = loadThen((m) =>
+      m.type === "execute"
+        ? {
+            protocolVersion: 1,
+            type: "result",
+            operationId: m.operationId,
+            output: "```json\n" + JSON.stringify(valid) + "\n```",
+          }
+        : undefined,
+    );
+    const result = await new LocalAiProvider(deps(worker)).execute(request, options());
+    expect(result).toEqual({ ok: true, output: valid });
+  });
+
   it("rejects schema-invalid output", async () => {
     const worker = new FakeWorker();
     worker.reply = loadThen((m) =>

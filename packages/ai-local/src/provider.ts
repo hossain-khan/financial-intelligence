@@ -88,7 +88,7 @@ export class LocalAiProvider implements AiProvider {
   private validate(task: AiTaskRequest["task"], output: string): AiResultEnvelope {
     let parsed: unknown;
     try {
-      parsed = JSON.parse(output);
+      parsed = JSON.parse(stripJsonFence(output));
     } catch {
       return { ok: false, error: aiError("invalid_output", "Model output was not valid JSON.") };
     }
@@ -158,6 +158,17 @@ export class LocalAiProvider implements AiProvider {
       });
     });
   }
+}
+
+/**
+ * Instruct models (e.g. Gemma 3n) commonly wrap JSON in a markdown code fence. Strip an optional
+ * leading ```` ```json ```` / ```` ``` ```` and trailing ```` ``` ```` so the payload can be parsed.
+ * If no fence is present the trimmed input is returned unchanged.
+ */
+function stripJsonFence(output: string): string {
+  const trimmed = output.trim();
+  const fenced = /^```(?:json)?\s*\n?([\s\S]*?)\n?```$/iu.exec(trimmed);
+  return fenced?.[1]?.trim() ?? trimmed;
 }
 
 class WorkerFailure extends Error {

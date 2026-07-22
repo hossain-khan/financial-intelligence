@@ -81,6 +81,17 @@ selection is disabled in the UI until it is pinned.
 - Real in-browser load, generation, and the #32 evaluation are performed by the maintainer and
   recorded in the evaluation baseline report.
 
+### Spike outcome (recorded after the decision)
+
+The runtime/model spike confirmed `onnx-community/gemma-3n-E2B-it-ONNX` (revision `d3068b2`) loads and
+classifies correctly in transformers.js on WebGPU at dtype **`q4`**. The `q4f16` export was rejected:
+it crashes ORT Web session creation with a float16/float32 mismatch in Gemma 3n's AltUp block. The
+profile is pinned to the eight text-component + config/tokenizer files with captured SHA-256 digests.
+Two output-handling fixes fell out of the spike: the model wraps JSON in a markdown fence (the
+provider now strips it) and a 64-token budget truncated the rationale (raised to 256). This was a
+single-example viability spike; a full #32 corpus evaluation is still pending. See
+[the evaluation baseline report](../ai-evaluation-baseline.md).
+
 ## Related decisions
 
 - [ADR-003: WebGPU as optional local AI acceleration](ADR-003-Why-WebGPU.md)

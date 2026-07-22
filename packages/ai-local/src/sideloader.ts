@@ -42,22 +42,29 @@ export class ModelSideloader {
     files: readonly SideloadFile[],
     onProgress?: (done: number, total: number) => void,
   ): Promise<void> {
-    const expected = new Map(profile.files.map((file) => [file.path, file]));
-    const provided = new Map(files.map((file) => [file.path, file]));
+    // Match by basename so a user can select the model files (or a whole folder) without needing to
+    // reproduce the profile's `onnx/` subfolder layout. Profile paths keep their subfolder for the
+    // cache key the runtime requests; picked files carry a bare name or a relative path.
+    const expected = new Map(profile.files.map((file) => [basename(file.path), file]));
+    if (expected.size !== profile.files.length) {
+      throw new SideloadError("PROFILE_INVALID", "Profile has duplicate file basenames.");
+    }
+    const provided = new Map(files.map((file) => [basename(file.path), file]));
 
-    for (const file of files) {
-      if (!expected.has(file.path)) {
-        throw new SideloadError("UNEXPECTED_FILE", `Unexpected file: ${file.path}`);
+    for (const name of provided.keys()) {
+      if (!expected.has(name)) {
+        throw new SideloadError("UNEXPECTED_FILE", `Unexpected file: ${name}`);
       }
     }
-    for (const path of expected.keys()) {
-      if (!provided.has(path)) throw new SideloadError("MISSING_FILE", `Missing file: ${path}`);
+    for (const [name, spec] of expected) {
+      if (!provided.has(name))
+        throw new SideloadError("MISSING_FILE", `Missing file: ${spec.path}`);
     }
 
     const staging = await this.cache.open(stagingCacheName(profile.profileId));
     let done = 0;
     for (const spec of profile.files) {
-      const file = provided.get(spec.path);
+      const file = provided.get(basename(spec.path));
       if (file === undefined) throw new SideloadError("MISSING_FILE", `Missing file: ${spec.path}`);
       const actual = await this.digest(file.bytes);
       if (actual !== spec.sha256) {
@@ -89,4 +96,10 @@ export class ModelSideloader {
     }
     return profile.files.length > 0;
   }
+}
+
+/** The final path segment, so `onnx/embed_tokens_q4.onnx` and `embed_tokens_q4.onnx` compare equal. */
+function basename(path: string): string {
+  const segments = path.split(/[/\\]/u);
+  return segments[segments.length - 1] ?? path;
 }

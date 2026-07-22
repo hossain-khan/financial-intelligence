@@ -55,20 +55,41 @@ accuracy numbers before running the baseline" rule.
 
 ## Browser-local provider (`ai-local`, #33)
 
-The `local-classifier-v1` profile (transformers.js, ONNX Runtime Web; see
-[ADR-020](adr/ADR-020-Browser-Local-AI-Runtime.md)) is wired but **not yet pinned or measured**. The
-runtime, worker adapter, sideload/integrity, capability preflight, and harness registration are
-CI-verified against a fake engine; the exact model (target: a Gemma 3n edge ONNX export; fallback: a
-smaller known-good ONNX instruct model), its file digests, and its measured metrics are recorded here
-after the maintainer runs the model on real WebGPU hardware.
+The `gemma-3n-e2b-q4-classifier-v1` profile (transformers.js 4.2.0, ONNX Runtime Web; see
+[ADR-020](adr/ADR-020-Browser-Local-AI-Runtime.md)) is **pinned** from the #33 runtime/model spike.
+
+### Spike findings (manual, single-example)
+
+Run in-browser on WebGPU with `@huggingface/transformers@4.2.0` loading
+`onnx-community/gemma-3n-E2B-it-ONNX` at revision `d3068b2ea2b9e9de85b33cb356121c4ca0510c0c`:
+
+| Observation | Result |
+| --- | --- |
+| `q4f16` dtype | ❌ ORT Web session-creation crash — float16/float32 mismatch in Gemma 3n's AltUp block |
+| `q4` dtype | ✅ loads (first download ~3.28 GB; cached load ~3–4 s) |
+| Classification (chat-templated) | ✅ correct category, sensible confidence + rationale, ~3–4 s inference |
+| Output format | JSON wrapped in a ```` ```json ```` fence; the provider now strips fences before parsing |
+| Token budget | 64 tokens truncated the rationale mid-sentence; raised to 256 with a one-sentence-rationale prompt |
+
+This was a **single-example manual spike**, not a corpus run — it establishes viability and pins the
+profile, not a support verdict.
+
+### Still pending
+
+A full evaluation of the pinned model through the #32 corpus (accuracy, abstention precision/recall,
+invalid-output rate, latency percentiles) has not been run. It requires driving the real WebGPU engine
+over the corpus on the maintainer's hardware; the numbers and a support record are recorded here after
+that run.
 
 | Metric | Value |
 | --- | --- |
-| Model repo / revision | PENDING maintainer spike |
-| Accuracy / abstention recall / latency p95 | PENDING maintainer spike |
-| Support status | not yet evaluated |
+| Model repo / revision | `onnx-community/gemma-3n-E2B-it-ONNX` @ `d3068b2` |
+| dtype | `q4` |
+| Corpus accuracy / abstention / latency p95 | PENDING full #32 evaluation run |
+| Support status | not yet evaluated (single-example viability only) |
 
 ## Support records
 
 None yet. A provider is marked `supported`, `experimental`, or `failed` per task and device tier,
-with reviewer and date, only after it is measured against this corpus and clears the gates.
+with reviewer and date, only after it is measured against this corpus and clears the gates. The
+browser-local Gemma 3n profile is pinned and loads, but has not completed a corpus evaluation.
