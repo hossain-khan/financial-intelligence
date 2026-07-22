@@ -9,11 +9,22 @@ export {
   SetAccountArchived,
 } from "./accounts";
 export type { AccountRepository, CreateAccountCommand } from "./accounts";
-export { rejectionKey, selectEligibleTransactions } from "./ai-suggestions";
+export {
+  SuggestClassifications,
+  activeCategoryIds,
+  buildSuggestionBatch,
+  rejectionKey,
+  selectEligibleTransactions,
+} from "./ai-suggestions";
 export type {
   AiSuggestionRepository,
   EligibilityContext,
   PersistedSuggestion,
+  PersistedSuggestionStatus,
+  SuggestClassificationsDeps,
+  SuggestClassificationsResult,
+  SuggestionBatchEntry,
+  SuggestionProfileVersions,
 } from "./ai-suggestions";
 export {
   AiProviderConfigValidationError,

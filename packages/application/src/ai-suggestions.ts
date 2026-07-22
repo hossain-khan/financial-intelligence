@@ -1,8 +1,15 @@
-import type { AiTaskId, ExecutionLocation } from "@financial-intelligence/ai-core";
+import type {
+  AiProvider,
+  AiResultEnvelope,
+  AiTaskId,
+  ExecutionLocation,
+} from "@financial-intelligence/ai-core";
+import { validateAiTask } from "@financial-intelligence/schemas";
 import {
   deriveReviewQueueItem,
   normalizeMerchantDescription,
   type AccountType,
+  type Category,
   type ClassificationRule,
   type Merchant,
   type Transaction,
@@ -34,7 +41,10 @@ export interface PersistedSuggestion {
   readonly minimizerVersion: string;
   readonly classifierVersion: string;
   readonly proposal:
-    | { readonly kind: "merchant"; readonly merchantId: string }
+    // merchant.resolve proposes a canonical LABEL (not an id); accept maps it to an existing
+    // merchant or creates one via the existing merchant/alias path.
+    | { readonly kind: "merchant"; readonly merchantLabel: string }
+    // category.classify proposes an id from the current allowed vocabulary (grounded at validation).
     | { readonly kind: "category"; readonly categoryId: string }
     | { readonly kind: "abstain" };
   readonly confidence: number | null;
@@ -144,4 +154,225 @@ export function selectEligibleTransactions(
     eligible.push(transaction);
   }
   return eligible;
+}
+
+/** A deduplicated unit of work: one normalized description shared by one or more transactions. */
+export interface SuggestionBatchEntry {
+  readonly digest: string;
+  readonly descriptor: string;
+  readonly direction: "inflow" | "outflow";
+  readonly transactionIds: readonly string[];
+  /** The updatedAt of each member transaction, keyed by id, for the staleness anchor. */
+  readonly targetUpdatedAt: ReadonlyMap<string, string>;
+}
+
+/**
+ * Deduplicate eligible transactions by their normalized description (+ direction), so one model
+ * call serves every transaction sharing that description. Only the minimized descriptor and
+ * direction leave this function — never ids, amounts, notes, or raw rows.
+ */
+export function buildSuggestionBatch(
+  transactions: readonly Transaction[],
+): readonly SuggestionBatchEntry[] {
+  const byDigest = new Map<string, { descriptor: string; direction: "inflow" | "outflow"; ids: string[]; updatedAt: Map<string, string> }>();
+  for (const transaction of transactions) {
+    const descriptor = normalizeMerchantDescription(transaction.description);
+    const direction = transaction.money.isInflow() ? "inflow" : "outflow";
+    const digest = `${direction}:${descriptor}`;
+    const existing = byDigest.get(digest);
+    if (existing === undefined) {
+      byDigest.set(digest, {
+        descriptor,
+        direction,
+        ids: [transaction.id],
+        updatedAt: new Map([[transaction.id, transaction.updatedAt]]),
+      });
+    } else {
+      existing.ids.push(transaction.id);
+      existing.updatedAt.set(transaction.id, transaction.updatedAt);
+    }
+  }
+  return [...byDigest.entries()].map(([digest, entry]) => ({
+    digest,
+    descriptor: entry.descriptor,
+    direction: entry.direction,
+    transactionIds: entry.ids,
+    targetUpdatedAt: entry.updatedAt,
+  }));
+}
+
+export interface SuggestionProfileVersions {
+  readonly taskVersion: string;
+  readonly promptVersion: string;
+  readonly minimizerVersion: string;
+  readonly classifierVersion: string;
+}
+
+export interface SuggestClassificationsDeps {
+  readonly provider: AiProvider;
+  readonly repository: AiSuggestionRepository;
+  readonly now: () => string;
+  readonly newId: () => string;
+  readonly deadlineMs: number;
+  readonly versions: SuggestionProfileVersions;
+  /** How long a pending suggestion stays valid (ms) before it should be treated as expired. */
+  readonly ttlMs: number;
+  /** Minimum confidence to surface a proposal; below this the result abstains. */
+  readonly minConfidence: number;
+}
+
+export interface SuggestClassificationsResult {
+  readonly created: number;
+  readonly abstained: number;
+}
+
+/**
+ * Runs merchant resolution then category classification over a minimized, deduplicated batch of
+ * eligible transactions through the injected provider, validates every result (strict schema +
+ * allowed-id grounding + confidence gate), and writes pending suggestions. Nothing is applied to
+ * canonical records here — a suggestion only becomes a classification via the explicit accept path.
+ */
+export class SuggestClassifications {
+  public constructor(private readonly deps: SuggestClassificationsDeps) {}
+
+  public async execute(input: {
+    readonly transactions: readonly Transaction[];
+    readonly allowedCategoryIds: readonly string[];
+    readonly eligibility: EligibilityContext;
+    readonly signal?: AbortSignal;
+  }): Promise<SuggestClassificationsResult> {
+    const eligible = selectEligibleTransactions(input.transactions, input.eligibility);
+    const batch = buildSuggestionBatch(eligible);
+    const provider = this.deps.provider;
+    let created = 0;
+    let abstained = 0;
+
+    const options = {
+      signal: input.signal ?? new AbortController().signal,
+      deadlineMs: this.deps.deadlineMs,
+    };
+
+    for (const entry of batch) {
+      // Merchant resolution pass.
+      const merchantResult = await provider.execute(
+        { task: "merchant.resolve.v1", payload: { tokens: entry.descriptor.split(" ").filter(Boolean) } },
+        options,
+      );
+      const merchantLabel = this.readMerchantLabel(merchantResult);
+      if (merchantLabel !== null) {
+        created += await this.writeProposal(entry, "merchant.resolve.v1", {
+          kind: "merchant",
+          merchantLabel,
+        }, this.readConfidence(merchantResult), this.readEvidence(merchantResult));
+      } else {
+        abstained += entry.transactionIds.length;
+      }
+
+      // Category classification pass, using the resolved label when available.
+      const categoryResult = await provider.execute(
+        {
+          task: "category.classify.v1",
+          payload: {
+            descriptor: merchantLabel ?? entry.descriptor,
+            direction: entry.direction,
+            allowedCategoryIds: [...input.allowedCategoryIds],
+          },
+        },
+        options,
+      );
+      const categoryId = this.readGroundedCategory(categoryResult, input.allowedCategoryIds);
+      if (categoryId !== null) {
+        created += await this.writeProposal(entry, "category.classify.v1", {
+          kind: "category",
+          categoryId,
+        }, this.readConfidence(categoryResult), this.readEvidence(categoryResult));
+      } else {
+        abstained += entry.transactionIds.length;
+      }
+    }
+    return { created, abstained };
+  }
+
+  private async writeProposal(
+    entry: SuggestionBatchEntry,
+    task: PersistedSuggestion["task"],
+    proposal: PersistedSuggestion["proposal"],
+    confidence: number | null,
+    evidenceCodes: readonly string[],
+  ): Promise<number> {
+    // Confidence gate: below the floor abstains (no applyable suggestion written).
+    if (confidence !== null && confidence < this.deps.minConfidence) return 0;
+    const createdAt = this.deps.now();
+    const expiresAt = new Date(Date.parse(createdAt) + this.deps.ttlMs).toISOString();
+    const p = this.deps.provider.profile;
+    let count = 0;
+    for (const transactionId of entry.transactionIds) {
+      const suggestion: PersistedSuggestion = {
+        id: this.deps.newId(),
+        targetTransactionId: transactionId,
+        targetUpdatedAt: entry.targetUpdatedAt.get(transactionId) ?? createdAt,
+        task,
+        taskVersion: this.deps.versions.taskVersion,
+        schemaVersion: "1.0.0",
+        promptVersion: this.deps.versions.promptVersion,
+        minimizerVersion: this.deps.versions.minimizerVersion,
+        classifierVersion: this.deps.versions.classifierVersion,
+        proposal,
+        confidence,
+        evidenceCodes,
+        rationale: "",
+        provider: {
+          profileId: p.profileId,
+          adapterId: p.adapterId,
+          reportedModel: p.reportedModel,
+          executionLocation: p.executionLocation,
+        },
+        requestAuditId: this.deps.newId(),
+        status: "pending",
+        createdAt,
+        expiresAt,
+      };
+      await this.deps.repository.save(suggestion);
+      count += 1;
+    }
+    return count;
+  }
+
+  private readMerchantLabel(envelope: AiResultEnvelope): string | null {
+    if (!envelope.ok) return null;
+    if (!validateAiTask({ schemaVersion: "1.0.0", task: "merchant.resolve.v1", direction: "response", payload: envelope.output }).valid) {
+      return null;
+    }
+    const label = (envelope.output as { label?: unknown }).label;
+    return typeof label === "string" && label.length > 0 ? label : null;
+  }
+
+  private readGroundedCategory(
+    envelope: AiResultEnvelope,
+    allowed: readonly string[],
+  ): string | null {
+    if (!envelope.ok) return null;
+    if (!validateAiTask({ schemaVersion: "1.0.0", task: "category.classify.v1", direction: "response", payload: envelope.output }).valid) {
+      return null;
+    }
+    const id = (envelope.output as { categoryId?: unknown }).categoryId;
+    return typeof id === "string" && allowed.includes(id) ? id : null;
+  }
+
+  private readConfidence(envelope: AiResultEnvelope): number | null {
+    if (!envelope.ok) return null;
+    const c = (envelope.output as { confidence?: unknown }).confidence;
+    return typeof c === "number" ? c : null;
+  }
+
+  private readEvidence(envelope: AiResultEnvelope): readonly string[] {
+    if (!envelope.ok) return [];
+    const e = (envelope.output as { evidence?: unknown }).evidence;
+    return Array.isArray(e) ? e.filter((x): x is string => typeof x === "string") : [];
+  }
+}
+
+/** Current non-archived category ids — the allowed vocabulary for classification. */
+export function activeCategoryIds(categories: readonly Category[]): readonly string[] {
+  return categories.filter((category) => !category.archived).map((category) => category.id);
 }
