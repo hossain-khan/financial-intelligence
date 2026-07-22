@@ -179,8 +179,8 @@ describe("mapping presets and reports", () => {
     );
   });
 
-  it.each(["=SUM(A1:A2)", "+cmd", "-2+3", "@payload", "  =hidden"])(
-    "neutralizes spreadsheet formula cell %s",
+  it.each(["=SUM(A1:A2)", "+cmd", "-2+3", "@payload", "  =hidden", "\t=1", "\tcmd", "\r123"])(
+    "neutralizes spreadsheet formula cell %j",
     (value) => expect(sanitizeSpreadsheetCell(value)).toBe(`'${value}`),
   );
 
