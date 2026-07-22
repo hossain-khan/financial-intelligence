@@ -1828,3 +1828,46 @@ table select {
     animation-iteration-count: 1 !important;
   }
 }
+
+.local-ai-actions {
+  display: grid;
+  gap: 0.8rem;
+  margin-block-start: 0.8rem;
+}
+
+.local-ai-advanced {
+  border-block-start: 1px solid var(--forest-soft);
+  padding-block-start: 0.6rem;
+}
+
+.local-ai-advanced summary {
+  cursor: pointer;
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+}
+
+.local-ai-progress {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.local-ai-progress [role="progressbar"] {
+  block-size: 0.6rem;
+  background: var(--forest-soft);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.local-ai-progress .progress-fill {
+  display: block;
+  block-size: 100%;
+  background: var(--forest);
+  border-radius: inherit;
+  transition: inline-size 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .local-ai-progress .progress-fill {
+    transition: none;
+  }
+}
