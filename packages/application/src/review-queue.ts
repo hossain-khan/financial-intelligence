@@ -10,6 +10,7 @@ import {
   transactionToCanonical,
   type AccountType,
   type AccountId,
+  type AiClassificationProvenance,
   type CategoryId,
   type MatchMode,
   type MerchantId,
@@ -109,6 +110,7 @@ export interface ApplyReviewCorrectionInput {
   readonly transactionIds: readonly TransactionId[];
   readonly categoryId?: CategoryId;
   readonly merchantId?: MerchantId;
+  readonly provenance?: AiClassificationProvenance;
   readonly createRule?: {
     readonly name: string;
     readonly priority?: number;
@@ -166,6 +168,7 @@ export class ApplyReviewCorrectionUseCase {
     const edit = {
       ...(input.merchantId === undefined ? {} : { merchant: input.merchantId }),
       ...(input.categoryId === undefined ? {} : { category: input.categoryId }),
+      ...(input.provenance === undefined ? {} : { provenance: input.provenance }),
     };
 
     if (

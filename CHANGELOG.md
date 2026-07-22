@@ -6,6 +6,20 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Added
 
+- AI-assisted merchant/category suggestions (issue #36, ADR-022): the transactions page gains an
+  optional "AI-assisted suggestions" review section. An explicit "Suggest categories & merchants"
+  action runs the on-device model over transactions still unresolved after rules/mappings/heuristics
+  (reusing the same precedence oracle as the review queue), then lists proposals with confidence, a
+  short rationale, evidence codes, and provenance ("model · on-device"). Accept applies a grounded
+  category through the existing atomic correction path with `localAi` provenance and an eligibility
+  recheck; "Accept for similar" also creates a narrow deterministic rule so future imports classify
+  without the model. Reject records a `(digest, classifier version)` key so the same candidate is
+  not re-proposed until the classifier version changes. Nothing auto-applies and deterministic rules
+  always take precedence. Suggestions persist in a new additive IndexedDB `aiSuggestions` store
+  (schema v11) separately from canonical classifications, holding only bounded provenance — never
+  raw prompts or model output. The whole flow is network-free (accept-to-rule repeat-import
+  e2e-enforced); CI exercises it with fake/scripted providers, and real on-device generation is
+  verified manually. Merchant-label acceptance is deferred to the review-queue path.
 - One-click browser-local model download (issue #33, ADR-021, supersedes ADR-020's sideload-only
   stance): the Settings "Local AI" panel now downloads the pinned model in one click — streamed file
   by file, SHA-256-verified against the profile, and published to the clearable `model` cache — with

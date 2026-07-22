@@ -1,5 +1,8 @@
 import type {
   AiProviderConfigRepository,
+  AiSuggestionRepository,
+  PersistedSuggestion,
+  PersistedSuggestionStatus,
   AtomicImportCommitPlan,
   CancellationSignal,
   ImportCommitRepository,
@@ -20,6 +23,7 @@ import type {
   LearningOperation,
   LearningOperationChange,
 } from "@financial-intelligence/application";
+import { rejectionKey } from "@financial-intelligence/application";
 import {
   WORKSPACE_BACKUP_FORMAT,
   WORKSPACE_BACKUP_VERSION,
@@ -121,6 +125,7 @@ export class FinancialDatabase extends Dexie {
   public transactionOperations!: EntityTable<TransactionOperationRecord, "id">;
   public duplicateResolutionEvents!: EntityTable<DuplicateResolutionEventRecord, "id">;
   public aiProviderProfiles!: EntityTable<AiProviderProfileRecord, "id">;
+  public aiSuggestions!: EntityTable<PersistedSuggestion, "id">;
   public migrationJournal!: EntityTable<MigrationJournalRecord, "id">;
   public readonly declaredVersion: number;
 
@@ -303,6 +308,65 @@ export class IndexedDbAiProviderProfileRepository implements AiProviderConfigRep
       await this.database.transaction("rw", this.database.aiProviderProfiles, async () => {
         await this.database.aiProviderProfiles.put(profile);
       });
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+}
+
+export class IndexedDbAiSuggestionRepository implements AiSuggestionRepository {
+  public constructor(private readonly database: FinancialDatabase) {}
+
+  public async save(suggestion: PersistedSuggestion): Promise<void> {
+    try {
+      await openFinancialDatabase(this.database);
+      await this.database.transaction("rw", this.database.aiSuggestions, async () => {
+        await this.database.aiSuggestions.put(suggestion);
+      });
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  public async listPending(): Promise<readonly PersistedSuggestion[]> {
+    try {
+      await openFinancialDatabase(this.database);
+      return await this.database.aiSuggestions.where("status").equals("pending").toArray();
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  public async findById(id: string): Promise<PersistedSuggestion | undefined> {
+    try {
+      await openFinancialDatabase(this.database);
+      return await this.database.aiSuggestions.get(id);
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  public async setStatus(id: string, status: PersistedSuggestionStatus): Promise<void> {
+    try {
+      await openFinancialDatabase(this.database);
+      await this.database.transaction("rw", this.database.aiSuggestions, async () => {
+        const existing = await this.database.aiSuggestions.get(id);
+        if (existing === undefined) return;
+        await this.database.aiSuggestions.put({ ...existing, status });
+      });
+    } catch (error) {
+      throw normalizeStorageError(error);
+    }
+  }
+
+  public async listRejectedKeys(): Promise<readonly string[]> {
+    try {
+      await openFinancialDatabase(this.database);
+      const rejected = await this.database.aiSuggestions
+        .where("status")
+        .equals("rejected")
+        .toArray();
+      return rejected.map((s) => rejectionKey(s.normalizedDigest, s.classifierVersion));
     } catch (error) {
       throw normalizeStorageError(error);
     }

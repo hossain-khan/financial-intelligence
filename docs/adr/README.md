@@ -46,3 +46,4 @@ Status is one of `Proposed`, `Accepted`, `Deprecated`, or `Superseded by ADR-NNN
 - [ADR-019: AI evaluation harness and release thresholds](ADR-019-AI-Evaluation-Harness.md)
 - [ADR-020: Browser-local AI runtime and sideload-only acquisition](ADR-020-Browser-Local-AI-Runtime.md) (acquisition superseded by ADR-021)
 - [ADR-021: One-click browser-local model download](ADR-021-One-Click-Model-Download.md)
+- [ADR-022: AI-assisted suggestions persisted separately, with provenance](ADR-022-AI-Suggestions-And-Provenance.md)

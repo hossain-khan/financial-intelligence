@@ -1,6 +1,19 @@
 import type { CategoryId, MerchantId } from "./identifiers";
 import type { UtcTimestamp } from "./temporal";
-import type { Transaction, TransactionClassification, TransactionReviewState } from "./transaction";
+import type {
+  ClassificationMethod,
+  Transaction,
+  TransactionClassification,
+  TransactionReviewState,
+} from "./transaction";
+
+export interface AiClassificationProvenance {
+  readonly method: Extract<ClassificationMethod, "localAi" | "remoteAi">;
+  readonly classifierId: string;
+  readonly classifierVersion: string;
+  readonly confidence?: number;
+  readonly evidence: readonly string[];
+}
 
 export interface ManualTransactionEdit {
   readonly merchant?: MerchantId | null;
@@ -10,6 +23,7 @@ export interface ManualTransactionEdit {
   readonly reviewState?: TransactionReviewState;
   readonly unlockCategory?: boolean;
   readonly unlockMerchant?: boolean;
+  readonly provenance?: AiClassificationProvenance;
 }
 
 export interface AutomaticCategoryEdit {
@@ -34,7 +48,10 @@ export function applyManualTransactionEdit(
     else next.merchantId = edit.merchant;
     next.classifications = {
       ...next.classifications,
-      merchant: userClassification(now, !edit.unlockMerchant),
+      merchant:
+        edit.provenance === undefined
+          ? userClassification(now, !edit.unlockMerchant)
+          : aiClassification(edit.provenance, now),
     };
   } else if (edit.unlockMerchant && next.classifications.merchant !== undefined) {
     next.classifications = {
@@ -47,7 +64,10 @@ export function applyManualTransactionEdit(
     else next.categoryId = edit.category;
     next.classifications = {
       ...next.classifications,
-      category: userClassification(now, !edit.unlockCategory),
+      category:
+        edit.provenance === undefined
+          ? userClassification(now, !edit.unlockCategory)
+          : aiClassification(edit.provenance, now),
     };
   } else if (edit.unlockCategory && next.classifications.category !== undefined) {
     next.classifications = {
@@ -109,6 +129,21 @@ function userClassification(now: UtcTimestamp, locked: boolean): TransactionClas
     classifierVersion: "1",
     evidence: ["user-confirmed"],
     locked,
+    decidedAt: now,
+  };
+}
+
+function aiClassification(
+  provenance: AiClassificationProvenance,
+  now: UtcTimestamp,
+): TransactionClassification {
+  return {
+    method: provenance.method,
+    classifierId: provenance.classifierId,
+    classifierVersion: provenance.classifierVersion,
+    ...(provenance.confidence === undefined ? {} : { confidence: provenance.confidence }),
+    evidence: provenance.evidence,
+    locked: false,
     decidedAt: now,
   };
 }

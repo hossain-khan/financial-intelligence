@@ -1,6 +1,7 @@
 export {
   FinancialDatabase,
   IndexedDbAiProviderProfileRepository,
+  IndexedDbAiSuggestionRepository,
   IndexedDbAtomicLearningRepository,
   IndexedDbAccountRepository,
   IndexedDbCategoryRepository,

@@ -28,6 +28,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 
 import type { ApplicationServices } from "./infrastructure";
 import { mark, measure, PERF_MARKS } from "./perf-marks";
+import { AiSuggestionsSection } from "./AiSuggestionsSection";
 import { BrainManagementView } from "./BrainManagementView";
 import { RecurringReviewSection } from "./RecurringReviewSection";
 import { TransferReviewSection } from "./TransferReviewSection";
@@ -518,6 +519,8 @@ export function TransactionPage({
       />
 
       <CategorizationReviewQueue services={services} categories={categories} onRefresh={refresh} />
+
+      <AiSuggestionsSection services={services} onApplied={refresh} />
 
       <BrainManagementView services={services} onRefresh={refresh} />
 

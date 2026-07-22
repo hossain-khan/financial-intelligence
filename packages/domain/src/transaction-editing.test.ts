@@ -32,6 +32,30 @@ function transaction() {
 }
 
 describe("transaction editing", () => {
+  it("records localAi provenance when an edit carries it", () => {
+    const edited = applyManualTransactionEdit(
+      transaction(),
+      {
+        category: categoryId,
+        provenance: {
+          method: "localAi",
+          classifierId: "ai-local",
+          classifierVersion: "1.0.0",
+          evidence: ["model_category_candidate"],
+        },
+      },
+      now,
+    );
+    expect(edited.classifications.category?.method).toBe("localAi");
+    expect(edited.classifications.category?.locked).toBe(false);
+  });
+
+  it("still records a user-locked decision with no provenance", () => {
+    const edited = applyManualTransactionEdit(transaction(), { category: categoryId }, now);
+    expect(edited.classifications.category?.method).toBe("user");
+    expect(edited.classifications.category?.locked).toBe(true);
+  });
+
   it("edits category, notes, tags, and review state on the canonical transaction", () => {
     const edited = applyManualTransactionEdit(
       transaction(),

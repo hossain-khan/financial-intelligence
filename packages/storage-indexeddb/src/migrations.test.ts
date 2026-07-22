@@ -34,9 +34,9 @@ afterEach(async () => {
 describe("database migrations", () => {
   it("keeps a contiguous registry with one source of truth", () => {
     expect(DATABASE_MIGRATIONS.map(({ version }) => version)).toEqual([
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
     ]);
-    expect(CURRENT_DATABASE_VERSION).toBe(10);
+    expect(CURRENT_DATABASE_VERSION).toBe(11);
   });
 
   it("rejects a migration registry with a missing prior version", () => {
@@ -56,6 +56,7 @@ describe("database migrations", () => {
     expect(upgraded.tables.map(({ name: tableName }) => tableName).sort()).toEqual([
       "accounts",
       "aiProviderProfiles",
+      "aiSuggestions",
       "categories",
       "classificationRules",
       "decisionEvents",
