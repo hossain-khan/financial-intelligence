@@ -144,6 +144,7 @@ export {
   applyManualTransactionEdit,
 } from "./transaction-editing";
 export type {
+  AiClassificationProvenance,
   AutomaticCategoryEdit,
   AutomaticMerchantEdit,
   ManualTransactionEdit,
