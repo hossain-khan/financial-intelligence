@@ -359,7 +359,7 @@ export function createCsvErrorReport(issues: readonly CsvMappingIssue[]): string
 
 export function sanitizeSpreadsheetCell(value: string): string {
   const normalized = value.replaceAll("\u0000", "").slice(0, 1_024);
-  return /^[\t\r\n ]*[=+\-@]/u.test(normalized) ? `'${normalized}` : normalized;
+  return /^(?:[\t\r]|[\t\r\n ]*[=+\-@])/u.test(normalized) ? `'${normalized}` : normalized;
 }
 
 function validateMapping(

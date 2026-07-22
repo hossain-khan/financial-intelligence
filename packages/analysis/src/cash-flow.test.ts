@@ -245,7 +245,25 @@ describe("filtered transaction CSV export", () => {
     expect(csv.endsWith("\r\n")).toBe(true);
   });
 
-  it.each(["=1+1", "+cmd", "-2+3", "@SUM(A:A)", "\t=1"])("makes %s spreadsheet-safe", (value) =>
+  it.each([
+    "=1+1",
+    "+cmd",
+    "-2+3",
+    "@SUM(A:A)",
+    "\t=1",
+    "\tcmd",
+    "\r123",
+    "   +123",
+    "   -456",
+    "   =SUM(A:A)",
+    "   @SUM",
+    "   \tcmd",
+  ])("makes formula trigger %j spreadsheet-safe by prefixing single quote", (value) =>
     expect(spreadsheetSafeCell(value)).toBe(`'${value}`),
+  );
+
+  it.each(["Store Name", "100.00", "Coffee & Tea", ""])(
+    "leaves safe text value %j unchanged",
+    (value) => expect(spreadsheetSafeCell(value)).toBe(value),
   );
 });
