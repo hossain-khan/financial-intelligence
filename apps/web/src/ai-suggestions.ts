@@ -12,6 +12,7 @@ import {
   type EligibilityContext,
   type PersistedSuggestion,
   type RejectSuggestion,
+  type SuggestProgress,
 } from "@financial-intelligence/application";
 import type {
   Category,
@@ -147,7 +148,10 @@ export class AiSuggestionsController {
   }
 
   /** Run one suggestion cycle over the current ledger, writing pending suggestions. */
-  public async suggest(signal?: AbortSignal): Promise<SuggestOutcome> {
+  public async suggest(
+    signal?: AbortSignal,
+    onProgress?: (event: SuggestProgress) => void,
+  ): Promise<SuggestOutcome> {
     const [transactions, categories, rules, merchants, rejectedKeys] = await Promise.all([
       this.deps.listTransactions(),
       this.deps.listCategories(),
@@ -178,6 +182,7 @@ export class AiSuggestionsController {
       transactions,
       allowedCategoryIds: activeCategoryIds(categories),
       ...(signal ? { signal } : {}),
+      ...(onProgress ? { onProgress } : {}),
       eligibility,
     });
   }
