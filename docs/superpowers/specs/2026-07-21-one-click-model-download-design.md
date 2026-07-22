@@ -85,11 +85,19 @@ Engine: remote fetching ON only during download; OFF for load/warmup/execute →
 ## CSP change
 
 `apps/web/public/_headers`: `connect-src 'self'` becomes
-`connect-src 'self' <pinned model hosts>`. The exact hosts are the origins the pinned files resolve
-to; Hugging Face `resolve/` URLs 302-redirect to a `cdn-lfs*` host, so both the API origin and the
-CDN origin(s) are required. The implementer confirms the real redirect targets for the pinned
-revision and allow-lists exactly those, nothing broader. The `security:headers:check` script and CSP
-tests are updated to expect exactly this set.
+`connect-src 'self' https://huggingface.co https://*.hf.co`.
+
+Verified against the pinned revision: a `huggingface.co/.../resolve/<rev>/<path>` request redirects
+same-origin to `huggingface.co/api/resolve-cache/…`, and LFS/weight bytes redirect to a
+**region-specific Xet CDN** host under `*.hf.co` (e.g. `us.aws.cdn.hf.co`, `eu.aws.cdn.hf.co`). An
+exact single-host allow-list would break downloads for users outside that region, so the CDN is
+scoped to the `*.hf.co` wildcard — still Hugging Face infrastructure only, nothing broader. This is
+the sole non-`self` `connect-src` entry and is documented in ADR-021.
+
+`apps/web/scripts/check-security-headers.mjs` currently substring-matches `connect-src 'self'`, which
+would still pass silently against a broader value. Tighten it to assert the connect-src directive
+equals exactly `'self' https://huggingface.co https://*.hf.co` (parse the directive and compare its
+token set), so an accidental future broadening fails the gate.
 
 Offline-first is preserved: these origins are contacted only by the explicit download action; the
 `env.allowRemoteModels` flag is the runtime enforcement described below.
