@@ -1908,3 +1908,129 @@ table select {
     transition: none;
   }
 }
+
+/* Optional AI-assisted suggestions review section (paper-panel treatment, forest primary). */
+.ai-suggestions-panel {
+  margin-block-start: 2rem;
+  padding: 1.4rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  display: grid;
+  gap: 1rem;
+}
+
+.ai-suggestions-panel h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.ai-suggestions-panel > p {
+  margin: 0;
+  color: var(--ink-muted);
+  line-height: 1.5;
+}
+
+.ai-suggestions-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.ai-suggestions-run {
+  min-height: 2.75rem;
+  padding: 0.7rem 1rem;
+  color: white;
+  font-weight: 750;
+  background: var(--forest);
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.ai-suggestions-run[data-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.ai-suggestions-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.ai-suggestion-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  background: var(--forest-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+
+.ai-suggestion-detail {
+  display: grid;
+  gap: 0.35rem;
+  min-inline-size: 14rem;
+  flex: 1 1 16rem;
+}
+
+.ai-suggestion-detail p {
+  margin: 0;
+}
+
+.ai-suggestion-proposal {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.ai-suggestion-kind {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--mint);
+  color: var(--forest);
+}
+
+.ai-suggestion-kind.kind-merchant {
+  background: var(--gold);
+}
+
+.ai-suggestion-rationale {
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+}
+
+.ai-suggestion-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ai-suggestion-evidence li {
+  font-size: 0.72rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 6px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  color: var(--ink-muted);
+}
+
+.ai-suggestion-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}

@@ -1,4 +1,5 @@
 import {
+  AcceptSuggestion,
   AddMerchantAliasUseCase,
   ApplyBulkTransactionEdit,
   ApplyReviewCorrectionUseCase,
@@ -51,6 +52,7 @@ import {
   QueryMoneyFlowUseCase,
   QueryRecurringSummaryUseCase,
   QuerySavingsRateUseCase,
+  RejectSuggestion,
   RejectTransferProposalUseCase,
   UndoBulkTransactionEdit,
   UndoTransferDecisionUseCase,
@@ -59,11 +61,13 @@ import {
   UnlinkTransferUseCase,
   UndoLearningOperationUseCase,
 } from "@financial-intelligence/application";
+import type { AiSuggestionRepository } from "@financial-intelligence/application";
 import { validateFinancialBrain } from "@financial-intelligence/schemas";
 import {
   FinancialDatabase,
   openFinancialDatabase,
   IndexedDbAccountRepository,
+  IndexedDbAiSuggestionRepository,
   IndexedDbAtomicLearningRepository,
   IndexedDbCategoryRepository,
   IndexedDbDuplicateResolutionRepository,
@@ -119,6 +123,11 @@ export interface ApplicationServices {
   readonly previewRuleImpactUseCase: PreviewRuleImpactUseCase;
   readonly queryReviewQueue: QueryReviewQueue;
   readonly applyReviewCorrectionUseCase: ApplyReviewCorrectionUseCase;
+
+  // Optional AI-suggestion services (review-only; nothing auto-applies).
+  readonly aiSuggestionRepository: AiSuggestionRepository;
+  readonly acceptSuggestion: AcceptSuggestion;
+  readonly rejectSuggestion: RejectSuggestion;
   readonly exportFinancialBrainUseCase: ExportFinancialBrainUseCase;
   readonly previewFinancialBrainImportUseCase: PreviewFinancialBrainImportUseCase;
   readonly applyFinancialBrainImportUseCase: ApplyFinancialBrainImportUseCase;
@@ -165,6 +174,7 @@ const recurringDecisionRepository = new IndexedDbRecurringDecisionRepository(dat
 const dashboardSnapshotRepository = new IndexedDbDashboardSnapshotRepository(database);
 const atomicLearningRepository = new IndexedDbAtomicLearningRepository(database);
 const restoreRepository = new IndexedDbRestoreRepository(database);
+const aiSuggestionRepository = new IndexedDbAiSuggestionRepository(database);
 const appBuildId = typeof __APP_BUILD_ID__ === "string" ? __APP_BUILD_ID__ : "unknown";
 // Offload the heavy Argon2id/AES-GCM work to a short-lived worker so it never blocks the UI thread.
 const backupEncryptor = {
@@ -184,6 +194,17 @@ const digest = {
 const applyBulkTransactionEdit = new ApplyBulkTransactionEdit(ledgerRepository, clock, ids);
 const createRuleUseCase = new CreateRuleUseCase(ruleRepository, clock, ids);
 const addMerchantAliasUseCase = new AddMerchantAliasUseCase(merchantRepository, clock, ids);
+const applyReviewCorrectionUseCase = new ApplyReviewCorrectionUseCase(
+  applyBulkTransactionEdit,
+  createRuleUseCase,
+  addMerchantAliasUseCase,
+  atomicLearningRepository,
+  ledgerRepository,
+  ruleRepository,
+  merchantRepository,
+  clock,
+  ids,
+);
 
 export const applicationServices: ApplicationServices = {
   createWorkspace: new CreateWorkspace(workspaceRepository, clock, ids),
@@ -247,17 +268,16 @@ export const applicationServices: ApplicationServices = {
     merchantRepository,
     accountRepository,
   ),
-  applyReviewCorrectionUseCase: new ApplyReviewCorrectionUseCase(
-    applyBulkTransactionEdit,
-    createRuleUseCase,
-    addMerchantAliasUseCase,
-    atomicLearningRepository,
+  applyReviewCorrectionUseCase,
+  aiSuggestionRepository,
+  acceptSuggestion: new AcceptSuggestion({
+    repository: aiSuggestionRepository,
+    applyReviewCorrection: applyReviewCorrectionUseCase,
     ledgerRepository,
-    ruleRepository,
-    merchantRepository,
-    clock,
-    ids,
-  ),
+    rules: () => ruleRepository.list(),
+    merchants: () => merchantRepository.list(),
+  }),
+  rejectSuggestion: new RejectSuggestion({ repository: aiSuggestionRepository }),
   exportFinancialBrainUseCase: new ExportFinancialBrainUseCase(
     categoryRepository,
     merchantRepository,
