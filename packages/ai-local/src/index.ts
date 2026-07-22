@@ -8,9 +8,16 @@ export { createLocalAiWorkerHandler } from "./worker-handler";
 export type { LocalAiWorkerHandler, WorkerResponseTarget } from "./worker-handler";
 export type { EngineDecoding, LocalEngine } from "./engine";
 export type { EngineDecodingMessage, LocalAiRequest, LocalAiResponse } from "./protocol";
-export { MODEL_CACHE_PREFIX, readyCacheName, stagingCacheName } from "./model-cache";
-export { ModelSideloader, SideloadError } from "./sideloader";
-export type { CacheLike, CacheStoreLike, SideloadFile } from "./sideloader";
+export { MODEL_CACHE_PREFIX, SideloadError, readyCacheName, stagingCacheName } from "./model-cache";
+export type { CacheLike, CacheStoreLike } from "./model-cache";
+export { ModelSideloader } from "./sideloader";
+export type { SideloadFile } from "./sideloader";
+export {
+  createSha256Hasher,
+  publishStagingToReady,
+  stageVerifiedStream,
+} from "./model-store";
+export type { IncrementalHasher } from "./model-store";
 export { buildClassifyPrompt } from "./prompt";
 export { createLocalAiWorker } from "./worker-client";
 export { LocalAiProvider } from "./provider";
