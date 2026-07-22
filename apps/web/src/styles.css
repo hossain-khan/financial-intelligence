@@ -2034,3 +2034,30 @@ table select {
   align-items: center;
   gap: 0.5rem;
 }
+
+/* Run progress (preparing model / analyzing N of M), mirroring the download-panel treatment. */
+.ai-suggestions-progress {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.ai-suggestions-progress [role="progressbar"] {
+  block-size: 0.6rem;
+  background: var(--forest-soft);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.ai-suggestions-progress .progress-fill {
+  display: block;
+  block-size: 100%;
+  background: var(--forest);
+  border-radius: inherit;
+  transition: inline-size 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-suggestions-progress .progress-fill {
+    transition: none;
+  }
+}
