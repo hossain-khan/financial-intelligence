@@ -162,6 +162,11 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Changed
 
+- Scope 1.0 AI to **browser-local only** in the specs: with self-hosted (#34) and BYOK remote (#35)
+  provider adapters descoped, the product/functional requirements, vision, UX guidelines, roadmap,
+  AI-architecture, and evaluation baseline now mark self-hosted/remote/BYOK AI as deferred past 1.0.
+  The remote-mode guardrails (consent, field preview, key handling) are retained as future
+  requirements; no remote code path exists.
 - Enable persistent Cloudflare Worker invocation logs at 100% sampling while keeping distributed
   traces disabled and application financial data local.
 - Mark Phase 2 complete after its delivery and hardening issues passed repository verification and

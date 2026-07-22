@@ -80,7 +80,7 @@ Label incomplete periods, estimates, currency conversion, and uncertain classifi
 
 ## Privacy and AI UI
 
-Provider status is always visible where AI is invoked: local, self-hosted, remote, or off. Before remote use, show destination and data preview. Use separate actions for “Test connection” and “Analyze”; connection testing sends no transactions. Never preselect persistent key storage. Show model download size, memory estimate, progress, cancel, and remove controls.
+Provider status is always visible where AI is invoked: browser-local or off, and the model download size, memory estimate, progress, cancel, and remove controls are shown. (Self-hosted/remote status, the pre-remote destination + data preview, the separate “Test connection” / “Analyze” actions, and never-preselecting persistent key storage apply to a possible future remote mode and are **deferred past 1.0** — 1.0 ships browser-local AI only; see `docs/15-ROADMAP.md`.)
 
 ## Destructive and high-impact actions
 
