@@ -189,7 +189,7 @@ export function LocalAiPanel(props: LocalAiPanelProperties) {
           ) : (
             <>
               <Button
-                className="secondary-button"
+                className="local-ai-download"
                 isDisabled={busy || !pinned}
                 onClick={() => void onDownload()}
               >

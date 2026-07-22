@@ -1829,10 +1829,47 @@ table select {
   }
 }
 
+.local-ai-panel {
+  margin-block-start: 2.5rem;
+  padding: 1.4rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  display: grid;
+  gap: 1rem;
+}
+
+.local-ai-panel h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.local-ai-panel > p {
+  margin: 0;
+  color: var(--ink-muted);
+  line-height: 1.5;
+}
+
 .local-ai-actions {
   display: grid;
   gap: 0.8rem;
-  margin-block-start: 0.8rem;
+}
+
+/* Primary action treatment (filled forest), matching .preview-actions/.backup-panel buttons. */
+.local-ai-download {
+  min-height: 2.75rem;
+  padding: 0.7rem 1rem;
+  color: white;
+  font-weight: 750;
+  background: var(--forest);
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.local-ai-download[data-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .local-ai-advanced {
