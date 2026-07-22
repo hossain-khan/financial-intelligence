@@ -5,7 +5,11 @@ coverage/
 *.log
 .env
 .env.*
+.env*.local
 !.env.example
+*.pem
+*.key
+secrets/
 playwright-report/
 test-results/
 perf-results/
