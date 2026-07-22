@@ -1,23 +1,8 @@
-import type { Transaction } from "@financial-intelligence/domain";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AiSuggestionsController, type AcceptScope, type SuggestionView } from "./ai-suggestions";
 import { Button } from "./Button";
 import type { ApplicationServices } from "./infrastructure";
-
-/** The ledger query caps a page at 1000 rows, so read the whole ledger in bounded pages. */
-async function listAllLedgerTransactions(
-  services: ApplicationServices,
-): Promise<readonly Transaction[]> {
-  const pageSize = 1000;
-  const all: Transaction[] = [];
-  for (let offset = 0; ; offset += pageSize) {
-    const page = await services.queryTransactionLedger.execute({ limit: pageSize, offset });
-    all.push(...page.items);
-    if (all.length >= page.total || page.items.length === 0) break;
-  }
-  return all;
-}
 
 export interface AiSuggestionsSectionProps {
   readonly services: ApplicationServices;
@@ -53,7 +38,7 @@ export function AiSuggestionsSection({
         repository: services.aiSuggestionRepository,
         acceptSuggestion: services.acceptSuggestion,
         rejectSuggestion: services.rejectSuggestion,
-        listTransactions: () => listAllLedgerTransactions(services),
+        listTransactions: () => services.listAllTransactions.execute(),
         listCategories: () => services.listCategories.execute(),
         listRules: () => services.listRules.execute(),
         listMerchants: () => services.listMerchants.execute(),
