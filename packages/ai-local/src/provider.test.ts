@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { CLASSIFIER_PROFILE, type ModelProfile } from "./model-profile";
 import { LocalAiProvider, type LocalWorker } from "./provider";
@@ -50,7 +50,8 @@ function deps(worker: FakeWorker, ready = true) {
 
 function loadThen(response: (m: LocalAiRequest) => LocalAiResponse | undefined) {
   return (message: LocalAiRequest): LocalAiResponse | undefined => {
-    if (message.type === "load") {
+    // `load` and the one-time `warmup` both settle with `loaded`; the caller scripts only `execute`.
+    if (message.type === "load" || message.type === "warmup") {
       return { protocolVersion: 1, type: "loaded", operationId: message.operationId };
     }
     return response(message);
@@ -149,5 +150,45 @@ describe("LocalAiProvider", () => {
       options(),
     );
     expect(result).toMatchObject({ ok: false, error: { code: "unsupported" } });
+  });
+
+  it("returns resource_exhausted and cancels when execute exceeds the deadline", async () => {
+    vi.useFakeTimers();
+    try {
+      const worker = new FakeWorker();
+      // Answers load + warmup, but never responds to execute → the deadline must fire.
+      worker.reply = (m) =>
+        m.type === "load" || m.type === "warmup"
+          ? { protocolVersion: 1, type: "loaded", operationId: m.operationId }
+          : undefined;
+      const promise = new LocalAiProvider(deps(worker)).execute(request, {
+        signal: new AbortController().signal,
+        deadlineMs: 50,
+      });
+      await vi.advanceTimersByTimeAsync(60);
+      const result = await promise;
+      expect(result).toMatchObject({ ok: false, error: { code: "resource_exhausted" } });
+      expect(worker.sent.some((m) => m.type === "cancel")).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("sends exactly one warmup before the first execute and reuses it", async () => {
+    const worker = new FakeWorker();
+    worker.reply = loadThen((m) =>
+      m.type === "execute"
+        ? {
+            protocolVersion: 1,
+            type: "result",
+            operationId: m.operationId,
+            output: JSON.stringify(valid),
+          }
+        : undefined,
+    );
+    const provider = new LocalAiProvider(deps(worker));
+    await provider.execute(request, options());
+    await provider.execute(request, options());
+    expect(worker.sent.filter((m) => m.type === "warmup").length).toBe(1);
   });
 });
