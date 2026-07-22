@@ -94,18 +94,36 @@ tests are updated to expect exactly this set.
 Offline-first is preserved: these origins are contacted only by the explicit download action; the
 `env.allowRemoteModels` flag is the runtime enforcement described below.
 
-## ModelDownloader
+## ModelDownloader (sequential, stream-to-cache)
+
+Files are downloaded **one at a time, streamed straight into Cache Storage**, so a ~1.6 GB weight
+file is never held whole in memory (safe on modest-RAM devices).
 
 - `downloadModel(profile, deps)` where `deps = { fetch, cache, digest, onProgress?, signal? }`.
-- For each `profile.files[]`: build the CDN URL from `modelRepo` + `modelRevision` + `path`, fetch it
-  (streamed where practical, reporting per-file and cumulative byte progress), read bytes, and pass
-  the set to `ModelSideloader` which SHA-256-verifies against the profile and stages/publishes
-  atomically. A mismatch, a missing file, an over-size response, or an abort cleans up staging and
-  fails the whole download.
-- Bounds: enforce the profile's declared `byteSize` per file and `totalByteSize` overall as ceilings;
-  retry is off by default; `AbortSignal` cancels in flight.
+- For each `profile.files[]` in order: build the CDN URL from `modelRepo` + `modelRevision` + `path`;
+  fetch it; read the response as a stream, writing chunks to a **staging** cache entry while updating
+  a running SHA-256 (incremental hash over the chunks) and reporting per-file + cumulative byte
+  progress; on stream end, compare the hash to `profile.files[].sha256`. On mismatch/oversize/abort:
+  delete staging and fail the whole download.
+- After **all** files verify in staging, atomically publish staging → the ready model cache and
+  delete staging (the same verify → stage → atomic-publish shape as the sideloader, but streaming).
+- **Reuse note:** the streaming path cannot reuse `ModelSideloader.sideload` as-is, because that API
+  takes whole-file `ArrayBuffer`s. The downloader shares the profile/digest/cache-key contracts and
+  the staged-publish *pattern*, but implements its own streaming writer + incremental hash. The
+  sideloader stays for the secondary "load from files" path. A small shared helper for the
+  staging/publish/cleanup steps is factored out so both paths agree on cache keys.
+- Bounds: enforce each file's declared `byteSize` and the overall `totalByteSize` as ceilings; retry
+  off by default; `AbortSignal` cancels in flight and cleans up.
 - Errors map to a small typed set (`network`, `digest_mismatch`, `too_large`, `cancelled`,
   `insufficient_storage`) that the UI renders as plain language.
+
+### Incremental hashing note
+
+Web Crypto's `crypto.subtle.digest` is one-shot (no streaming update). To hash a 1.6 GB stream
+without buffering it whole, the downloader uses an incremental SHA-256 (e.g. the `hash-wasm` package
+already used by the backup crypto, or an equivalent) fed chunk-by-chunk as it writes to cache. The
+implementer confirms the available incremental-hash utility before coding; buffering a full weight
+file to reuse `crypto.subtle.digest` is explicitly rejected as an OOM risk.
 
 ## Engine network-lock enforcement
 
@@ -119,21 +137,38 @@ Offline-first is preserved: these origins are contacted only by the explicit dow
 
 ## UI (absorbs #95)
 
-`LocalAiPanel` primary flow:
+`LocalAiPanel` primary flow. On mount the panel checks capability **and** whether the model is
+already cached (`ModelSideloader.isReady`), and renders one of three acquisition states:
 
-- capability tier (existing) → a prominent **Download model** button showing size + license **before**
-  the click;
-- an accessible progress region during download: per-file + overall percentage and byte counts,
-  `role="progressbar"` with `aria-valuenow`/`aria-valuetext`, a Cancel button, reduced-motion safe;
-- plain-language errors for network failure, digest mismatch ("the downloaded file did not match the
-  expected version — try again"), insufficient storage, and cancellation — never raw codes;
-- a ready state that tells the user categorization suggestions are now available;
-- a secondary, collapsed **"Advanced: load from files"** disclosure wrapping the existing sideload
-  path for offline/air-gapped users.
+1. **Not downloaded** → a prominent **Download model** button showing size + license **before** the
+   click.
+2. **Ready (already cached)** → a "✓ Model ready on this device" indicator, the model's on-disk size,
+   a **Remove** control, and **no** re-download prompt. This is the "indicate if the model is already
+   cached" state you asked for — a returning user sees it's ready and does nothing.
+3. **Incomplete** (a prior download was interrupted, leaving staging without a published ready set) →
+   a "Download interrupted — resume/re-download" prompt that restarts cleanly.
 
-States covered: idle, checking capability, downloading, verifying, ready, failed, unsupported.
-Keyboard operation, visible focus, status/progress announcements, 320px reflow, 200% zoom,
-reduced-motion, and forced-colors are validated (docs/13-UX-GUIDELINES.md, docs/21-DESIGN-SYSTEM.md).
+During a download, an accessible progress region shows:
+
+- **per-file rows** — each pinned file with its own percentage + bytes (matching the interleaved
+  updates seen at the runtime layer, but presented one active file at a time since download is
+  sequential), and
+- **one overall bar** — cumulative bytes / `totalByteSize` as a percentage,
+- with `role="progressbar"`, `aria-valuenow`/`aria-valuetext`, a **Cancel** button, and reduced-motion
+  safety. A `role="status"` line announces phase changes (downloading → verifying → ready) for
+  screen readers.
+
+Plain-language errors for network failure, digest mismatch ("the downloaded file did not match the
+expected version — try again"), insufficient storage, and cancellation — never raw codes. The ready
+state tells the user categorization suggestions are now available.
+
+A secondary, collapsed **"Advanced: load from files"** disclosure wraps the existing sideload path
+for offline/air-gapped users.
+
+States covered: checking (capability + cache), not-downloaded, downloading, verifying, ready,
+incomplete, failed, unsupported. Keyboard operation, visible focus, status/progress announcements,
+320px reflow, 200% zoom, reduced-motion, and forced-colors are validated
+(docs/13-UX-GUIDELINES.md, docs/21-DESIGN-SYSTEM.md).
 
 ## Data flow
 
