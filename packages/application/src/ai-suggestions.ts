@@ -40,6 +40,12 @@ export interface PersistedSuggestion {
    * longer holds, the suggestion is stale and cannot apply.
    */
   readonly targetUpdatedAt: string;
+  /**
+   * The normalized-description digest the model actually saw (same normalizer as classification).
+   * Persisted so rejection memory can reconstruct the `(digest, classifierVersion)` key without
+   * re-reading the transaction — see {@link rejectionKey} and {@link AiSuggestionRepository.listRejectedKeys}.
+   */
+  readonly normalizedDigest: string;
   readonly task: Extract<AiTaskId, "merchant.resolve.v1" | "category.classify.v1">;
   readonly taskVersion: string;
   readonly schemaVersion: "1.0.0";
@@ -317,6 +323,7 @@ export class SuggestClassifications {
         id: this.deps.newId(),
         targetTransactionId: transactionId,
         targetUpdatedAt: entry.targetUpdatedAt.get(transactionId) ?? createdAt,
+        normalizedDigest: entry.descriptor,
         task,
         taskVersion: this.deps.versions.taskVersion,
         schemaVersion: "1.0.0",

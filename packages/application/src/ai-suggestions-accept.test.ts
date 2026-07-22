@@ -46,6 +46,7 @@ function suggestion(over: Partial<PersistedSuggestion> = {}): PersistedSuggestio
     id: "sug-1",
     targetTransactionId: TXN_ID,
     targetUpdatedAt: NOW,
+    normalizedDigest: "unknown coffee shop",
     task: "category.classify.v1",
     taskVersion: "1.0.0",
     schemaVersion: "1.0.0",

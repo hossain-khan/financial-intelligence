@@ -114,6 +114,23 @@ describe("IndexedDB version matrix", () => {
     upgraded.close();
   });
 
+  it("preserves workspaces written at v10 through the ai-suggestion-store upgrade", async () => {
+    const name = databaseName();
+    const versionTen = await openFinancialDatabase(
+      new FinancialDatabase(name, DATABASE_MIGRATIONS.slice(0, 10)),
+    );
+    await versionTen.workspaces.put(workspace());
+    versionTen.close();
+
+    const upgraded = await openFinancialDatabase(new FinancialDatabase(name));
+    expect(upgraded.verno).toBe(CURRENT_DATABASE_VERSION);
+    expect(await upgraded.workspaces.toArray()).toEqual([workspace()]);
+    // The new store exists and starts empty; the prior ai-provider store is untouched.
+    expect(await upgraded.aiSuggestions.toArray()).toEqual([]);
+    expect(await upgraded.aiProviderProfiles.toArray()).toEqual([]);
+    upgraded.close();
+  });
+
   it("fails closed when the on-disk database is newer than this build", async () => {
     const name = databaseName();
     const current = await openFinancialDatabase(new FinancialDatabase(name));
