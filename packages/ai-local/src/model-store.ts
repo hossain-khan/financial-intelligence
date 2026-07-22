@@ -1,11 +1,6 @@
 import { createSHA256 } from "hash-wasm";
 
-import {
-  SideloadError,
-  readyCacheName,
-  stagingCacheName,
-  type CacheLike,
-} from "./model-cache";
+import { SideloadError, readyCacheName, stagingCacheName, type CacheLike } from "./model-cache";
 import type { ModelProfileFile } from "./model-profile";
 
 /** Minimal incremental SHA-256 over streamed chunks (Web Crypto's digest is one-shot only). */

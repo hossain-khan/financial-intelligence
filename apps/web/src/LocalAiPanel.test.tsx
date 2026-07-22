@@ -73,11 +73,15 @@ describe("LocalAiPanel", () => {
       <LocalAiPanel
         detectCapability={() => Promise.resolve(recommended)}
         readModelState={() => Promise.resolve("not-downloaded")}
-        download={() => Promise.resolve({ ready: false, error: "Download failed (503) for config.json." })}
+        download={() =>
+          Promise.resolve({ ready: false, error: "Download failed (503) for config.json." })
+        }
       />,
     );
     fireEvent.click(await screen.findByRole("button", { name: /Download model/i }));
-    await waitFor(() => expect(screen.getByText(/Couldn't reach the model host/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/Couldn't reach the model host/i)).toBeInTheDocument(),
+    );
   });
 
   it("explains rules-only remains available on unsupported devices", async () => {

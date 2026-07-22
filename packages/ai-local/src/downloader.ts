@@ -71,7 +71,10 @@ export async function downloadModel(profile: ModelProfile, deps: DownloadDeps): 
         throw new DownloadError("network", `Could not reach the model host for ${spec.path}.`);
       }
       if (!response.ok || response.body === null) {
-        throw new DownloadError("network", `Download failed (${response.status}) for ${spec.path}.`);
+        throw new DownloadError(
+          "network",
+          `Download failed (${response.status}) for ${spec.path}.`,
+        );
       }
 
       const base = overallBase;

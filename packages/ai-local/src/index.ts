@@ -12,11 +12,7 @@ export { MODEL_CACHE_PREFIX, SideloadError, readyCacheName, stagingCacheName } f
 export type { CacheLike, CacheStoreLike } from "./model-cache";
 export { ModelSideloader } from "./sideloader";
 export type { SideloadFile } from "./sideloader";
-export {
-  createSha256Hasher,
-  publishStagingToReady,
-  stageVerifiedStream,
-} from "./model-store";
+export { createSha256Hasher, publishStagingToReady, stageVerifiedStream } from "./model-store";
 export type { IncrementalHasher } from "./model-store";
 export { DownloadError, downloadModel, modelFileUrl } from "./downloader";
 export type { DownloadDeps, DownloadErrorCode, DownloadProgress } from "./downloader";

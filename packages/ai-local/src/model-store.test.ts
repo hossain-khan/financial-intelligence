@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { readyCacheName, stagingCacheName } from "./model-cache";
-import {
-  createSha256Hasher,
-  publishStagingToReady,
-  stageVerifiedStream,
-} from "./model-store";
+import { createSha256Hasher, publishStagingToReady, stageVerifiedStream } from "./model-store";
 import type { CacheLike, CacheStoreLike } from "./sideloader";
 
 function memoryCache() {

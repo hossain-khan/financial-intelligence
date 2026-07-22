@@ -127,9 +127,7 @@ export function LocalAiPanel(props: LocalAiPanelProperties) {
       const outcome = await runSideload([...files]);
       setModelState(outcome.ready ? "ready" : await getState());
       setStatus(
-        outcome.ready
-          ? "Model verified and stored locally."
-          : downloadErrorMessage(outcome.error),
+        outcome.ready ? "Model verified and stored locally." : downloadErrorMessage(outcome.error),
       );
     } finally {
       setBusy(false);
@@ -175,8 +173,14 @@ export function LocalAiPanel(props: LocalAiPanelProperties) {
         <div className="local-ai-actions">
           {modelState === "ready" ? (
             <div>
-              <p role="status">✓ Model ready on this device ({formatBytes(LOCAL_AI_PROFILE.totalByteSize)}).</p>
-              <Button className="secondary-button" isDisabled={busy} onClick={() => void onRemove()}>
+              <p role="status">
+                ✓ Model ready on this device ({formatBytes(LOCAL_AI_PROFILE.totalByteSize)}).
+              </p>
+              <Button
+                className="secondary-button"
+                isDisabled={busy}
+                onClick={() => void onRemove()}
+              >
                 Remove model
               </Button>
             </div>
