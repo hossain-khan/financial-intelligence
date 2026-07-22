@@ -83,8 +83,14 @@ apps/web  (review area: "Suggest" button → suggestion rows → accept/reject/c
   no React or direct runtime import. The provider is injected via the `ai-core` `AiProvider`
   interface, so the whole pipeline is CI-testable with a fake provider.
 - **Accept reuses `ApplyReviewCorrectionUseCase`** (already atomic: bulk edit + optional rule/alias +
-  operation journal + optional lock). The new code writes `localAi`/`remoteAi` classification
-  provenance through it rather than adding a parallel mutation path.
+  operation journal + optional lock) rather than adding a parallel mutation path. **Refinement found
+  during planning:** that path currently writes `user`-method classifications only (via
+  `planBulkTransactionEdit` → `applyManualTransactionEdit`), so it must be **extended with an optional
+  provenance parameter** (`{ method, classifierId, classifierVersion, confidence, evidence }`) to
+  record `method: "localAi"` on an accepted AI suggestion while a manual tweak still records `user`.
+  The domain already has the primitive (`applyAutomaticCategoryEdit`/`applyAutomaticMerchantEdit`
+  take a `classification` with a `method`); this threads it through the review use case. A manual
+  correction with no provenance argument keeps today's exact behavior (backward compatible).
 - New IndexedDB **v11 `aiSuggestions`** store + `IndexedDbAiSuggestionRepository`, following the v10
   provider-profile pattern; extends the migration matrix test.
 
