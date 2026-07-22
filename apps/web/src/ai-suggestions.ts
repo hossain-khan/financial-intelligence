@@ -148,6 +148,10 @@ export class AiSuggestionsController {
 
   /** Run one suggestion cycle over the current ledger, writing pending suggestions. */
   public async suggest(signal?: AbortSignal): Promise<SuggestOutcome> {
+    // AISPIKE: glue-layer lifecycle logging (investigate/ai-suggest-hang-2). Throwaway.
+    const tAll = performance.now();
+    // eslint-disable-next-line no-console
+    console.log("[AISPIKE] glue.suggest: loading ledger + rules + merchants + categories…");
     const [transactions, categories, rules, merchants, rejectedKeys] = await Promise.all([
       this.deps.listTransactions(),
       this.deps.listCategories(),
@@ -155,6 +159,14 @@ export class AiSuggestionsController {
       this.deps.listMerchants(),
       this.deps.repository.listRejectedKeys(),
     ]);
+    // eslint-disable-next-line no-console
+    console.log("[AISPIKE] glue.suggest: loaded in", Math.round(performance.now() - tAll), "ms", {
+      transactions: transactions.length,
+      categories: categories.length,
+      rules: rules.length,
+      merchants: merchants.length,
+      rejectedKeys: rejectedKeys.length,
+    });
 
     const eligibility: EligibilityContext = {
       rules,
@@ -174,12 +186,25 @@ export class AiSuggestionsController {
       minConfidence: MIN_CONFIDENCE,
     });
 
-    return orchestrator.execute({
+    // eslint-disable-next-line no-console
+    console.log(
+      "[AISPIKE] glue.suggest: orchestrator.execute start (this drives per-item worker calls)…",
+    );
+    const tExec = performance.now();
+    const result = await orchestrator.execute({
       transactions,
       allowedCategoryIds: activeCategoryIds(categories),
       ...(signal ? { signal } : {}),
       eligibility,
     });
+    // eslint-disable-next-line no-console
+    console.log(
+      "[AISPIKE] glue.suggest: orchestrator done in",
+      Math.round(performance.now() - tExec),
+      "ms",
+      result,
+    );
+    return result;
   }
 
   /** List pending suggestions projected for display, resolving category ids to names. */

@@ -261,13 +261,30 @@ export class SuggestClassifications {
     const provider = this.deps.provider;
     let created = 0;
     let abstained = 0;
+    // AISPIKE: orchestrator visibility (investigate/ai-suggest-hang-2). Throwaway.
+    // eslint-disable-next-line no-console
+    console.log(
+      "[AISPIKE] orchestrator: eligible=",
+      eligible.length,
+      "uniqueDescriptions(batch)=",
+      batch.length,
+      "→ up to",
+      batch.length * 2,
+      "sequential inferences",
+    );
 
     const options = {
       signal: input.signal ?? new AbortController().signal,
       deadlineMs: this.deps.deadlineMs,
     };
 
+    let entryIndex = 0;
     for (const entry of batch) {
+      entryIndex += 1;
+      // eslint-disable-next-line no-console
+      console.log(
+        `[AISPIKE] orchestrator: entry ${entryIndex}/${batch.length} "${entry.descriptor}"`,
+      );
       // Merchant resolution pass.
       const merchantResult = await provider.execute(
         {

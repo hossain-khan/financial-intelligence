@@ -94,8 +94,21 @@ export function AiSuggestionsSection({
   const onSuggest = async () => {
     setPhase("running");
     setStatus("Analyzing transactions on your device…");
+    // AISPIKE: section-level timeline (investigate/ai-suggest-hang-2). Throwaway.
+    const tClick = performance.now();
+    // eslint-disable-next-line no-console
+    console.log(
+      "[AISPIKE] section: Suggest clicked — main thread should stay responsive from here",
+    );
     try {
       const outcome = await controllerRef.current.suggest();
+      // eslint-disable-next-line no-console
+      console.log(
+        "[AISPIKE] section: suggest resolved after",
+        Math.round(performance.now() - tClick),
+        "ms",
+        outcome,
+      );
       await refreshPending();
       setPhase("idle");
       setStatus(
