@@ -199,6 +199,9 @@ importers:
 
   packages/application:
     dependencies:
+      "@financial-intelligence/ai-core":
+        specifier: workspace:*
+        version: link:../ai-core
       "@financial-intelligence/analysis":
         specifier: workspace:*
         version: link:../analysis
