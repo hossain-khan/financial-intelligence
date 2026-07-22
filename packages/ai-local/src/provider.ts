@@ -78,12 +78,22 @@ export class LocalAiProvider implements AiProvider {
       console.log("[AISPIKE] main: ensureLoaded start; alreadyLoaded=", this.loaded);
       await this.ensureLoaded(worker, options.signal);
       // eslint-disable-next-line no-console
-      console.log("[AISPIKE] main: ensureLoaded returned after", Math.round(performance.now() - tLoad), "ms");
+      console.log(
+        "[AISPIKE] main: ensureLoaded returned after",
+        Math.round(performance.now() - tLoad),
+        "ms",
+      );
       const prompt = buildClassifyPrompt(request.payload, this.deps.profile.promptVersion);
       const tExec = performance.now();
       const output = await this.runExecute(worker, request.task, prompt, options.signal);
       // eslint-disable-next-line no-console
-      console.log("[AISPIKE] main:", request.task, "execute returned after", Math.round(performance.now() - tExec), "ms");
+      console.log(
+        "[AISPIKE] main:",
+        request.task,
+        "execute returned after",
+        Math.round(performance.now() - tExec),
+        "ms",
+      );
       return this.validate(request.task, output);
     } catch (error) {
       if (error instanceof WorkerFailure) {

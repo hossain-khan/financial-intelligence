@@ -45,13 +45,22 @@ export class TransformersLocalEngine implements LocalEngine {
       progress_callback: (report: ProgressInfo) => {
         if ("progress" in report && typeof report.progress === "number") {
           // eslint-disable-next-line no-console
-          console.log("[AISPIKE] load progress", report.progress.toFixed(1), (report as { file?: string }).file);
+          console.log(
+            "[AISPIKE] load progress",
+            report.progress.toFixed(1),
+            (report as { file?: string }).file,
+          );
           onProgress(report.progress / 100);
         }
       },
     })) as TextGenerationPipeline;
     // eslint-disable-next-line no-console
-    console.log("[AISPIKE] engine.load done in", Math.round(performance.now() - t0), "ms; backend:", detectBackend(this.generator));
+    console.log(
+      "[AISPIKE] engine.load done in",
+      Math.round(performance.now() - t0),
+      "ms; backend:",
+      detectBackend(this.generator),
+    );
   }
 
   public async warmup(signal: AbortSignal): Promise<void> {
@@ -78,7 +87,12 @@ export class TransformersLocalEngine implements LocalEngine {
       return_full_text: false,
     })) as { generated_text: string }[];
     // eslint-disable-next-line no-console
-    console.log("[AISPIKE] generate done in", Math.round(performance.now() - t0), "ms; out chars:", (output[0]?.generated_text ?? "").length);
+    console.log(
+      "[AISPIKE] generate done in",
+      Math.round(performance.now() - t0),
+      "ms; out chars:",
+      (output[0]?.generated_text ?? "").length,
+    );
     return output[0]?.generated_text ?? "";
   }
 
@@ -99,7 +113,9 @@ function detectBackend(gen: unknown): string {
   try {
     const model = (gen as { model?: Record<string, unknown> }).model ?? {};
     const sessionKey = Object.keys(model).find((k) => k.toLowerCase().includes("session"));
-    const session = sessionKey ? (model[sessionKey] as Record<string, unknown> | undefined) : undefined;
+    const session = sessionKey
+      ? (model[sessionKey] as Record<string, unknown> | undefined)
+      : undefined;
     const handler = session?.["handler"] as Record<string, unknown> | undefined;
     const ep = handler?.["_executionProviders"] ?? handler?.["executionProviders"];
     return JSON.stringify({ sessionKey, ep }) || "unknown";
