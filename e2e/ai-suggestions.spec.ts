@@ -45,6 +45,44 @@ async function installScriptedProvider(page: Page): Promise<void> {
   );
 }
 
+// A scripted provider whose category pass is slow, so a run stays in "running" long enough to
+// observe the progress bar and Cancel control before it would settle.
+async function installSlowScriptedProvider(page: Page): Promise<void> {
+  await page.addInitScript(
+    ({ categoryId }) => {
+      const provider = {
+        profile: {
+          profileId: "test:scripted-slow",
+          adapterId: "ai-local",
+          adapterVersion: "1.0.0",
+          executionLocation: "local",
+          reportedModel: "scripted-test-model",
+          supportedTasks: ["merchant.resolve.v1", "category.classify.v1"],
+          structuredOutput: true,
+          contextLimit: 4096,
+          outputLimit: 512,
+        },
+        health: () => Promise.resolve({ ok: true }),
+        execute: async (request: { task: string }) => {
+          if (request.task === "merchant.resolve.v1") {
+            return {
+              ok: true,
+              output: { label: "Bistro", confidence: 0.9, evidence: ["matched_alias"] },
+            };
+          }
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          return {
+            ok: true,
+            output: { categoryId, confidence: 0.95, rationale: "Looks like a restaurant." },
+          };
+        },
+      };
+      (globalThis as { __FI_AI_TEST__?: unknown }).__FI_AI_TEST__ = { provider, ready: true };
+    },
+    { categoryId: RESTAURANTS_CATEGORY_ID },
+  );
+}
+
 async function clickSuggest(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Suggest categories & merchants" }).dispatchEvent("click");
 }
@@ -134,4 +172,26 @@ test("accept-to-rule from an AI suggestion classifies future imports without a n
 
   // The whole flow stayed on-device: no external network request.
   network.assertClean();
+});
+
+test("shows progress and a Cancel control while a suggestion run is in progress", async ({
+  page,
+}) => {
+  await installSlowScriptedProvider(page);
+
+  await page.goto("/");
+  await page.getByRole("textbox", { name: "Workspace name" }).fill("AI progress household");
+  await page.getByRole("button", { name: "Create workspace" }).click();
+  await page.getByRole("textbox", { name: "Account name" }).fill("Everyday account");
+  await page.getByRole("button", { name: "Add account" }).click();
+  await expect(page.getByText("Everyday account", { exact: true })).toBeVisible();
+
+  await importSingleTransaction(page, "first.csv", "THE CORNER BISTRO");
+  await page.getByRole("link", { name: "Transactions" }).click();
+  await expect(page.getByRole("heading", { name: "Ledger", exact: true })).toBeVisible();
+
+  // The slow provider keeps the run in progress; the progress bar and Cancel must be visible.
+  await clickSuggest(page);
+  await expect(page.getByRole("progressbar")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Cancel suggestion run/i })).toBeVisible();
 });
