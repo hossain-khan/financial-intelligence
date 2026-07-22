@@ -17,7 +17,7 @@ class GroundedWorker implements LocalWorker {
   public constructor(private readonly answer: string) {}
   public postMessage(message: LocalAiRequest): void {
     const response: LocalAiResponse | undefined =
-      message.type === "load"
+      message.type === "load" || message.type === "warmup"
         ? { protocolVersion: 1, type: "loaded", operationId: message.operationId }
         : message.type === "execute"
           ? {
