@@ -1,8 +1,14 @@
 # ADR-020: Browser-local AI runtime and sideload-only acquisition
 
-- Status: Accepted
+- Status: Superseded by [ADR-021](ADR-021-One-Click-Model-Download.md) (acquisition only)
 - Date: 2026-07-21
 - Decision owners: Project maintainers
+
+> **Superseded (acquisition):** the runtime choice (transformers.js), worker isolation, capability
+> tiers, pinned-profile integrity, and offline-inference guarantee all still hold. Only the
+> **sideload-only acquisition** decision is superseded: [ADR-021](ADR-021-One-Click-Model-Download.md)
+> adds one-click download from an allow-listed Hugging Face host as the primary path and keeps
+> sideload as a secondary fallback.
 
 ## Context
 

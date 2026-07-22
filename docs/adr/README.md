@@ -44,4 +44,5 @@ Status is one of `Proposed`, `Accepted`, `Deprecated`, or `Superseded by ADR-NNN
 - [ADR-017: Compatibility registry, immutable fixtures, and disaster-recovery drills](ADR-017-Compatibility-And-Recovery.md)
 - [ADR-018: Provider-neutral AI core, task contracts, and no-AI default](ADR-018-Provider-Neutral-AI-Core.md)
 - [ADR-019: AI evaluation harness and release thresholds](ADR-019-AI-Evaluation-Harness.md)
-- [ADR-020: Browser-local AI runtime and sideload-only acquisition](ADR-020-Browser-Local-AI-Runtime.md)
+- [ADR-020: Browser-local AI runtime and sideload-only acquisition](ADR-020-Browser-Local-AI-Runtime.md) (acquisition superseded by ADR-021)
+- [ADR-021: One-click browser-local model download](ADR-021-One-Click-Model-Download.md)
