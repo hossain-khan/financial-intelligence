@@ -18,7 +18,7 @@ The target described here is **v1.0**. The [roadmap](15-ROADMAP.md) divides it i
 - Reliably re-import overlapping date ranges without silently duplicating records.
 - Reduce correction effort over time through transparent deterministic learning.
 - Deliver useful dashboards without AI.
-- Provide local, self-hosted, and bring-your-own-key AI modes behind consent boundaries.
+- Provide browser-local AI behind consent boundaries. (Self-hosted and bring-your-own-key modes are **deferred past 1.0** — see the note under "AI provider requirements" and `docs/15-ROADMAP.md`.)
 - Make migration, backup, restore, and deletion first-class workflows.
 
 ### Non-goals
@@ -78,9 +78,14 @@ The target described here is **v1.0**. The [roadmap](15-ROADMAP.md) divides it i
 
 ### AI modes
 
+> **Scope note (1.0):** 1.0 ships **browser-local AI only** — no self-hosted or remote/BYOK
+> provider. PR-041 through PR-043 describe the guardrails that MUST hold *if and when* a remote mode
+> is ever introduced; they are **deferred past 1.0** and no remote code path exists today. See
+> `docs/15-ROADMAP.md` (issues #34/#35 descoped).
+
 - **PR-040:** Local AI MUST be preferred when supported and MUST disclose model size and device requirements before download.
-- **PR-041:** Remote AI MUST be disabled by default and require destination-specific consent.
-- **PR-042:** Before a first remote request, the app MUST preview the classes of fields sent and warn that provider policies apply.
+- **PR-041:** _(Deferred past 1.0.)_ Remote AI MUST be disabled by default and require destination-specific consent.
+- **PR-042:** _(Deferred past 1.0.)_ Before a first remote request, the app MUST preview the classes of fields sent and warn that provider policies apply.
 - **PR-043:** Provider adapters MUST expose capability, health, cancellation, and structured-output behavior through one contract.
 - **PR-044:** Secrets MUST never appear in exports, logs, prompts shown in diagnostics, or plugin data.
 - **PR-045:** Natural-language answers MUST link material numeric claims to deterministic queries over local data.

@@ -22,7 +22,7 @@ People need answers to ordinary questions:
 
 ## Product thesis
 
-A capable personal financial analyst can run primarily in the browser. Statement parsing, normalization, rules, visualization, and storage do not inherently require a server. Small local models can assist uncertain cases, while optional self-hosted or cloud models can serve users who knowingly choose them. As user-confirmed rules accumulate, deterministic classification should handle most repeat transactions.
+A capable personal financial analyst can run primarily in the browser. Statement parsing, normalization, rules, visualization, and storage do not inherently require a server. Small local models can assist uncertain cases. As user-confirmed rules accumulate, deterministic classification should handle most repeat transactions. (Self-hosted or cloud models remain a possible long-term option for users who knowingly choose them, but are **deferred past 1.0**: 1.0 is browser-local AI only — see `docs/15-ROADMAP.md`.)
 
 ## Target users
 

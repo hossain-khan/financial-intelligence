@@ -104,11 +104,16 @@ Specify testable system behavior. IDs are normative and may be referenced by iss
 
 ## AI provider management
 
-- **FR-500:** Configure no-AI, browser-local, self-hosted, and remote provider profiles.
+> **Scope note (1.0):** only **no-AI** and **browser-local** profiles ship in 1.0. The self-hosted
+> and remote aspects below (and API-key storage) are **deferred past 1.0** — issues #34/#35 are
+> descoped (see `docs/15-ROADMAP.md`); they define behavior for a possible future remote mode, not
+> current functionality.
+
+- **FR-500:** Configure no-AI and browser-local provider profiles. (Self-hosted and remote profiles are deferred past 1.0.)
 - **FR-501:** Probe endpoint health and capabilities without sending financial records.
-- **FR-502:** Estimate download size or remote token/cost range before eligible operations where data is available.
+- **FR-502:** Estimate download size (and, for a future remote mode, token/cost range) before eligible operations where data is available.
 - **FR-503:** Require per-provider consent version and show revocation controls.
-- **FR-504:** Store API keys session-only by default; persistent storage requires explicit opt-in and platform-appropriate protection.
+- **FR-504:** _(Deferred past 1.0; no remote provider ships in 1.0.)_ Store API keys session-only by default; persistent storage requires explicit opt-in and platform-appropriate protection.
 - **FR-505:** Support timeout, cancellation, retry with bounded backoff, and structured error states.
 
 ## Portability, backup, and deletion

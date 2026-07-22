@@ -1,8 +1,9 @@
 # AI evaluation baseline and threshold rationale
 
 This report records the initial evaluation baseline established in issue #32 and the rationale for
-the checked-in threshold policy. It is a living document: each provider evaluated in #33–#35 appends
-its measured baseline and reviewed support record.
+the checked-in threshold policy. It is a living document: each evaluated provider appends its
+measured baseline and reviewed support record. Only the browser-local provider (#33) is in scope;
+the self-hosted (#34) and BYOK remote (#35) adapters are descoped (see `docs/15-ROADMAP.md`).
 
 ## Status
 
