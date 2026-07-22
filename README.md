@@ -1,3 +1,5 @@
+[![CI](https://github.com/hossain-khan/financial-intelligence/actions/workflows/ci.yml/badge.svg)](https://github.com/hossain-khan/financial-intelligence/actions/workflows/ci.yml) [![codecov](https://codecov.io/github/hossain-khan/financial-intelligence/graph/badge.svg?token=RGZOKVX2SR)](https://codecov.io/github/hossain-khan/financial-intelligence) ![AI Agenerated Experiment](https://img.shields.io/badge/AI-Vibed_(experiment)-yellowgreen?logo=probot)
+
 # Financial Intelligence
 
 > Privacy-first, offline-first personal finance analysis that turns bank statements into understandable, portable insights.

@@ -500,14 +500,8 @@ export function createTransactionExportCsv(
 }
 
 export function spreadsheetSafeCell(value: string): string {
-  let firstContent = 0;
-  while (
-    firstContent < value.length &&
-    (value.charCodeAt(firstContent) <= 32 || value.charCodeAt(firstContent) === 127)
-  ) {
-    firstContent += 1;
-  }
-  return ["=", "+", "-", "@"].includes(value[firstContent] ?? "") ? `'${value}` : value;
+  if (value.length === 0) return value;
+  return /^[\t\r\n ]*[=+\-@\t\r]/u.test(value) ? `'${value}` : value;
 }
 
 function csvCell(value: string): string {
