@@ -6,6 +6,10 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Added
 
+- AI suggestions now show phase-aware progress ("Preparing model…" during first-run load, then
+  "Analyzing N of M…"), a Cancel control that keeps any suggestions already found, and a
+  per-inference deadline so one slow description degrades to an abstention instead of stalling the
+  batch; the local model is warmed up once after load (issue #38 slice, browser-local only).
 - AI-assisted merchant/category suggestions (issue #36, ADR-022): the transactions page gains an
   optional "AI-assisted suggestions" review section. An explicit "Suggest categories & merchants"
   action runs the on-device model over transactions still unresolved after rules/mappings/heuristics
@@ -174,6 +178,10 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Fixed
 
+- Fix the AI-suggestions "Suggest" action freezing the tab ("Page Unresponsive") when transactions
+  were present: eligibility loaded the ledger by paging a sorting query, which re-scanned and
+  re-deserialized the entire IndexedDB ledger on the main thread once per page. It now reads the
+  ledger once (`ListAllTransactions`). Diagnosed via on-device instrumentation (issue #38 slice).
 - Center the local-mode checkmark inside its mint status circle by isolating privacy-seal text styles.
 - Keep shared button press behavior compatible with the production style CSP and provide explicit
   non-personal autofill context for encrypted-backup passphrase forms.
