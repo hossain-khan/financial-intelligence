@@ -30,6 +30,7 @@ export type {
   RejectSuggestionDeps,
   SuggestClassificationsDeps,
   SuggestClassificationsResult,
+  SuggestProgress,
   SuggestionBatchEntry,
   SuggestionProfileVersions,
 } from "./ai-suggestions";

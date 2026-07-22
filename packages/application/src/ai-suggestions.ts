@@ -241,6 +241,11 @@ export interface SuggestClassificationsResult {
   readonly abstained: number;
 }
 
+/** Progress reported during a suggestion run. Advisory; a provider that reports nothing still runs. */
+export type SuggestProgress =
+  | { readonly phase: "preparing"; readonly loadedFraction: number }
+  | { readonly phase: "analyzing"; readonly completed: number; readonly total: number };
+
 /**
  * Runs merchant resolution then category classification over a minimized, deduplicated batch of
  * eligible transactions through the injected provider, validates every result (strict schema +
@@ -255,16 +260,24 @@ export class SuggestClassifications {
     readonly allowedCategoryIds: readonly string[];
     readonly eligibility: EligibilityContext;
     readonly signal?: AbortSignal;
+    readonly onProgress?: (event: SuggestProgress) => void;
   }): Promise<SuggestClassificationsResult> {
     const eligible = selectEligibleTransactions(input.transactions, input.eligibility);
     const batch = buildSuggestionBatch(eligible);
     const provider = this.deps.provider;
     let created = 0;
     let abstained = 0;
+    let completedEntries = 0;
 
     const options = {
       signal: input.signal ?? new AbortController().signal,
       deadlineMs: this.deps.deadlineMs,
+      ...(input.onProgress
+        ? {
+            onProgress: (fraction: number) =>
+              input.onProgress?.({ phase: "preparing", loadedFraction: fraction }),
+          }
+        : {}),
     };
 
     for (const entry of batch) {
@@ -319,6 +332,9 @@ export class SuggestClassifications {
       } else {
         abstained += entry.transactionIds.length;
       }
+
+      completedEntries += 1;
+      input.onProgress?.({ phase: "analyzing", completed: completedEntries, total: batch.length });
     }
     return { created, abstained };
   }
