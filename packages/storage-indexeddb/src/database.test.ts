@@ -272,6 +272,58 @@ describe("IndexedDbMerchantRepository & IndexedDbRuleRepository", () => {
     expect(loadedRules).toHaveLength(1);
     expect(loadedRules[0]?.name).toBe("Tim Hortons Categorization");
   });
+
+  it("supports findById, saveMany, and delete for rules and merchants", async () => {
+    const database = new FinancialDatabase(`test-${crypto.randomUUID()}`);
+    databases.push(database);
+
+    const merchants = new IndexedDbMerchantRepository(database);
+    const rules = new IndexedDbRuleRepository(database);
+    const now = parseUtcTimestamp("2026-07-20T12:00:00.000Z");
+
+    const m1Id = parseMerchantId("019829f0-4da4-7ae0-8a9c-383af22d7e01");
+    const m2Id = parseMerchantId("019829f0-4da4-7ae0-8a9c-383af22d7e02");
+
+    await merchants.saveMany([
+      {
+        id: m1Id,
+        name: "Merchant 1",
+        aliases: [],
+        archived: false,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: m2Id,
+        name: "Merchant 2",
+        aliases: [],
+        archived: false,
+        createdAt: now,
+        updatedAt: now,
+      },
+    ]);
+
+    expect(await merchants.findById(m1Id)).toMatchObject({ name: "Merchant 1" });
+    expect(await merchants.findById(m2Id)).toMatchObject({ name: "Merchant 2" });
+
+    const ruleId = parseRuleId("019829f0-4da4-7ae0-8a9c-383af22d7e03");
+    await rules.save({
+      id: ruleId,
+      schemaVersion: "1.0.0",
+      name: "Test Rule",
+      enabled: true,
+      priority: 1,
+      conditions: [],
+      actions: [],
+      createdBy: "user",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    expect(await rules.findById(ruleId)).toMatchObject({ name: "Test Rule" });
+    await rules.delete(ruleId);
+    expect(await rules.findById(ruleId)).toBeUndefined();
+  });
 });
 
 describe("IndexedDbWorkspaceBackupRepository", () => {
