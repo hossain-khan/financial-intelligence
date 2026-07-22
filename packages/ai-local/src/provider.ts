@@ -32,12 +32,14 @@ export interface LocalAiProviderDeps {
 const FAILED_CODE_MAP: Record<string, "cancelled" | "resource_exhausted" | "provider_error"> = {
   CANCELLED: "cancelled",
   DEVICE_LOST: "resource_exhausted",
+  DEADLINE: "resource_exhausted",
 };
 
 export class LocalAiProvider implements AiProvider {
   public readonly profile: AiProviderProfileIdentity;
   private worker: LocalWorker | undefined;
   private loaded = false;
+  private warmedUp = false;
 
   public constructor(private readonly deps: LocalAiProviderDeps) {
     const model = deps.profile;
@@ -72,27 +74,14 @@ export class LocalAiProvider implements AiProvider {
 
     try {
       const worker = this.ensureWorker();
-      // AISPIKE: main-thread timing markers (investigate/ai-suggest-hang). Throwaway.
-      const tLoad = performance.now();
-      // eslint-disable-next-line no-console
-      console.log("[AISPIKE] main: ensureLoaded start; alreadyLoaded=", this.loaded);
-      await this.ensureLoaded(worker, options.signal);
-      // eslint-disable-next-line no-console
-      console.log(
-        "[AISPIKE] main: ensureLoaded returned after",
-        Math.round(performance.now() - tLoad),
-        "ms",
-      );
+      await this.ensureLoaded(worker, options.signal, options.onProgress);
+      if (!this.warmedUp) {
+        await this.runWarmup(worker, options.signal);
+        this.warmedUp = true;
+      }
       const prompt = buildClassifyPrompt(request.payload, this.deps.profile.promptVersion);
-      const tExec = performance.now();
-      const output = await this.runExecute(worker, request.task, prompt, options.signal);
-      // eslint-disable-next-line no-console
-      console.log(
-        "[AISPIKE] main:",
-        request.task,
-        "execute returned after",
-        Math.round(performance.now() - tExec),
-        "ms",
+      const output = await this.withDeadline(worker, options.deadlineMs, (operationId) =>
+        this.runExecute(worker, request.task, prompt, options.signal, operationId),
       );
       return this.validate(request.task, output);
     } catch (error) {
@@ -127,11 +116,15 @@ export class LocalAiProvider implements AiProvider {
     return this.worker;
   }
 
-  private ensureLoaded(worker: LocalWorker, signal: AbortSignal): Promise<void> {
+  private ensureLoaded(
+    worker: LocalWorker,
+    signal: AbortSignal,
+    onProgress?: (fraction: number) => void,
+  ): Promise<void> {
     if (this.loaded) return Promise.resolve();
     return new Promise<void>((resolve, reject) => {
       const operationId = crypto.randomUUID();
-      const settle = attach(worker, operationId, signal, {
+      attach(worker, operationId, signal, {
         onLoaded: () => {
           this.loaded = true;
           resolve();
@@ -139,6 +132,7 @@ export class LocalAiProvider implements AiProvider {
         onResult: () => resolve(),
         onFailed: (code, message) => reject(new WorkerFailure(code, message)),
         onCancel: () => reject(new WorkerFailure("CANCELLED", "Load cancelled")),
+        ...(onProgress ? { onProgress } : {}),
       });
       worker.postMessage({
         protocolVersion: 1,
@@ -146,7 +140,20 @@ export class LocalAiProvider implements AiProvider {
         operationId,
         profile: this.deps.profile,
       });
-      void settle;
+    });
+  }
+
+  /** Warm the model once per worker so the first real inference is not paying cold-start latency. */
+  private runWarmup(worker: LocalWorker, signal: AbortSignal): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const operationId = crypto.randomUUID();
+      attach(worker, operationId, signal, {
+        onLoaded: () => resolve(),
+        onResult: () => resolve(),
+        onFailed: (code, message) => reject(new WorkerFailure(code, message)),
+        onCancel: () => reject(new WorkerFailure("CANCELLED", "Warmup cancelled")),
+      });
+      worker.postMessage({ protocolVersion: 1, type: "warmup", operationId });
     });
   }
 
@@ -155,9 +162,9 @@ export class LocalAiProvider implements AiProvider {
     task: AiTaskRequest["task"],
     prompt: string,
     signal: AbortSignal,
+    operationId: string,
   ): Promise<string> {
     return new Promise<string>((resolve, reject) => {
-      const operationId = crypto.randomUUID();
       attach(worker, operationId, signal, {
         onResult: (output) => resolve(output),
         onLoaded: () => undefined,
@@ -175,6 +182,35 @@ export class LocalAiProvider implements AiProvider {
         prompt,
         decoding: this.deps.profile.decoding,
       });
+    });
+  }
+
+  /**
+   * Bound a single inference by `deadlineMs`. On expiry we post `cancel` for the operation so the
+   * worker releases it, and reject with `DEADLINE` (mapped to `resource_exhausted`). This stops one
+   * slow or stuck inference from hanging the whole batch; the caller treats it as an abstention.
+   */
+  private withDeadline(
+    worker: LocalWorker,
+    deadlineMs: number,
+    run: (operationId: string) => Promise<string>,
+  ): Promise<string> {
+    const operationId = crypto.randomUUID();
+    return new Promise<string>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        worker.postMessage({ protocolVersion: 1, type: "cancel", operationId });
+        reject(new WorkerFailure("DEADLINE", "Inference exceeded the deadline"));
+      }, deadlineMs);
+      run(operationId).then(
+        (output) => {
+          clearTimeout(timer);
+          resolve(output);
+        },
+        (error: unknown) => {
+          clearTimeout(timer);
+          reject(error);
+        },
+      );
     });
   }
 }
@@ -205,6 +241,8 @@ interface AttachHandlers {
   onResult: (output: string) => void;
   onFailed: (code: string, message: string) => void;
   onCancel: () => void;
+  /** Fired for each interim `progress` message; does not settle the operation. */
+  onProgress?: (fraction: number) => void;
 }
 
 /** Wires a one-operation message/error/abort listener set and cleans up on the first settle. */
@@ -216,7 +254,12 @@ function attach(
 ): void {
   const onMessage = (event: { data: LocalAiResponse }): void => {
     const response = event.data;
-    if (response.operationId !== operationId || response.type === "progress") return;
+    if (response.operationId !== operationId) return;
+    // Progress is interim: report the fraction but keep listening (do not clean up / settle).
+    if (response.type === "progress") {
+      handlers.onProgress?.(response.fraction);
+      return;
+    }
     cleanup();
     if (response.type === "loaded") handlers.onLoaded();
     else if (response.type === "result") handlers.onResult(response.output);

@@ -30,6 +30,7 @@ export type {
   RejectSuggestionDeps,
   SuggestClassificationsDeps,
   SuggestClassificationsResult,
+  SuggestProgress,
   SuggestionBatchEntry,
   SuggestionProfileVersions,
 } from "./ai-suggestions";
@@ -87,6 +88,7 @@ export {
   previewBulkTransactionEdit,
   queryTransactionLedger,
 } from "./transaction-ledger";
+export { ListAllTransactions } from "./list-all-transactions";
 export { ExportFilteredTransactions, QueryCashFlowSummary } from "./summaries";
 export type { CashFlowFilter, CashFlowReport, TransactionCsvExport } from "./summaries";
 export { ListCategories, RenameCategory, SetCategoryArchived } from "./categories";

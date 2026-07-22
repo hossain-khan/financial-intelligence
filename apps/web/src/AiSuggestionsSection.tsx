@@ -1,22 +1,21 @@
-import type { Transaction } from "@financial-intelligence/domain";
+import type { SuggestProgress } from "@financial-intelligence/application";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AiSuggestionsController, type AcceptScope, type SuggestionView } from "./ai-suggestions";
 import { Button } from "./Button";
 import type { ApplicationServices } from "./infrastructure";
 
-/** The ledger query caps a page at 1000 rows, so read the whole ledger in bounded pages. */
-async function listAllLedgerTransactions(
-  services: ApplicationServices,
-): Promise<readonly Transaction[]> {
-  const pageSize = 1000;
-  const all: Transaction[] = [];
-  for (let offset = 0; ; offset += pageSize) {
-    const page = await services.queryTransactionLedger.execute({ limit: pageSize, offset });
-    all.push(...page.items);
-    if (all.length >= page.total || page.items.length === 0) break;
-  }
-  return all;
+function progressPercent(progress: SuggestProgress | undefined): number {
+  if (progress === undefined) return 0;
+  if (progress.phase === "preparing") return Math.round(progress.loadedFraction * 100);
+  return progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
+}
+
+function progressLabel(progress: SuggestProgress | undefined): string {
+  if (progress === undefined) return "Preparing…";
+  return progress.phase === "preparing"
+    ? `Preparing model… ${Math.round(progress.loadedFraction * 100)}%`
+    : `Analyzing ${progress.completed} of ${progress.total}…`;
 }
 
 export interface AiSuggestionsSectionProps {
@@ -53,7 +52,7 @@ export function AiSuggestionsSection({
         repository: services.aiSuggestionRepository,
         acceptSuggestion: services.acceptSuggestion,
         rejectSuggestion: services.rejectSuggestion,
-        listTransactions: () => listAllLedgerTransactions(services),
+        listTransactions: () => services.listAllTransactions.execute(),
         listCategories: () => services.listCategories.execute(),
         listRules: () => services.listRules.execute(),
         listMerchants: () => services.listMerchants.execute(),
@@ -64,6 +63,8 @@ export function AiSuggestionsSection({
   const [suggestions, setSuggestions] = useState<readonly SuggestionView[]>([]);
   const [status, setStatus] = useState<string>();
   const [busyId, setBusyId] = useState<string>();
+  const [progress, setProgress] = useState<SuggestProgress>();
+  const abortRef = useRef<AbortController | undefined>(undefined);
 
   const refreshPending = useCallback(async () => {
     const pending = await controllerRef.current.listPending();
@@ -92,24 +93,37 @@ export function AiSuggestionsSection({
   }, [refreshPending]);
 
   const onSuggest = async () => {
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setProgress(undefined);
     setPhase("running");
     setStatus("Analyzing transactions on your device…");
     try {
-      const outcome = await controllerRef.current.suggest();
+      const outcome = await controllerRef.current.suggest(controller.signal, setProgress);
       await refreshPending();
       setPhase("idle");
       setStatus(
-        outcome.created > 0
-          ? `Found ${outcome.created} suggestion(s) to review.`
-          : "No new suggestions — everything eligible is already resolved or below the confidence floor.",
+        controller.signal.aborted
+          ? "Cancelled."
+          : outcome.created > 0
+            ? `Found ${outcome.created} suggestion(s) to review.`
+            : "No new suggestions — everything eligible is already resolved or below the confidence floor.",
       );
     } catch {
-      setPhase("error");
+      const aborted = abortRef.current?.signal.aborted ?? false;
+      setPhase(aborted ? "idle" : "error");
       setStatus(
-        "The model could not finish. Your data was not changed; rules-only remains available.",
+        aborted
+          ? "Cancelled."
+          : "The model could not finish. Your data was not changed; rules-only remains available.",
       );
+    } finally {
+      abortRef.current = undefined;
+      setProgress(undefined);
     }
   };
+
+  const onCancel = () => abortRef.current?.abort();
 
   const onAccept = async (view: SuggestionView, scope: AcceptScope) => {
     setBusyId(view.id);
@@ -174,6 +188,31 @@ export function AiSuggestionsSection({
               {phase === "running" ? "Analyzing…" : "Suggest categories & merchants"}
             </Button>
           </div>
+
+          {phase === "running" && (
+            <div className="ai-suggestions-progress">
+              <p role="status">{progressLabel(progress)}</p>
+              <div
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={progressPercent(progress)}
+                aria-valuetext={progressLabel(progress)}
+              >
+                <span
+                  className="progress-fill"
+                  style={{ inlineSize: `${progressPercent(progress)}%` }}
+                />
+              </div>
+              <Button
+                className="secondary-button"
+                onClick={onCancel}
+                aria-label="Cancel suggestion run"
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
 
           {status !== undefined && (
             <p role="status" className="ai-suggestions-status">

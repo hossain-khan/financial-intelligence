@@ -36,7 +36,7 @@ Raw source documents, account identifiers, unrelated transactions, notes, and fu
 7. Validate response schema, allowed IDs, confidence range, and safety constraints.
 8. Persist the validated inference as a reviewable **suggestion** (never a direct canonical write), or route to review/abstain.
 
-A model cannot overwrite stages 1–4. A provider error yields `unclassified` or preserves the best deterministic candidate. Suggestions are held separately and become a canonical `localAi`/`remoteAi` classification only through an explicit, eligibility-rechecked accept; see [`docs/10-LEARNING-ENGINE.md`](10-LEARNING-ENGINE.md) and [ADR-022](adr/ADR-022-AI-Suggestions-And-Provenance.md).
+A model cannot overwrite stages 1–4. A provider error yields `unclassified` or preserves the best deterministic candidate. Suggestions are held separately and become a canonical `localAi`/`remoteAi` classification only through an explicit, eligibility-rechecked accept; see [`docs/10-LEARNING-ENGINE.md`](10-LEARNING-ENGINE.md) and [ADR-022](adr/ADR-022-AI-Suggestions-And-Provenance.md). The optional-AI step reports phase-aware progress (model preparation, then per-item analysis), is cancellable, and bounds each inference with a deadline so a slow or stuck model degrades to an abstention without blocking the UI.
 
 ## Provider types
 

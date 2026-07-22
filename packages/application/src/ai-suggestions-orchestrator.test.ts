@@ -22,6 +22,7 @@ import {
   type AiSuggestionRepository,
   type EligibilityContext,
   type PersistedSuggestion,
+  type SuggestProgress,
 } from "./ai-suggestions";
 
 const NOW = parseUtcTimestamp("2026-07-20T00:00:00.000Z");
@@ -210,5 +211,24 @@ describe("SuggestClassifications", () => {
     expect(repo.saved.length).toBeGreaterThan(0);
     const merchantReq = provider.requests.find((r) => r.task === "merchant.resolve.v1");
     expect(merchantReq).toBeDefined();
+  });
+
+  it("emits analyzing progress once per batch entry with a stable total", async () => {
+    const repo = new MemoryRepo();
+    const provider = new TaskFake(
+      () => okMerchant("coffee-co"),
+      () => okCategory("dining"),
+    );
+    const events: SuggestProgress[] = [];
+    await new SuggestClassifications(deps(provider, repo)).execute({
+      transactions: [transaction("SQ *COFFEE #1"), transaction("SQ *TACOS #2")],
+      allowedCategoryIds: ["dining"],
+      eligibility: eligibility(),
+      onProgress: (e) => events.push(e),
+    });
+    const analyzing = events.filter((e) => e.phase === "analyzing");
+    expect(analyzing.length).toBe(2);
+    expect(analyzing.every((e) => e.phase === "analyzing" && e.total === 2)).toBe(true);
+    expect(analyzing.map((e) => (e.phase === "analyzing" ? e.completed : 0))).toEqual([1, 2]);
   });
 });

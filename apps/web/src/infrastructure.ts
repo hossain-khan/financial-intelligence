@@ -15,6 +15,7 @@ import {
   ExportFilteredTransactions,
   ListAccounts,
   ListCategories,
+  ListAllTransactions,
   ListDuplicateResolutions,
   ListImportHistory,
   ListMerchants,
@@ -99,6 +100,7 @@ export interface ApplicationServices {
   readonly renameCategory: RenameCategory;
   readonly setCategoryArchived: SetCategoryArchived;
   readonly queryTransactionLedger: QueryTransactionLedger;
+  readonly listAllTransactions: ListAllTransactions;
   readonly queryCashFlowSummary: QueryCashFlowSummary;
   readonly exportFilteredTransactions: ExportFilteredTransactions;
   readonly listTransactionEditHistory: ListTransactionEditHistory;
@@ -231,6 +233,7 @@ export const applicationServices: ApplicationServices = {
   renameCategory: new RenameCategory(categoryRepository, clock),
   setCategoryArchived: new SetCategoryArchived(categoryRepository, clock),
   queryTransactionLedger: new QueryTransactionLedger(ledgerRepository),
+  listAllTransactions: new ListAllTransactions(ledgerRepository),
   queryCashFlowSummary: new QueryCashFlowSummary(ledgerRepository, categoryRepository, clock),
   exportFilteredTransactions: new ExportFilteredTransactions(
     ledgerRepository,

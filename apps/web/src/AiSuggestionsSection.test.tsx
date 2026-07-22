@@ -129,4 +129,36 @@ describe("AiSuggestionsSection", () => {
     });
     expect(acceptMerchant).toBeDisabled();
   });
+
+  it("shows a progress bar and Cancel while a run is in progress", async () => {
+    let resolveRun: (value: { created: number; abstained: number }) => void = () => {};
+    const controller = fakeController({
+      suggest: vi.fn((_signal?: AbortSignal, onProgress?: (event: { phase: string }) => void) => {
+        onProgress?.({ phase: "analyzing" });
+        return new Promise<{ created: number; abstained: number }>((resolve) => {
+          resolveRun = resolve;
+        });
+      }),
+    });
+    render(<AiSuggestionsSection services={services} controller={controller} />);
+    fireEvent.click(await screen.findByRole("button", { name: /Suggest categories/i }));
+
+    expect(await screen.findByRole("progressbar")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Cancel suggestion run/i })).toBeInTheDocument();
+    resolveRun({ created: 0, abstained: 0 });
+  });
+
+  it("aborts the run when Cancel is clicked", async () => {
+    let seenSignal: AbortSignal | undefined;
+    const controller = fakeController({
+      suggest: vi.fn((signal?: AbortSignal) => {
+        seenSignal = signal;
+        return new Promise<{ created: number; abstained: number }>(() => {});
+      }),
+    });
+    render(<AiSuggestionsSection services={services} controller={controller} />);
+    fireEvent.click(await screen.findByRole("button", { name: /Suggest categories/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /Cancel suggestion run/i }));
+    await waitFor(() => expect(seenSignal?.aborted).toBe(true));
+  });
 });
