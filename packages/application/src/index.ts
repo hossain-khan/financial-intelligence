@@ -10,17 +10,24 @@ export {
 } from "./accounts";
 export type { AccountRepository, CreateAccountCommand } from "./accounts";
 export {
+  AcceptSuggestion,
+  RejectSuggestion,
   SuggestClassifications,
+  SuggestionStaleError,
   activeCategoryIds,
   buildSuggestionBatch,
   rejectionKey,
   selectEligibleTransactions,
 } from "./ai-suggestions";
 export type {
+  AcceptSuggestionDeps,
+  AcceptSuggestionInput,
+  AcceptSuggestionResult,
   AiSuggestionRepository,
   EligibilityContext,
   PersistedSuggestion,
   PersistedSuggestionStatus,
+  RejectSuggestionDeps,
   SuggestClassificationsDeps,
   SuggestClassificationsResult,
   SuggestionBatchEntry,

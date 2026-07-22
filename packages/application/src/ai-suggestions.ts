@@ -8,12 +8,18 @@ import { validateAiTask } from "@financial-intelligence/schemas";
 import {
   deriveReviewQueueItem,
   normalizeMerchantDescription,
+  parseCategoryId,
+  parseMerchantId,
+  parseTransactionId,
   type AccountType,
   type Category,
   type ClassificationRule,
   type Merchant,
   type Transaction,
 } from "@financial-intelligence/domain";
+
+import type { ApplyReviewCorrectionUseCase } from "./review-queue";
+import type { TransactionLedgerRepository } from "./transaction-ledger";
 
 /**
  * A persisted AI suggestion, held separately from canonical classifications until accepted. Named
@@ -375,4 +381,133 @@ export class SuggestClassifications {
 /** Current non-archived category ids — the allowed vocabulary for classification. */
 export function activeCategoryIds(categories: readonly Category[]): readonly string[] {
   return categories.filter((category) => !category.archived).map((category) => category.id);
+}
+
+export class SuggestionStaleError extends Error {
+  public constructor(message: string) {
+    super(message);
+    this.name = "SuggestionStaleError";
+  }
+}
+
+export interface AcceptSuggestionDeps {
+  readonly repository: AiSuggestionRepository;
+  readonly applyReviewCorrection: ApplyReviewCorrectionUseCase;
+  readonly ledgerRepository: TransactionLedgerRepository;
+  readonly rules: () => Promise<readonly ClassificationRule[]>;
+  readonly merchants: () => Promise<readonly Merchant[]>;
+}
+
+export interface AcceptSuggestionInput {
+  readonly suggestionId: string;
+  /** For a merchant suggestion, the resolved/created merchant id the UI chose for the label. */
+  readonly merchantId?: string;
+  readonly createRule?: ApplyReviewCorrectionInputCreateRule;
+  readonly createMerchantAlias?: { readonly merchantId: string; readonly pattern: string; readonly matchMode: "exact" | "tokenPrefix" | "contains" };
+}
+
+// Structural mirror of ApplyReviewCorrectionInput["createRule"] so callers can pass a rule to create.
+type ApplyReviewCorrectionInputCreateRule = NonNullable<
+  Parameters<ApplyReviewCorrectionUseCase["execute"]>[0]["createRule"]
+>;
+
+export interface AcceptSuggestionResult {
+  readonly applied: boolean;
+  readonly operationId?: string;
+  readonly createdRuleId?: string;
+}
+
+/**
+ * Accept a pending suggestion. Rechecks staleness (the target transaction still exists, its
+ * `updatedAt` is unchanged, and precedence still leaves it unresolved) before mutating anything. On
+ * success it applies through the existing atomic `ApplyReviewCorrectionUseCase` with `localAi`
+ * provenance, then marks the suggestion accepted. A stale suggestion is marked `stale` and throws.
+ */
+export class AcceptSuggestion {
+  public constructor(private readonly deps: AcceptSuggestionDeps) {}
+
+  public async execute(input: AcceptSuggestionInput): Promise<AcceptSuggestionResult> {
+    const suggestion = await this.deps.repository.findById(input.suggestionId);
+    if (suggestion === undefined) throw new SuggestionStaleError("Suggestion not found");
+    if (suggestion.status !== "pending") {
+      throw new SuggestionStaleError(`Suggestion is ${suggestion.status}, not pending`);
+    }
+    if (suggestion.proposal.kind === "abstain") {
+      throw new SuggestionStaleError("An abstention cannot be accepted");
+    }
+
+    const transactions = await this.deps.ledgerRepository.list();
+    const target = transactions.find((t) => t.id === suggestion.targetTransactionId);
+    if (target === undefined || target.updatedAt !== suggestion.targetUpdatedAt) {
+      await this.deps.repository.setStatus(suggestion.id, "stale");
+      throw new SuggestionStaleError("The transaction changed since the suggestion was created");
+    }
+
+    // Precedence re-check: a rule/merchant-mapping/lock may now resolve it.
+    const [rules, merchants] = await Promise.all([this.deps.rules(), this.deps.merchants()]);
+    const item = deriveReviewQueueItem(target, rules, merchants);
+    if (item === undefined || item.isLockedCategory || item.isLockedMerchant) {
+      await this.deps.repository.setStatus(suggestion.id, "stale");
+      throw new SuggestionStaleError("The transaction is now resolved by a deterministic decision");
+    }
+
+    const provenance = {
+      method: suggestion.provider.executionLocation === "local" ? ("localAi" as const) : ("remoteAi" as const),
+      classifierId: suggestion.provider.adapterId,
+      classifierVersion: suggestion.classifierVersion,
+      ...(suggestion.confidence === null ? {} : { confidence: suggestion.confidence }),
+      evidence: suggestion.evidenceCodes,
+    };
+
+    const merchantId =
+      suggestion.proposal.kind === "merchant" ? input.merchantId : undefined;
+    if (suggestion.proposal.kind === "merchant" && merchantId === undefined) {
+      throw new SuggestionStaleError("A merchant suggestion requires a resolved merchant id to accept");
+    }
+
+    const result = await this.deps.applyReviewCorrection.execute({
+      transactionIds: [parseTransactionId(suggestion.targetTransactionId)],
+      ...(suggestion.proposal.kind === "category"
+        ? { categoryId: parseCategoryId(suggestion.proposal.categoryId) }
+        : {}),
+      ...(merchantId === undefined ? {} : { merchantId: parseMerchantId(merchantId) }),
+      provenance,
+      ...(input.createRule === undefined ? {} : { createRule: input.createRule }),
+      ...(input.createMerchantAlias === undefined
+        ? {}
+        : {
+            createMerchantAlias: {
+              merchantId: parseMerchantId(input.createMerchantAlias.merchantId),
+              pattern: input.createMerchantAlias.pattern,
+              matchMode: input.createMerchantAlias.matchMode,
+            },
+          }),
+    });
+
+    await this.deps.repository.setStatus(suggestion.id, "accepted");
+    return {
+      applied: true,
+      operationId: result.operationId,
+      ...(result.createdRuleId === undefined ? {} : { createdRuleId: result.createdRuleId }),
+    };
+  }
+}
+
+export interface RejectSuggestionDeps {
+  readonly repository: AiSuggestionRepository;
+}
+
+/**
+ * Reject a pending suggestion: mark it rejected. Rejection memory (the `(digest, classifierVersion)`
+ * key) is derived from the persisted record at eligibility time via `listRejectedKeys`, so the same
+ * candidate is not re-presented for this classifier version. Records no data and uploads nothing.
+ */
+export class RejectSuggestion {
+  public constructor(private readonly deps: RejectSuggestionDeps) {}
+
+  public async execute(input: { readonly suggestionId: string }): Promise<void> {
+    const suggestion = await this.deps.repository.findById(input.suggestionId);
+    if (suggestion === undefined) return;
+    await this.deps.repository.setStatus(suggestion.id, "rejected");
+  }
 }
