@@ -22,10 +22,10 @@ const requiredCspDirectives = [
 ];
 
 // connect-src is asserted exactly (not as a substring) so it cannot be silently broadened. Only the
-// app origin plus Hugging Face model-download hosts are permitted; the HF weight CDN is region-
-// specific under *.hf.co (e.g. us.aws.cdn.hf.co), and these origins are contacted only during an
-// explicit, user-initiated model download (see ADR-021).
-const allowedConnectSrc = ["'self'", "https://*.hf.co", "https://huggingface.co"];
+// app origin plus the single project-controlled model-download mirror are permitted; that exact host
+// (no wildcard) is contacted only during an explicit, user-initiated model download (see ADR-023,
+// which supersedes ADR-021's Hugging Face hosts). Integrity is still enforced by per-file SHA-256.
+const allowedConnectSrc = ["'self'", "https://light-llm-storage.gohk.xyz"];
 
 for (const header of requiredHeaders) {
   if (!source.includes(header)) {

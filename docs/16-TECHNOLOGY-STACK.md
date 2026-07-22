@@ -205,10 +205,10 @@ AI is not part of the first vertical slice. Phase 4 adds the task-based `AiProvi
 - `@huggingface/transformers` (transformers.js, ONNX Runtime Web) is the selected browser-local
   runtime as of #33 ([ADR-020](adr/ADR-020-Browser-Local-AI-Runtime.md)). WebLLM was evaluated and
   rejected because its prebuilt models cannot run the target Gemma 3n edge family. Models are
-  acquired by one-click download from allow-listed Hugging Face hosts
-  (`connect-src` adds `https://huggingface.co https://*.hf.co`, contacted only during the explicit
-  download; [ADR-021](adr/ADR-021-One-Click-Model-Download.md)), with local-file sideload as a
-  secondary offline fallback.
+  acquired by one-click download from a single project-controlled mirror
+  (`connect-src` is `'self' https://light-llm-storage.gohk.xyz`, one exact host contacted only during
+  the explicit download; [ADR-023](adr/ADR-023-Project-Controlled-Model-Mirror.md), superseding
+  ADR-021's Hugging Face hosts), with local-file sideload as a secondary offline fallback.
 - Remote providers use task-specific fetch adapters; a general chat SDK does not enter the domain.
 - Every output passes strict JSON Schema and allowed-ID validation.
 - The local query engine calculates every financial number.

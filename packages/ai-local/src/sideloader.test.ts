@@ -39,6 +39,7 @@ function profile(): ModelProfile {
     runtimeVersion: "x",
     modelRepo: "r",
     modelRevision: "rev",
+    downloadBaseUrl: "https://mirror.example.com/r",
     quantization: "q",
     tokenizerId: "t",
     files: [

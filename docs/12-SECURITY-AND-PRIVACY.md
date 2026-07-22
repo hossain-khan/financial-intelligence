@@ -104,13 +104,14 @@ The app does not claim protection against a fully compromised device, malicious 
 - Restrict `connect-src` to required static origins; user endpoints require deliberate policy handling.
 - No sensitive values in URLs, referrers, DNS-derived hostnames, headers other than required auth, or analytics.
 - Remote AI payloads are minimized per task and not cached by service workers.
-- The browser-local AI provider acquires its model with **one-click download** from allow-listed
-  Hugging Face hosts (#33, [ADR-021](adr/ADR-021-One-Click-Model-Download.md)). `connect-src` is
-  `'self' https://huggingface.co https://*.hf.co` — the `*.hf.co` wildcard covers the region-specific
-  Xet weight CDN, and the security-headers check asserts this token set exactly so it cannot be
-  broadened. These origins are contacted **only** during an explicit, user-initiated download; each
-  file is SHA-256-verified against the pinned profile before use, and the runtime loads with remote
-  fetching disabled so model load and inference make zero network requests (offline e2e-enforced).
+- The browser-local AI provider acquires its model with **one-click download** from a single
+  project-controlled mirror ([ADR-023](adr/ADR-023-Project-Controlled-Model-Mirror.md), superseding
+  ADR-021's Hugging Face hosts). `connect-src` is `'self' https://light-llm-storage.gohk.xyz` — one
+  exact host, no wildcard — and the security-headers check asserts this token set exactly so it
+  cannot be broadened. That origin is contacted **only** during an explicit, user-initiated download;
+  each file is SHA-256-verified against the pinned profile before use (so a wrong or compromised
+  mirror cannot substitute a different model), and the runtime loads with remote fetching disabled so
+  model load and inference make zero network requests (offline e2e-enforced).
   Manual file load (sideload) remains as a secondary, fully-offline acquisition path.
 
 ### Authorization and plugins
