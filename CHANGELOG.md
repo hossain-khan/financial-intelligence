@@ -186,6 +186,7 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Fixed
 
+- Fix unstyled button styling across the Transactions page by adding the missing `.primary-button` CSS class, explicit disabled button states, and proper button class names for Category "Save label", "Export filtered CSV", and Bulk review "Preview affected count" controls.
 - Fix the AI-suggestions "Suggest" action freezing the tab ("Page Unresponsive") when transactions
   were present: eligibility loaded the ledger by paging a sorting query, which re-scanned and
   re-deserialized the entire IndexedDB ledger on the main thread once per page. It now reads the

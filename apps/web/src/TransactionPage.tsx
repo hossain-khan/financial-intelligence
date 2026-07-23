@@ -482,7 +482,11 @@ export function TransactionPage({
           >
             Reset shared filters
           </button>
-          <button type="button" onClick={() => void exportCurrentQuery()}>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => void exportCurrentQuery()}
+          >
             Export filtered CSV
           </button>
         </div>
@@ -715,6 +719,7 @@ export function TransactionPage({
           </label>
           <button
             type="button"
+            className="secondary-button"
             disabled={selected.size === 0 || (bulkCategory === "" && bulkReviewState === "")}
             onClick={() => void previewBulk()}
           >
@@ -727,6 +732,7 @@ export function TransactionPage({
               </span>
               <button
                 type="button"
+                className="primary-button"
                 onClick={() =>
                   void applyEdit([...selected], bulkEdit(bulkCategory, bulkReviewState, categories))
                 }
@@ -1179,7 +1185,11 @@ function TransactionDetails({
       </dl>
       <h4>Edit history</h4>
       {history === undefined ? (
-        <button type="button" onClick={() => void onLoadHistory().then(setHistory)}>
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={() => void onLoadHistory().then(setHistory)}
+        >
           Load edit history
         </button>
       ) : history.length === 0 ? (
@@ -1367,7 +1377,9 @@ function CategoryManager({
                 Rename {category.name}
                 <input name="name" defaultValue={category.name} maxLength={120} />
               </label>
-              <button type="submit">Save label</button>
+              <button type="submit" className="primary-button">
+                Save label
+              </button>
               <button
                 type="button"
                 className="secondary-button"
