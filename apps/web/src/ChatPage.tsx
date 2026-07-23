@@ -159,7 +159,8 @@ export function ChatPage(props: ChatPageProperties) {
         <div className="chat-page-header">
           <h2>Local AI Financial Assistant</h2>
           <p>
-            To use the local AI Chat, the browser-local model must first be downloaded and verified on your device.
+            To use the local AI Chat, the browser-local model must first be downloaded and verified
+            on your device.
           </p>
         </div>
         <div className="chat-download-container">
@@ -182,17 +183,16 @@ export function ChatPage(props: ChatPageProperties) {
         <div className="chat-disclaimer" role="note">
           <span className="disclaimer-badge">Privacy First</span>
           <p>
-            <strong>Disclaimer:</strong> This local AI assistant helps analyze cash flows and organize financial data. It does not provide legal, tax, or professional investment advice. All conversations run 100% offline on your device.
+            <strong>Disclaimer:</strong> This local AI assistant helps analyze cash flows and
+            organize financial data. It does not provide legal, tax, or professional investment
+            advice. All conversations run 100% offline on your device.
           </p>
         </div>
       </header>
 
       <div className="chat-messages-container" aria-live="polite" aria-label="Conversation history">
         {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`chat-message-row chat-message-${msg.sender}`}
-          >
+          <div key={msg.id} className={`chat-message-row chat-message-${msg.sender}`}>
             <div className="chat-avatar" aria-hidden="true">
               {msg.sender === "user" ? "You" : "AI"}
             </div>
@@ -206,7 +206,10 @@ export function ChatPage(props: ChatPageProperties) {
         ))}
 
         {isProcessing && (
-          <div className="chat-message-row chat-message-assistant chat-message-typing" role="status">
+          <div
+            className="chat-message-row chat-message-assistant chat-message-typing"
+            role="status"
+          >
             <div className="chat-avatar" aria-hidden="true">
               AI
             </div>

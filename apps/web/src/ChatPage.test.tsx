@@ -28,7 +28,9 @@ describe("ChatPage", () => {
     });
 
     expect(
-      screen.getByText(/To use the local AI Chat, the browser-local model must first be downloaded/i),
+      screen.getByText(
+        /To use the local AI Chat, the browser-local model must first be downloaded/i,
+      ),
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Local AI (optional)" })).toBeInTheDocument();
   });
@@ -42,7 +44,9 @@ describe("ChatPage", () => {
     });
 
     expect(screen.getByText(/Privacy First/i)).toBeInTheDocument();
-    expect(screen.getByText(/This local AI assistant helps analyze cash flows/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/This local AI assistant helps analyze cash flows/i),
+    ).toBeInTheDocument();
     expect(
       screen.getByPlaceholderText("Ask a question about your cash flow or spending rules…"),
     ).toBeInTheDocument();
@@ -58,7 +62,9 @@ describe("ChatPage", () => {
       expect(screen.getByRole("heading", { name: "Financial Assistant" })).toBeInTheDocument();
     });
 
-    const input = screen.getByPlaceholderText("Ask a question about your cash flow or spending rules…");
+    const input = screen.getByPlaceholderText(
+      "Ask a question about your cash flow or spending rules…",
+    );
     const sendButton = screen.getByRole("button", { name: "Send" });
 
     fireEvent.change(input, { target: { value: "How do rules work?" } });
@@ -102,7 +108,9 @@ describe("ChatPage", () => {
       expect(screen.getByRole("heading", { name: "Financial Assistant" })).toBeInTheDocument();
     });
 
-    const input = screen.getByPlaceholderText("Ask a question about your cash flow or spending rules…");
+    const input = screen.getByPlaceholderText(
+      "Ask a question about your cash flow or spending rules…",
+    );
     fireEvent.change(input, { target: { value: "Test question" } });
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
