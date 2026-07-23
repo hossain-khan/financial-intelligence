@@ -24,6 +24,7 @@ import {
   type DatabaseHealth,
 } from "./infrastructure";
 import { LocalAiPanel } from "./LocalAiPanel";
+import { ChatPage } from "./ChatPage";
 import { RecoveryScreen } from "./RecoveryScreen";
 import { RestorePanel } from "./RestorePanel";
 import { StoragePanel } from "./StoragePanel";
@@ -129,6 +130,7 @@ export function App({ services, checkHealth = checkDatabaseHealth }: AppRootProp
                 </Suspense>
               }
             />
+            <Route path="/chat" element={<ChatPage services={services} />} />
             <Route path="/settings" element={<SettingsPage services={services} />} />
           </Routes>
         </main>
@@ -254,6 +256,7 @@ function AppHeader() {
         <NavLink to="/dashboard">Dashboard</NavLink>
         <NavLink to="/import">Import</NavLink>
         <NavLink to="/transactions">Transactions</NavLink>
+        <NavLink to="/chat">Chat</NavLink>
         <NavLink to="/settings">Settings</NavLink>
       </nav>
     </header>
