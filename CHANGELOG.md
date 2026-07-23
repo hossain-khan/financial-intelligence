@@ -6,6 +6,8 @@ All notable changes to this project will be documented here. The format follows 
 
 ### Added
 
+- Interactive Local AI Financial Assistant chat page (`/chat` route in top navigation): enables on-device conversational cash-flow analysis, rule explainability, and spending guidance. Automatically ports the `<LocalAiPanel />` downloader when the browser-local model is not yet ready, includes a non-financial advice privacy disclaimer, starter topic chips, and responsive conversation controls.
+
 - AI suggestions now show phase-aware progress ("Preparing model…" during first-run load, then
   "Analyzing N of M…"), a Cancel control that keeps any suggestions already found, and a
   per-inference deadline so one slow description degrades to an abstention instead of stalling the
