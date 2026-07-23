@@ -676,6 +676,7 @@
     margin-top: 1.5rem;
   }
 
+  .primary-button,
   .preview-actions button,
   .secondary-button {
     min-height: 2.75rem;
@@ -693,6 +694,8 @@
     background: var(--forest-soft);
   }
 
+  .primary-button:disabled,
+  .secondary-button:disabled,
   .preview-actions button:disabled {
     cursor: not-allowed;
     opacity: 0.5;
